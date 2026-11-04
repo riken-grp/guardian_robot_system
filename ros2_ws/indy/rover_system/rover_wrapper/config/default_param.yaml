@@ -1,0 +1,6 @@
+/**/rover_wrapper_node:
+  ros__parameters:
+    report_rate: 0.05 # [s]
+    move_speed: 0.7 # [m/s]
+    rotate_speed: 0.5 # [rad/s]
+    motor_release_time: 10.0 # [s]

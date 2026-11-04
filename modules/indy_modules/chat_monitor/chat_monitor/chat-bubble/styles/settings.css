@@ -1,0 +1,50 @@
+/*  ----------------------------------------------------
+    デザイン変更に使う主なパラメータまとめ
+    ★ 特によく使うパラメータ
+    ---------------------------------------------------- */
+
+
+
+/* 画面全体 */
+body{
+	background: #dcdde0;                      /* ★   背景色  */
+}
+
+/* チャット部分 */
+.bubble-container {
+	background: transparent;                    /*      背景色    */
+	height: 95vh;                               /*      高さ                例：95vw        （画面高さの95%） */
+	max-width: 90vw;                            /*      左の吹出しの左端〜右の吹出しの右端の長さの最大値 */
+}
+
+/* 吹出し（共通） */
+.bubble,
+.bubble-typing {
+    padding: 0.6em 1em;                         /*      吹き出しの余白（左側）  例：0.6em 1em   （左右が半角文字サイズの0.6倍、上下が1倍） */
+    font-weight: 400;                           /*      文字の太さ              例：400 */
+    font-size: 2vw;                             /* ★   文字サイズ              例：2vw         （半角文字の幅が画面幅の2%） */
+    letter-spacing: 0.04em;                     /*      文字間隔                例：0.04em      （半角文字サイズの0.04倍） */
+    margin: 0 0 0.4em 0;                        /*      吹出し間の間隔（左側）  例：0 0 0.4em 0 （半角文字サイズの0.4倍）  */
+    max-width: 65vw;                            /*      吹出しの横幅            例：65vw        （画面幅の65%） */
+    line-height: 1.4em;                         /*      行の高さ                例：1.4em       （半角文字サイズの1.4倍） */
+
+    color: #212121;                           /* ★   吹出しの文字色（左側） */
+    background: rgba(255, 255, 255, 0.84);    /* ★   吹出しの背景色（左側） */
+    border-radius: 0.4em 2em 2em 2em;           /*      吹出しの縁の丸みの半径（左側）  例：0.4em 2em 2em 2em（左上は半角文字サイズの0.4倍、ほかは2倍） */
+}
+
+.bubble.reply .bubble-content .bubble-button {
+    color: #fff;                              /* ★   吹出しの文字色（右側） */
+    background: rgba(44, 44, 44, 0.67);       /* ★   吹出しの背景色（右側） */
+    padding: 0.6em 0.2em 0.6em 1em;             /*      吹出しの余白（右側）    例：0.6em 0.2em 0.6em 1em   （左右が半角文字サイズの0.6倍、上下が1倍） */
+    /* ※ chat-bubble の設定では均等な余白を実現できないため、右を 0.2em とし調整した */
+}
+
+.bubble.reply .bubble-content .bubble-button:last-child {
+    border-radius: 2em 2em 0.4em 2em;           /*      吹出しの縁の丸みの半径（右側）  例：2em 2em 0.4em 2em（左下は半角文字サイズの0.4倍、ほかは2倍） */
+}
+
+.bubble.reply.say .bubble-content .bubble-button {
+    margin-bottom: 0.4em;                       /*      吹出し間の間隔（右側）  例：0 0 0.4em 0 （半角文字サイズの0.4倍）  */
+}
+  

@@ -1,0 +1,70 @@
+/**/human_tracker_node:
+  ros__parameters:
+    scan_topic_name: 'scan'
+    seperate_acceptable_angle: 5.0  # [deg]
+    seperate_distance: 0.2 # [m]
+
+    camera_link: 'camera_link'
+    robot_link: 'base_link'
+    lidar_link: 'lidar_link'
+
+    max_recog_range: 4.0      # [m]
+    upper_recog_angle: 100.0  # [deg]
+    lower_recog_angle: -100.0  # [deg]
+
+    camera_integration: false
+    camera_associated_topic: 'recog/person/pose/associated'
+    camera_topic_hold_time: 5.0    # [s]
+    camera_obj_distance: 0.3       # [m]
+    camera_max_fov: 30.0    # [deg]
+    camera_min_fov: -30.0    # [deg]
+    camera_max_range: 5.0   # [m]
+
+    outrange_hold_time: -1.0    # [s], if < 0.0, hold_time is infinite
+    outrange_hold_range: -1.0   # [m], if < 0.0, hold_range is infinite
+
+    fusion_side_arm: false
+    arm_range: 0.2  # [m]
+
+    min_object_size: 0.15    # [m]
+    max_object_size: 0.7    # [m]
+
+    too_close_range: 0.4    # [m]
+
+    object_queue_size: 20
+
+    priority_range: 1.8   # [m]
+    priority_min_angle: -45.0   # [deg]
+    priority_max_angle: 45.0   # [deg]
+    sep_hold_time: 5.0  # [s]
+    range_weight: 2.0
+    angle_weight: 1.0
+    face_direction_weight: 0.5
+    prority_sep_num: 2
+    max_sep_id: 6
+
+    trace_range: 0.2    # [m]
+    trace_count: 50
+    human_trace_rate: 0.8
+    max_trace_rate: 0.6
+    min_trace_rate: 0.2
+
+    human_hold_time: 5.0   # [s]
+
+    human_center: 0.15   # [m]
+
+    rviz_fixed_frame: 'base_link'
+    rviz_view_text: "human_id"    # "name" or "human_id" or "sep_id"
+
+    client_number: 10
+
+    
+    check_linearity: false
+    linearity_limit: 1.0
+
+    check_rightangle: false
+    min_rightangle_limit: 85.0  # [deg]
+    max_rightangle_limit: 95.0  # [deg]
+
+    check_dent: false
+    dent_limit: 0.3

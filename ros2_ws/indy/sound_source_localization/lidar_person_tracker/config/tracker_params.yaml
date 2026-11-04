@@ -1,0 +1,20 @@
+tracker_node:
+  ros__parameters:
+    # LaserScan topic
+    scan_topic: "/scan"
+
+    # Clustering parameters
+    cluster_distance_threshold: 0.15   # Max distance between consecutive points to be in same cluster (m)
+    min_cluster_size: 3                # Minimum number of points in a valid cluster
+    max_cluster_size: 50               # Maximum number of points in a valid cluster
+    min_cluster_width: 0.1             # Minimum cluster width to be considered a person (m)
+    max_cluster_width: 0.6             # Maximum cluster width to be considered a person (m)
+    max_detection_range: 10.0          # Ignore points beyond this range (m)
+
+    # Tracking parameters
+    tracking_distance_threshold: 1.0   # Max distance for associating detection to track (m)
+    person_timeout: 2.0                # Remove track after this many seconds without update (s)
+
+    # Kalman filter tuning
+    process_noise: 0.5                 # Process noise multiplier
+    measurement_noise: 0.1             # Measurement noise multiplier

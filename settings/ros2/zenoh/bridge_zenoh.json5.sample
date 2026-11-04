@@ -1,0 +1,44 @@
+// zenoh-bridge-ros2dds 設定サンプル（ロボット側）
+//
+// 使い方:
+//   cp bridge_zenoh.json5.sample bridge_zenoh.json5
+//   # bridge_zenoh.json5 の <...> 部分をマシンに合わせて編集
+//   （modules/module_launch/available/000_zenoh_bridge.sh から読み込まれる）
+//
+// <robot name>      : 環境変数 ROBOT_NAME と同じ値
+// <ROS_DOMAIN_ID>   : 環境変数 ROS_DOMAIN_ID と同じ値
+// <listen address>  : ブリッジが待ち受けるロボットのIPアドレス
+{
+	plugins: {
+		ros2dds: {
+			nodename: "bridge_<robot name>",
+			domain: <ROS_DOMAIN_ID>,
+			reliable_routes_blocking: false,
+			deny: {
+				publishers: [
+					// td / bu カメラは丸ごと不要
+					"/<robot name>/<robot name>_camera_td/.*",
+					"/<robot name>/<robot name>_camera_bu/.*",
+					// <robot name>_camera の非圧縮データ
+					"/<robot name>/<robot name>_camera/color/image_raw",
+					"/<robot name>/<robot name>_camera/aligned_depth_to_color/image_raw",
+					"/<robot name>/<robot name>_camera/depth/image_rect_raw",
+					"/<robot name>/<robot name>_camera/depth/color/points",
+				],
+			},
+			pub_max_frequencies: [
+				".*map=1",
+				".*map_updates=2",
+				"/<robot name>/<robot name>_camera/color/image_raw/compressed=10",
+				"/<robot name>/<robot name>_camera/aligned_depth_to_color/image_raw/compressedDepth=10",
+			],
+		}
+	},
+	mode: "router",
+	listen: { endpoints: ["tcp/<listen address>:7447"] },
+	transport: {
+		unicast: {
+			compression: { enabled: true },
+		},
+	},
+}

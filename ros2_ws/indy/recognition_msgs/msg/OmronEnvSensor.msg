@@ -1,0 +1,10 @@
+std_msgs/Header header
+string sensor_name
+float32 temperature
+float32 humidity
+float32 light
+float32 pressure
+float32 noise
+float32 etvoc
+float32 eco2
+float32 disconfort_index

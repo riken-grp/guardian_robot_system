@@ -1,0 +1,27 @@
+# config/scene_understanding.yaml
+/**/aruco_reader_node:
+  ros__parameters:
+    size: 4
+    number: 250
+    marker_size: 0.2
+
+/**/body_pose_estimation_node:
+  ros__parameters:
+    model: "balanced"
+    thresh: 0.3
+    world_frame_id: "map"
+
+/**/detection_and_tracking_node:
+  ros__parameters:
+    world_frame_id: "map"
+    thresh: 0.6
+
+/**/head_pose_estimation_node:
+  ros__parameters:
+    model: "hopenet_alpha1.pkl"
+    device: "cuda"
+    world_frame_id: "map"
+
+/**/scene_text_node:
+  ros__parameters:
+    threshold: 0.4

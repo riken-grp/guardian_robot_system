@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Scenario Status Manager</title>
+
+    <!-- XP.css CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/xp.css" />
+
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="text/javascript" src="fn.js"></script>
+
+</head>
+
+<body>
+    <div class="window" style="margin-top: 40px">
+        <div class="title-bar">
+            <div class="title-bar-text">Scenario Status Manager</div>
+            <div class="title-bar-controls">
+                <button aria-label="Minimize"></button>
+                <button aria-label="Maximize"></button>
+                <button aria-label="Close"></button>
+            </div>
+        </div>
+
+        <div class="window-body">
+
+            <!-- NEW TOP BAR -->
+            <div class="top-bar">
+                <p style="margin: 0;">Toggle the status of each Scenario and Subscenario.</p>
+
+                <button id="refresh-button" style="min-width: 100px;">Refresh</button>
+            </div>
+
+            <!-- TWO-COLUMN LAYOUT -->
+            <div class="section-container">
+                <div class="section-box group-box">
+                    <fieldset>
+                        <legend>Scenarios</legend>
+                        <div class="box">
+                            <div id="scenario-list" class="list"></div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <div class="section-box group-box">
+                    <fieldset>
+                        <legend>Interruption Subscenarios</legend>
+                        <div class="box">
+                            <div id="subscenario-list" class="list"></div>
+                        </div>
+                    </fieldset>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>

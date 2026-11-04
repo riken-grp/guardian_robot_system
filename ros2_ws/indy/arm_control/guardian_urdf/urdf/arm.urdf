@@ -1,0 +1,359 @@
+<?xml version="1.0"?>
+
+<robot name="guardian" xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <gazebo>
+        <plugin filename="libgazebo_ros_control.so" name="ros_control">
+        </plugin>
+    </gazebo>
+
+    <link name="base_link" />
+    <joint name="shoulder_fixed_joint" type="fixed">
+        <parent link="base_link" />
+        <child link="shoulder_1_link" />
+        <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.02275" />
+        <axis xyz="0 0 1" />
+    </joint>
+    <link name="shoulder_1_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.4" />
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0" />
+            <inertia ixx="0.00022306458" ixy="0.0" ixz="0.0"
+                     iyx="0.0" iyy="0.00022306458" iyz="0.0"
+                     izx="0.0" izy="0.0" izz="0.0003081125" />
+        </inertial>
+    </link>
+
+    <joint name="bracket_arm_a_joint" type="revolute">
+        <parent link="shoulder_1_link" />
+        <child link="bracket-arm-a" />
+        <origin rpy="0.0 -1.57079632679 0.0" xyz="0.0 0.0 0.03775" />
+        <axis xyz="1 0 0" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="bracket-arm-a">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0001.STL" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0001.STL" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.13145" />
+            <origin rpy="0 0 0" xyz="0.01887 0.0 0.03071" />
+            <inertia ixx="0.00023028057" ixy="0.0" ixz="0.00011378533"
+                     iyx="0.0" iyy="0.00031638789" iyz="0.0"
+                     izx="0.00011378533" izy="0.0" izz="0.00022896052" />
+        </inertial>
+    </link>
+
+    <joint name="shoulder2_fixed_joint" type="fixed">
+        <parent link="bracket-arm-a" />
+        <child link="shoulder_2_link" />
+        <origin rpy="0.0 0.0 0.0" xyz="0.047 0.0 0.01725" />
+        <axis xyz="0 0 1" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="shoulder_2_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.4" />
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0" />
+            <inertia ixx="0.00022306458" ixy="0.0" ixz="0.0"
+                     iyx="0.0" iyy="0.00022306458" iyz="0.0"
+                     izx="0.0" izy="0.0" izz="0.0003081125" />
+        </inertial>
+    </link>
+
+    <joint name="bracket_arm_b_joint" type="revolute">
+        <parent link="shoulder_2_link" />
+        <child link="bracket-arm-b" />
+        <origin rpy="0.0 1.570796 0.0" xyz="0.0 0.0 0.03275" />
+        <axis xyz="1 0 0" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="bracket-arm-b">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0002.STL" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0002.STL" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.20776" />
+            <origin rpy="0 0 0" xyz="0.01472 0.0 0.06777" />
+            <inertia ixx="0.00135916756" ixy="0.0" ixz="0.0003201893"
+                     iyx="0.0" iyy="0.00144076269" iyz="0.0"
+                     izx="0.0003201893" izy="0.0" izz="0.000316341" />
+        </inertial>
+    </link>
+
+    <joint name="shoulder3_fixed_joint" type="fixed">
+        <parent link="bracket-arm-b" />
+        <child link="shoulder_3_link" />
+        <origin rpy="0.0 0.0 0.0" xyz="0.054 0.0 0.07725" />
+        <axis xyz="0 0 1" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="shoulder_3_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.4" />
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0" />
+            <inertia ixx="0.00022306458" ixy="0.0" ixz="0.0"
+                     iyx="0.0" iyy="0.00022306458" iyz="0.0"
+                     izx="0.0" izy="0.0" izz="0.0003081125" />
+        </inertial>
+    </link>
+
+    <joint name="bracket_arm_c_joint" type="revolute">
+        <parent link="shoulder_3_link" />
+        <child link="bracket-arm-c-spacer" />
+        <origin rpy="0.0 -1.570796 0.0" xyz="0.0 0.0 0.02225" />
+        <axis xyz="1 0 0" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+
+    <link name="bracket-arm-c-spacer">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/1002.STL" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/1002.STL" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.20776" />
+            <origin rpy="0 0 0" xyz="0.01472 0.0 0.06777" />
+            <inertia ixx="0.00135916756" ixy="0.0" ixz="0.0003201893"
+                     iyx="0.0" iyy="0.00144076269" iyz="0.0"
+                     izx="0.0003201893" izy="0.0" izz="0.00031634191" />
+        </inertial>
+    </link>
+
+    <joint name="bracket_arm_c_fixed_joint" type="fixed">
+        <parent link="bracket-arm-c-spacer" />
+        <child link="bracket-arm-c" />
+        <origin rpy="0.0 0.0 0.0" xyz="0.015 0.0 0.0" />
+        <axis xyz="1 0 0" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+
+    <link name="bracket-arm-c">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0003.STL" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0003.STL" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.19182" />
+            <origin rpy="0 0 0" xyz="0.0477 0.0 0.03442" />
+            <inertia ixx="0.00037579457" ixy="0.0" ixz="0.00034067062"
+                     iyx="0.0" iyy="0.00097101412" iyz="0.0"
+                     izx="0.00034067062" izy="0.0" izz="0.00081077184" />
+        </inertial>
+    </link>
+
+    <joint name="shoulder4_fixed_joint" type="fixed">
+        <parent link="bracket-arm-c" />
+        <child link="shoulder_4_link" />
+        <origin rpy="0.0 0.0 0.0" xyz="0.1 0.0 0.01725" />
+        <axis xyz="0 0 1" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="shoulder_4_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/ROBSTRIDE02.stl" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.4" />
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0" />
+            <inertia ixx="0.00022306458" ixy="0.0" ixz="0.0"
+                     iyx="0.0" iyy="0.00022306458" iyz="0.0"
+                     izx="0.0" izy="0.0" izz="0.0003081125" />
+        </inertial>
+    </link>
+
+    <joint name="bracket_arm_d_joint" type="revolute">
+        <parent link="shoulder_4_link" />
+        <child link="bracket-arm-d-spacer" />
+        <origin rpy="0.0 -1.570796 0.0" xyz="0.0 0.0 0.02275" />
+        <axis xyz="1 0 0" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="bracket-arm-d-spacer">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/1003.STL" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/1003.STL" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.20776" />
+            <origin rpy="0 0 0" xyz="0.01472 0.0 0.06777" />
+            <inertia ixx="0.00135916756" ixy="0.0" ixz="0.0003201893"
+                     iyx="0.0" iyy="0.00144076269" iyz="0.0"
+                     izx="0.0003201893" izy="0.0" izz="0.00031634191" />
+        </inertial>
+    </link>
+
+    <joint name="bracket_arm_d_fixed_joint" type="fixed">
+        <parent link="bracket-arm-d-spacer" />
+        <child link="bracket-arm-d" />
+        <origin rpy="0.0 3.141592 0.0" xyz="0.01 0.0 0.0" />
+        <axis xyz="1 0 0" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="bracket-arm-d">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0004.STL" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0004.STL" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="1.11931" />
+            <origin rpy="0 0 0" xyz="0.03603 0.0 0.18260" />
+            <inertia ixx="0.04049963402" ixy="0.00000000389" ixz="0.00798063223"
+                     iyx="0.00000000389" iyy="0.04280276251" iyz="0.00000000257"
+                     izx="0.00798063223" izy="0.00000000257" izz="0.00247814889" />
+        </inertial>
+    </link>
+
+    <joint name="hand_fixed_joint" type="fixed">
+        <parent link="bracket-arm-d" />
+        <child link="arm_hand" />
+        <origin rpy="-1.570796 0.0 0.0" xyz="0.042 0.0 0.2" />
+        <axis xyz="0 0 1" />
+        <limit effort="150.0" lower="-6.2831853" upper="6.2831853" velocity="3.15" />
+        <dynamics damping="0.0" friction="0.0" />
+    </joint>
+    <link name="arm_hand">
+        <visual>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0005.STL" />
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0" />
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://guardian_urdf/visual/0005.STL" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.162" />
+            <origin rpy="0 0 0" xyz="0.03673 0.0 0.1844" />
+            <inertia ixx="0.0059536011" ixy="0.00000000057" ixz="0.0011790485"
+                     iyx="0.00000000057" iyy="0.00629436576" iyz="0.00000000038"
+                     izx="0.0011790485" izy="0.00000000038" izz="0.00036641871" />
+        </inertial>
+    </link>
+
+
+    <!-- nothing to do here at the moment -->
+    <link name="world" />
+    <joint name="world_joint" type="fixed">
+        <parent link="world" />
+        <child link="base_link" />
+        <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
+    </joint>
+</robot>

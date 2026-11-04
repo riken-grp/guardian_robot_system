@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    # RealSense specific QoS parameters for WiFi stability
+    color_qos: PROFILE_DEFAULT
+    depth_qos: PROFILE_DEFAULT
+    pointcloud_qos: PROFILE_DEFAULT
+    infra_qos: PROFILE_DEFAULT

@@ -1,0 +1,37 @@
+/**/node_monitor_node:
+  ros__parameters:
+    report_rate: 10.0 # [s]
+    node_list :
+      - ArmStateNode
+      - Association3DNode
+      - AttributeRecognitionNode
+      - BatteryAlertNode
+      - DemoNode
+      - FaceRecognitionNode
+      - GTTSNode
+      - HeadPoseEstimationNode
+      - ObjectDetectionNode
+      - ObjectRecordingNode
+      - PeopleRecordingNode
+      - PointingDirectionNode
+      - PointingTargetDetectionNode
+      - ServerSide
+      - Tracking3DNode
+      - WeatherCheckNode
+      - asr_meta
+      - asr_node
+      - facepose_publisher_node
+      - human_tracker_integration_node
+      - image_republisher
+      - indy2_camera/indy2_camera
+      - indy_memory_node
+      - joint_state_publisher
+      - left_human_tracker_node
+      - lidar1/ydlidar_ros2_driver_node
+      - lidar2/ydlidar_ros2_driver_node
+      - pose_and_face_node
+      - right_human_tracker_node
+      - robot_side
+      - robot_state_publisher
+      - ros_audio_tracker_node
+      - tts

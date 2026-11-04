@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <!-- パッケージの名前 -->
+  <name>motor_control</name>
+
+  <!-- パッケージのバージョン -->
+  <version>0.0.0</version>
+
+  <!-- パッケージの説明 -->
+  <description>Motor control package for controlling multiple motors using ROS 2</description>
+
+  <!-- メンテナ情報 -->
+  <maintainer email="no-reply@example.com">username</maintainer>
+
+  <!-- ライセンス -->
+  <license>TODO: License declaration</license>
+
+  <!-- パッケージの依存関係 -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <!-- テスト用依存関係（必要なら追加） -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <!-- 他のパッケージからのエクスポート情報 -->
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

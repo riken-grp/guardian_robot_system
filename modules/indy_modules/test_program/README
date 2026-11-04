@@ -1,0 +1,80 @@
+# MIT License
+
+Test program for Indy robots
+
+Connection settings are taken from the command line arguments, falling back to
+environment variables when an argument is omitted:
+
+  ROBOT_NAME    robot name (required)
+  MONGO_URI     --server    MongoDB host
+  MONGO_PORT    --port      MongoDB port
+
+Run as follows from test_program folder:
+
+export ROBOT_NAME=<robot name>
+export MONGO_URI=<hostname>          # e.g. example.local
+export MONGO_PORT=9000
+python3 schedule_scripts.py
+
+or pass them explicitly:
+
+python3 schedule_scripts.py --server=example.local --port=9000
+
+The same server holds the configuration and the test results. Databases used:
+
+  system_monitor   test definitions (collection: hardware_config)
+  log              test result history
+  current_status   latest status per test
+  tBlackBoard      error events (collection: physical_topic)
+
+Configuration is stored in MongoDB
+database: system_monitor
+collection: hardware_config
+
+Format of the entries is as follows:
+
+{
+    _id: ObjectId('67a5be1d7345e7223451a479'),
+    robot: 'indy1',
+    test: 'hw-ttyusb0',
+    host: 'example.local',
+    type: 'DEVPERMS',
+    args: [
+        '/dev/ttyUSB0',
+        '777'
+    ],
+    frequency: '5'
+}
+
+When schedule_scripts.py is run, it fetches the tests for the current robot and host and runs each test in a separate thread. Frequency determines how often the test is run.
+Valid test types are LSUSB, DEVPERMS, PING, DISK
+
+When an error is found, tBlackBoard physical_topic gets a error entry where hyphens are converted to underscores and an _error is added. For the above: hw_ttyusb0_error
+
+These can be used as triggers for the scenario manager as follows:
+
+{
+    _id: ObjectId('67b6e67eef8b4ea5c524caab'),
+    name: 'ttyusb0 Error',
+    status: 'active',
+    trigger: [
+        {
+            hw_ttyusb0_error: null
+        }
+    ],
+    priority: 1000,
+    'return': false,
+    ignore_after_activated: 5,
+    ignore_same_observations: false,
+    events: [
+        {
+            actor: 'robot1',
+            type: 'action',
+            utterance: {
+                type: 'normal',
+                sentence: 'ハードttyUSB0が見つかりません。困りました！'
+            },
+            interruptable: false
+        }
+    ]
+}

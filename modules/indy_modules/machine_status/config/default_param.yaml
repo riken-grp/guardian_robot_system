@@ -1,0 +1,3 @@
+/**/machine_status:
+  ros__parameters:
+    report_rate: 10.0 # [s]

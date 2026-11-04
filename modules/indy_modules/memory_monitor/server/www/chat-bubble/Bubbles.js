@@ -1,0 +1,334 @@
+// core function
+function Bubbles(container, self, options) {
+  // options
+  options = typeof options !== "undefined" ? options : {}
+  animationTime = options.animationTime || 200 // how long it takes to animate chat bubble, also set in CSS
+  typeSpeed = options.typeSpeed || 5 // delay per character, to simulate the machine "typing"
+  widerBy = options.widerBy || 2 // add a little extra width to bubbles to make sure they don't break
+  sidePadding = options.sidePadding || 6 // padding on both sides of chat bubbles
+  responseCallbackFn = options.responseCallbackFn || false // is there a callback function for when a user clicks on a bubble button
+
+  var _convo = {} // local memory for conversation JSON object
+  //--> NOTE that this object is only assigned once, per session and does not change for this
+  // 		constructor name during open session.
+
+  // set up the stage
+  container.classList.add("bubble-container")
+  var bubbleWrap = document.createElement("div")
+  bubbleWrap.className = "bubble-wrap"
+  container.appendChild(bubbleWrap)
+
+  // init typing bubble
+  var bubbleTyping = document.createElement("div")
+  bubbleTyping.className = "bubble-typing imagine"
+  for (dots = 0; dots < 3; dots++) {
+    var dot = document.createElement("div")
+    dot.className = "dot_" + dots + " dot"
+    bubbleTyping.appendChild(dot)
+  }
+  bubbleWrap.appendChild(bubbleTyping)
+
+  // d_turn is a JSON object
+  // must have fields "utt" and "pos"
+  this.talk = function (d_turn) {
+    _d_turn = Object.assign(_d_turn, d_turn); // POLYFILL REQUIRED FOR OLDER BROWSERS
+
+    this.dialogue(_d_turn);
+  }
+
+  this.dialogue = function (d_turn) {
+    var utter = d_turn["utt"];
+    // var turnHTML = '<span class="bubble-content" ' + 
+    //     `style="animation-delay: ${animationTime/2}ms">`
+    //     + `${utter} </span>`;
+    var _id = d_turn["_id"];
+
+    console.log(d_turn);
+
+    var animationTime = this.animationTime;
+    var typeSpeed = this.typeSpeed;
+
+    var existingBubble = $(`#CHAT_${_id}`);
+
+    if (existingBubble.length > 0) {
+      return;
+    }
+
+    // Create Div for bubble
+    var bubble = document.createElement("div");
+    var bubbleContent = document.createElement("span");
+    bubble.id = `CHAT_${_id}`
+    bubble.className = "bubble" + (d_turn["pos"] === "right" ? " reply" : " imagine");
+    bubbleContent.className = (d_turn["pos"] === "right" ? "bubble-dialoguefix" : "bubble-content") + " roboto-flex-indythought";
+    bubbleContent.style = `animation-delay: ${animationTime / 2}ms`
+    bubbleContent.innerHTML = utter;
+    bubble.appendChild(bubbleContent);
+    bubbleWrap.insertBefore(bubble, bubbleTyping);
+
+    //console.log(d_turn["pos"]);
+    //console.log(bubbleContent);
+
+    var wait = animationTime * 2;
+    var minTypingWait = animationTime * 6;
+    if (utter.length * typeSpeed > animationTime) {
+      wait += typeSpeed * utter.length;
+      wait < minTypingWait ? (wait = minTypingWait) : false;
+      setTimeout(() => {
+        bubbleTyping.classList.remove("imagine");
+      }, animationTime);
+    }
+
+    setTimeout(() => {
+      bubbleTyping.classList.add("imagine")
+    }, wait - animationTime * 2);
+
+    setTimeout(() => {
+      bubble.classList.remove("imagine")
+      var bubbleWidthCalc = bubbleContent.offsetWidth + widerBy + "px";
+      bubble.style.width = (d_turn["pos"] === "left" ? bubbleWidthCalc : "");
+      bubble.classList.add("say");
+
+      // animate scrolling
+      containerHeight = container.offsetHeight;
+      scrollDifference = bubbleWrap.scrollHeight - bubbleWrap.scrollTop;
+      scrollHop = scrollDifference / 200;
+      var scrollBubbles = function () {
+        for (var i = 1; i <= scrollDifference / scrollHop; i++) {
+          ; (() => {
+            setTimeout(() => {
+              if (bubbleWrap.scrollHeight - bubbleWrap.scrollTop > containerHeight) {
+                bubbleWrap.scrollTop = bubbleWrap.scrollTop + scrollHop;
+              }
+            }, i * 5);
+          })()
+        }
+      }
+      setTimeout(scrollBubbles, animationTime / 2);
+    }, wait + animationTime * 2)
+
+  }
+
+  // accept JSON & create bubbles
+  this.talkOld = function (convo, here) {
+    // all further .talk() calls will append the conversation with additional blocks defined in convo parameter
+    if (typeof here === "undefined") {
+      here = "utt";
+    }
+    _convo = Object.assign(_convo, convo) // POLYFILL REQUIRED FOR OLDER BROWSERS
+
+    this.reply(_convo[here])
+    here ? (standingAnswer = here) : false
+  }
+
+
+  this.reply = function (turn) {
+    if (typeof turn === "undefined") {
+      turn = _convo.ice;
+    }
+    questionsHTML = ""
+    if (!turn) return
+    if (turn.reply !== undefined) {
+      turn.reply.reverse()
+      for (var i = 0; i < turn.reply.length; i++) {
+        ; (function (el, count) {
+          questionsHTML +=
+            '<span class="bubble-button bubble-pick" style="animation-delay: ' +
+            animationTime / 2 * count +
+            'ms" >' +
+            el.question +
+            "</span>"
+        })(turn.reply[i], i)
+      }
+    }
+    orderBubbles(turn.says, function () {
+      bubbleTyping.classList.remove("imagine")
+      questionsHTML !== ""
+        ? addBubble(questionsHTML, function () { }, "reply")
+        : bubbleTyping.classList.add("imagine")
+    })
+  }
+
+  // api for typing bubble
+  this.think = function () {
+    bubbleTyping.classList.remove("imagine")
+    this.stop = function () {
+      bubbleTyping.classList.add("imagine")
+    }
+  }
+
+  // "type" each message within the group
+  var orderBubbles = function (q, callback) {
+    var start = function () {
+      setTimeout(function () {
+        callback()
+      }, animationTime)
+    }
+    var position = 0
+    for (
+      var nextCallback = position + q.length - 1;
+      nextCallback >= position;
+      nextCallback--
+    ) {
+      ; (function (callback, index) {
+        start = function () {
+          addBubble(q[index], callback)
+        }
+      })(start, nextCallback)
+    }
+    start()
+  }
+
+  var addBubble2 = function (utter, pos, posted) {
+    var animationTime = this.animationTime;
+    var typeSpeed = this.typeSpeed;
+
+    // Create Div for bubble
+    var bubble = document.createElement("div");
+    var bubbleContent = document.createElement("span");
+    bubble.className = "bubble imagine";
+    bubbleContent.className = "bubble-content";
+    bubbleContent.innerHTML = say;
+    bubble.appendChild(bubbleContent);
+    bubbleWrap.insertBefore(bubble, bubbleTyping);
+
+    // debug stmnt
+    console.log(bubbleContent.innerHTML);
+
+    var wait = animationTime * 2;
+    var minTypingWait = animationTime * 6;
+    if (utter.length * typeSpeed > animationTime) {
+      wait += typeSpeed * utter.length;
+      wait < minTypingWait ? (wait = minTypingWait) : false;
+      setTimeout(function () {
+        bubbleTyping.classList.remove("imagine");
+      }, animationTime);
+    }
+
+    // Show "..."
+    setTimeout(function () {
+      bubbleTyping.classList.add("imagine")
+    }, wait - animationTime * 2);
+
+    // 
+    bubbleQueue = setTimeout(function () {
+      bubble.classList.remove("imagine");
+      var bubbleWidthCalc = bubbleContent.offsetWidth + widerBy + "px";
+      bubble.style.width = pos == "right" ? bubbleWidthCalc : "";
+      bubble.classList.add("say");
+      posted();
+
+      // animate scrolling
+      containerHeight = container.offsetHeight;
+      scrollDifference = bubbleWrap.scrollHeight - bubbleWrap.scrollTop;
+      scrollHop = scrollDifference / 200;
+      var scrollBubbles = function () {
+        for (var i = 1; i <= scrollDifference / scrollHop; i++) {
+          ; (function () {
+            setTimeout(function () {
+              bubbleWrap.scrollHeight - bubbleWrap.scrollTop > containerHeight
+                ? (bubbleWrap.scrollTop = bubbleWrap.scrollTop + scrollHop)
+                : false;
+            }, i * 5);
+          })();
+        }
+      }
+      setTimeout(scrollBubbles, animationTime / 2)
+    }, wait + animationTime * 2)
+
+  }
+
+  // create a bubble
+  var bubbleQueue = false
+  var addBubble = function (say, posted, reply, live) {
+    reply = typeof reply !== "undefined" ? reply : ""
+    //live = typeof live !== "undefined" ? live : true // bubbles that are not "live" are not animated and displayed differently
+    live = true;
+    var animationTime = live ? this.animationTime : 0
+    var typeSpeed = live ? this.typeSpeed : 0
+    // create bubble element
+    var bubble = document.createElement("div")
+    var bubbleContent = document.createElement("span")
+    bubble.className = "bubble imagine " + (!live ? " history " : "") + reply
+    bubbleContent.className = "bubble-content"
+    bubbleContent.innerHTML = say
+    bubble.appendChild(bubbleContent)
+    bubbleWrap.insertBefore(bubble, bubbleTyping)
+    console.log(bubbleContent.innerHTML);
+    // time, size & animate
+    wait = live ? animationTime * 2 : 0
+    minTypingWait = live ? animationTime * 6 : 0
+    if (say.length * typeSpeed > animationTime && reply == "") {
+      wait += typeSpeed * say.length
+      wait < minTypingWait ? (wait = minTypingWait) : false
+      setTimeout(function () {
+        bubbleTyping.classList.remove("imagine")
+      }, animationTime)
+    }
+    live && setTimeout(function () {
+      bubbleTyping.classList.add("imagine")
+    }, wait - animationTime * 2)
+    bubbleQueue = setTimeout(function () {
+      bubble.classList.remove("imagine")
+      var bubbleWidthCalc = bubbleContent.offsetWidth + widerBy + "px"
+      bubble.style.width = reply == "" ? bubbleWidthCalc : ""
+      bubble.style.width = say.includes("<img src=")
+        ? "50%"
+        : bubble.style.width
+      bubble.classList.add("say")
+      posted()
+
+      // animate scrolling
+      containerHeight = container.offsetHeight
+      scrollDifference = bubbleWrap.scrollHeight - bubbleWrap.scrollTop
+      scrollHop = scrollDifference / 200
+      var scrollBubbles = function () {
+        for (var i = 1; i <= scrollDifference / scrollHop; i++) {
+          ; (function () {
+            setTimeout(function () {
+              bubbleWrap.scrollHeight - bubbleWrap.scrollTop > containerHeight
+                ? (bubbleWrap.scrollTop = bubbleWrap.scrollTop + scrollHop)
+                : false
+            }, i * 5)
+          })()
+        }
+      }
+      setTimeout(scrollBubbles, animationTime / 2)
+    }, wait + animationTime * 2)
+  }
+}
+
+// below functions are specifically for WebPack-type project that work with import()
+
+// this function automatically adds all HTML and CSS necessary for chat-bubble to function
+function prepHTML(options) {
+  // options
+  var options = typeof options !== "undefined" ? options : {}
+  var container = options.container || "chat" // id of the container HTML element
+  var relative_path = options.relative_path || "./node_modules/chat-bubble/"
+
+  // make HTML container element
+  window[container] = document.createElement("div")
+  window[container].setAttribute("id", container)
+  document.body.appendChild(window[container])
+
+  // style everything
+  var appendCSS = function (file) {
+    var link = document.createElement("link")
+    link.href = file
+    link.type = "text/css"
+    link.rel = "stylesheet"
+    link.media = "screen,print"
+    document.getElementsByTagName("head")[0].appendChild(link)
+  }
+  appendCSS(relative_path + "component/styles/input.css")
+  appendCSS(relative_path + "component/styles/reply.css")
+  appendCSS(relative_path + "component/styles/says.css")
+  appendCSS(relative_path + "component/styles/setup.css")
+  appendCSS(relative_path + "component/styles/typing.css")
+}
+
+// exports for es6
+if (typeof exports !== "undefined") {
+  exports.Bubbles = Bubbles
+  exports.prepHTML = prepHTML
+}

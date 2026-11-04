@@ -1,0 +1,11 @@
+transform_tf_broadcaster:
+  ros__parameters:
+    parent_frame: "lidar_link"
+    child_frame: "lidar2_link"
+
+    transform_pose_x: 0.0
+    transform_pose_y: 1.34
+    transform_pose_z: 0.0
+    transform_rot_roll: 0.0
+    transform_rot_pitch: 0.0
+    transform_rot_yaw: 0.0

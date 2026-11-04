@@ -1,0 +1,104 @@
+/*  ----------------------------------------------------
+
+    デザイン変更に使う主なパラメータ
+
+    ---------------------------------------------------- */
+
+
+body{
+
+    /* 画面全体の背景色 */
+	background: #b3ada0;
+
+}
+
+.bubble-container {
+
+    /* チャット部分の背景色 */
+	background: transparent;
+
+    /* チャット部分の高さ
+       例：95vh（画面高さの95%） */
+	height: 100vh;
+
+    /* チャット部分の最大横幅
+       例：90vw（画面横幅の90%） */
+	max-width: 90vw;
+}
+
+.bubble,
+.bubble-typing {
+
+    /* 吹出しの文字の太さ
+       例：400 */
+    font-weight: 400;
+
+    /* 吹出しの文字サイズ
+       例：2vw（半角文字の幅が画面幅の2%） */
+    font-size: 3.6vw;
+
+    /* 吹出しの文字間隔
+       例：0.04em（半角文字サイズの0.04倍） */
+    letter-spacing: 0.07em;
+  
+    /*  吹出しの横幅
+        例：65vw（画面幅の65%） */
+    max-width: 65vw;
+    min-width: 40vw;
+   
+    /*  吹出しの文の行の高さ
+        例：1.4em（半角文字サイズの1.4倍） */
+    line-height: 1.5em;
+
+    /* 左側の吹出しの文字色 */
+    color: #d8dee9;
+   
+    /* 左側の吹出しの背景色 */
+    background: #5a544b;
+ 
+    /* 左側の吹出しの余白
+       例：0.6em 1em（左右が半角文字サイズの0.6倍、上下が1倍） */
+    padding: 0.6em 1em;
+    
+    /* 左側の吹出しの縁の丸みの半径
+       例：0.4em 2em 2em 2em（左上は半角文字サイズの0.4倍、ほかは2倍） */
+    border-radius: 0.3em 2em 2em 2em;
+
+  
+    /*  左側の吹出し間の間隔
+        例：0 0 0.4em 0（半角文字サイズの0.4倍） */
+    margin: 0 0 0.8em 0;
+
+} 
+
+.bubble.reply .bubble-content .bubble-button {
+
+    /* 右側の吹出しの文字色 */
+    color: #d8dee9;     
+    
+    /* 右側の吹出しの背景色 */
+    background: #6d5d4d;
+    
+    /* 右側の吹出しの余白
+       例：0.6em 0.2em 0.6em 1em   （左右が半角文字サイズの0.6倍、上下が1倍）
+       ※ chat-bubble の設定では均等な余白を実現できないため、右を 0.2em とし調整した */
+    padding: 0.6em 0.2em 0.6em 1em;
+
+}
+
+.bubble.reply .bubble-content .bubble-button:last-child {
+
+    /* 右側の吹出しの縁の丸みの半径
+       例：2em 2em 0.4em 2em（左下は半角文字サイズの0.4倍、ほかは2倍） */
+    border-radius: 2em 2em 0.3em 2em;
+
+}
+
+.bubble.reply.say .bubble-content .bubble-button {
+
+    /* 右側の吹出し間の間隔
+       例：0 0 0.4em 0 （半角文字サイズの0.4倍） */
+    margin-bottom: 0.8em;
+
+}
+

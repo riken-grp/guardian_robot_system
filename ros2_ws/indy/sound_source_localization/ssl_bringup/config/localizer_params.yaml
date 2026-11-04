@@ -1,0 +1,10 @@
+sound_source_localizer:
+  ros__parameters:
+    # Number of sound sources to detect simultaneously
+    num_sources: 5
+
+    # Angular resolution for SRP-PHAT grid search (degrees)
+    search_resolution_deg: 5.0
+
+    # Frequency band for processing (Hz)
+    frequency_range: [300.0, 3500.0]

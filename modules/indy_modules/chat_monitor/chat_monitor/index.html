@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Indy_en</title>
+
+        <!-- stylesheets are conveniently separated into components -->
+        <link rel="icon" href="data:,">
+        <link rel="stylesheet" media="all" href="./settings.css" />
+        <link rel="stylesheet" media="all" href="chat-bubble/styles/setup.css" />
+        <link rel="stylesheet" media="all" href="chat-bubble/styles/says.css" />
+        <link rel="stylesheet" media="all" href="chat-bubble/styles/reply.css" />
+        <link rel="stylesheet" media="all" href="chat-bubble/styles/typing.css" />
+        <link rel="stylesheet" media="all" href="chat-bubble/styles/input.css" />
+    </head>
+    <body>
+        <!-- container element for chat window -->
+        <div id="chat"></div>
+
+        <!-- import the JavaScript file -->
+        <script src="chat-bubble/Bubbles.js"></script>
+        <script src="./config_client.js"></script>
+        <script type="module">
+
+            const chatWindow = new Bubbles(document.getElementById("chat"), "chat");
+            let pastIds = new Set();    // 過去の発言が繰り返し表示されないよう、IDを格納するセット
+            const fetchInterval = window.clientConfig.fetchInterval;     // 次の発言取得するまでのミリ秒数を指定
+            let count = 0;  // 発言数のカウント
+            const messageLimit = window.clientConfig.messageLimit;       // 最大表示発言
+            const timers = new Map();   // それぞれのメッセージIDに対しタイマーを管理
+            // let bubbleSelector = 0; // 訳文切替時のバブル指定用変数
+
+            const intervalId = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/messages');      // サーバーにリクエスト
+                    const messages = [await response.json()];           // レスポンスを受け取る
+                    
+                    messages.forEach(msg => {   // メッセージごとに処理を行う
+                        const latestId = msg.latestId;
+                        const speaker = msg.speaker;
+                        const message = msg.message;
+                        const translatedText = msg.translatedText;
+                        const displayText = translatedText ?? message;  // 訳文がなければ（自動翻訳OFF）日本語文を表示
+
+                        // 発言の表示
+                        if (!pastIds.has(latestId) && message) {   // 既に表示済みの発言はスキップ
+                            pastIds.add(latestId);
+                            if (message.trim() == '') {
+                                return; // 発言がない、または空白の場合は処理をスキップ
+                            }
+                            // bubbleSelector += 1;
+
+                            // Aの発言は左側にsaysとして、Bの発言は右側にreplyとして表示
+                            if (speaker === 'A') {
+                                chatWindow.talk ({
+                                    ice: {
+                                        // says:   [message],
+                                        says:   [displayText],
+                                        reply:  []
+                                    }
+                                });
+                            } else if (speaker === 'B') {
+                                chatWindow.talk ({
+                                    ice: {
+                                        says:   [],
+                                        reply:  [{
+                                            // question: message,
+                                            question: displayText,
+                                            answer: null
+                                        }]
+                                    }
+                                });
+                            }
+
+                            // 翻訳の確認
+                            console.info(`translatedText: ${translatedText}`);
+
+                            // 表示後の処理
+                            timers.set(latestId, setTimeout(() => {
+
+                                // 全ての.bubble要素を取得
+                                const bubbles = document.querySelectorAll(".bubble");
+                                
+                                // 発言が一定数を超えたら、最古のチャットメッセージを削除
+                                if (bubbles.length > messageLimit) {
+                                    const oldestIdElement = bubbles[0];
+                                    pastIds.delete(oldestIdElement.dataset.messageId);
+                                    oldestIdElement.remove();
+                                }
+
+                                // // 訳文を表示するバブルの指定
+                                // console.info(`bubbleSelector: ${bubbleSelector}`);
+                                // const bubbleElement = bubbles[bubbles.length - bubbleSelector];
+                                // bubbleSelector -= 1;
+
+                                // // 訳文に切替え
+                                // if (translatedText && bubbleElement) {   // NOTE: 翻訳文がある場合のみ表示する（なければ日本語の表示のまま）
+                                //     console.info(`bubbleElement: ${bubbleElement}`);
+                                    
+                                //     // バブルの内容を取得
+                                //     const textElement = bubbleElement.querySelector(
+                                //         bubbleElement.classList.contains("reply") 
+                                //         ? ".bubble-button" 
+                                //         : ".bubble-content"
+                                //     ); // NOTE: 左側 or 右側で取得方法を切り替える
+                                    
+                                //     if (textElement) {
+                                //         textElement.textContent = ""; // 文字列を消す
+                                //         updateBubbleText(textElement, message, translatedText).finally(() => {
+                                //             timers.delete(latestId);    // タイマー削除
+                                //         });
+                                //     }
+                                // }
+
+                            }, window.clientConfig.translationTimeout)); // 翻訳表示までの待ち時間
+
+                            count++;
+                            console.info(`▼ Bubble No. ${count}`);
+
+                            console.info(messages);
+                        }
+                    });
+
+                // エラー時インターバル停止
+                } catch (error) {
+                    console.error('ERROR fetching messages:', error);
+                    clearInterval(intervalId);
+                }
+
+            }, fetchInterval);
+
+            // // 画面スクロール関数
+            // function updateScroll() {
+            //     const chatContainer = document.getElementById("chat");
+
+            //     // インターバルを持たせてスムーズな動作にする
+            //     setTimeout(() => {
+            //         chatContainer.scrollTop = chatContainer.scrollHeight;
+            //     }, 5);
+            // }
+
+            // // 訳文に文字を切り替えるアニメーション関数
+            // async function updateBubbleText(textElement, text, translatedText) {
+            //     let currentText = text.split('');   // 元の日本語文を配列に分解
+            //     const targetText = translatedText.split('');    // 翻訳後の英語文を配列に分解
+
+            //     const maxLength = Math.max(currentText.length, targetText.length);
+
+            //     for (let i = 0; i < maxLength; i++) {
+            //         await new Promise(resolve => setTimeout(resolve, window.clientConfig.letterAnimationInterval)); // 文字切替インターバル
+
+            //         // 訳文をすべて表示し終えたら、残りの日本語の文字を順に消す
+            //         if (i < currentText.length) {
+            //             currentText[i] = "";
+            //         }
+
+            //         // 訳文をすべて表示し終えるまで、日本語の文字を訳文の文字に順に変化させる
+            //         if (i < targetText.length) {
+            //             currentText[i] = targetText[i];
+            //         }
+            //         textElement.textContent = currentText.join(''); // 更新
+            //         updateScroll(); // スクロール
+            //     }
+            // }
+        </script>
+    </body>
+</html>

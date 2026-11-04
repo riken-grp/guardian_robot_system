@@ -1,0 +1,561 @@
+Bootstrap: docker
+From: nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
+
+# ---------------------------------------------------------------------------
+# ROS 2 Humble + CUDA 12.6 + numpy 2 : vision / audio 統合コンテナ
+#   (旧 ros2/vision/Dockerfile と ros2/audio/Dockerfile をマージ)
+#
+#  build:
+#    export APPTAINER_TMPDIR=/var/tmp/apptainer-build
+#    export APPTAINER_CACHEDIR=/var/tmp/apptainer-cache
+#    mkdir -p /var/tmp/ros2_va_tmp && chmod 1777 /var/tmp/ros2_va_tmp   # 1777 必須(apt が _apt に降格して /tmp を使う)
+#    # ~/.docker/config.json の期限切れトークンで Docker Hub の pull が
+#    #   "unauthorized: incorrect username or password" になることがある。
+#    #   DOCKER_CONFIG だけでは効かず、HOME ごと差し替える必要がある (実測)。
+#    mkdir -p /var/tmp/fakehome
+#    export HOME=/var/tmp/fakehome DOCKER_CONFIG=/var/tmp/empty-docker
+#    apptainer build --notest --mount type=bind,src=/var/tmp/ros2_va_tmp,dst=/tmp \
+#        -F ros2_vision_audio_12-6-3.sif ros2_vision_audio.def
+#    apptainer test ros2_vision_audio_12-6-3.sif       # 検証は sif 生成後に別途
+#
+#  デバッグ時は --sandbox で作ると中で反復できる (1 ステップの試行が数秒で済む):
+#    apptainer build --notest --sandbox --mount type=bind,src=/var/tmp/ros2_va_tmp,dst=/tmp \
+#        /var/tmp/ros2_va_sandbox ros2_vision_audio.def
+#    apptainer exec --writable --fakeroot /var/tmp/ros2_va_sandbox bash
+#    apptainer build ros2_vision_audio_12-6-3.sif /var/tmp/ros2_va_sandbox   # 固める
+#    ※ --mount で /tmp を隔離すること。apptainer はビルド中もホストの /tmp を
+#      bind mount するため、隔離しないと %post 内の /tmp 操作がホストに及ぶ。
+#    ※ --notest 必須。%test の失敗でビルド成果物 (約40分) が捨てられるため。
+#      また %test に `-c /bin/bash` は付けられない (%post とは違い解釈されず
+#      /bin/sh に渡って "Illegal option" で落ちる)。%test は POSIX sh で書くこと。
+#
+#  ビルドが "destination /xxx doesn't exist in container" で落ちる場合:
+#    APPTAINER_BIND / APPTAINER_BINDPATH / SINGULARITY_BIND などの環境変数か、
+#    /etc/apptainer/apptainer.conf の `bind path =` でバインドが指定されている。
+#    このマウントは %post のコンテナを作る時点で行われるので def 側では回避できない。
+#    → env -u APPTAINER_BIND -u APPTAINER_BINDPATH -u SINGULARITY_BIND apptainer build ...
+#    （イメージ側には %post の MOUNTPOINTS で空ディレクトリを用意してある）
+#
+#  ホスト: driver 610.57 / CUDA 13.3 UMD, RTX 3090 (sm_86)
+#         CUDA は後方互換なので CUDA 12 のコンテナはそのまま動く。
+#  注3) CUDA を 12 系にしている理由: onnxruntime (rtmlib が使用) は Python 3.10 では
+#       1.23.x が上限で、その GPU ビルドは **CUDA 12 / cuDNN 9** 専用。CUDA 13 では
+#       CUDAExecutionProvider が読み込めない。torch も CUDA 12 系の index のうち
+#       cu126 だけが py3.10 向けに最新 (2.14.0) を出している (cu128=2.11, cu129=2.13 止まり)。
+#
+#  注1) cv_bridge の deb は numpy 1.x ABI でビルドされているため numpy 2 では
+#       "_ARRAY_API not found" でクラッシュする。vision_opencv(humble) から
+#       ソースビルドし直してオーバーレイし、numpy 2 で動くようにしている。
+#       再ビルド時は deb の numpy1 ヘッダを先に削除すること (%post 参照)。
+#       検証は /opt/check_cv_bridge.py。cv_bridge/__init__.py は boost 拡張の
+#       ImportError を握り潰すので、`import cv_bridge` の成否では判定できない。
+#  注2) 旧 audio/Dockerfile の /etc/sysctl.conf 設定は apptainer では効かない
+#       (カーネルはホストと共有)。DDS チューニングはホスト側で行うこと。
+# ---------------------------------------------------------------------------
+
+%labels
+    ROS_Distro  humble
+    CUDA        12.6.3
+    NumPy       2.x
+    Contents    vision + audio (merged)
+
+%environment
+    export TZ=Asia/Tokyo
+    export LANG=${LANG:-C.UTF-8}
+
+    export CUDA_PATH=/usr/local/cuda
+    export PATH=/usr/local/cuda/bin:/opt/cmake/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+    export ROS_DISTRO=humble
+    if [ -f /opt/ros/humble/setup.sh ]; then
+        . /opt/ros/humble/setup.sh
+    fi
+    # numpy2 対応 cv_bridge のオーバーレイ (deb 版より優先される)
+    if [ -f /opt/numpy2_ws/install/setup.sh ]; then
+        . /opt/numpy2_ws/install/setup.sh
+    fi
+
+%post -c /bin/bash
+    set -eu
+
+    # =======================================================================
+    # バージョン指定 (ここを変えれば構成を差し替えられる)
+    # =======================================================================
+    # download.pytorch.org の index。CUDA 12 系では cu126 のみ py3.10 向けに
+    # 最新 torch (2.14.0) を提供している (cu128=2.11.0, cu129=2.13.0 止まり)
+    TORCH_INDEX=cu126
+    CMAKE_VER=4.4.3
+    FAISS_TAG=v1.15.1
+    CUDA_ARCHS="86;89"                # RTX 3090(sm_86) / 4090(sm_89)
+    NODE_MAJOR=22
+    MONGO_VER=8.0
+    # zenoh: 1.10.0 以降の deb は glibc>=2.38 (Ubuntu 24.04+) 要求で jammy に入らない
+    ZENOH_VER=1.9.0
+    # コンテナ内に用意しておく bind mount 先 (空ディレクトリ)。
+    #   overlay / underlay が無効なホストでは、バインド先がイメージ内に存在しないと
+    #   "destination /xxx doesn't exist in container" でコンテナ生成に失敗する
+    #   (ビルド時も同じ。2026-09-27 に /faces で発生)。必要に応じて追加すること。
+    MOUNTPOINTS="/faces /data /work"
+
+    # OpenCV は **4系に固定**。5.x は不可:
+    #   OpenCV 5 でチャンネルビットのシフト量が変わり型定数の値が変化した
+    #   (CV_8UC3: 4系=16 → 5系=64)。cv_bridge(humble) は find_package(OpenCV 4)
+    #   前提で deb の 4.5.4 に対してビルドされるため、python 側が 5.x だと
+    #   cv2_to_imgmsg が KeyError: 16 で落ちる (2026-09-21 実測)。
+    OPENCV_SPEC="opencv-contrib-python-headless<5"
+
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Tokyo
+    export PATH=/usr/local/cuda/bin:/opt/cmake/bin:$PATH
+    # CMake 4 で古い cmake_minimum_required を持つ依存をビルドするため
+    export CMAKE_POLICY_VERSION_MINIMUM=3.5
+
+    WARN=/opt/build-warnings.txt
+    : > "$WARN"
+
+    # 必須: 失敗したらビルドを止める
+    pipi() { python3 -m pip install --no-cache-dir "$@"; }
+    # 任意: 失敗しても続行し、警告として記録する
+    pipo() { python3 -m pip install --no-cache-dir "$@" \
+             || { echo "PIP FAILED: $*" >> "$WARN"; echo "### OPTIONAL PIP FAILED: $*"; }; }
+    warn_step() { echo "STEP FAILED: $*" >> "$WARN"; echo "### OPTIONAL STEP FAILED: $*"; }
+
+    # =======================================================================
+    # サイズ削減: recommends/suggests とドキュメント類を最初から入れない
+    # =======================================================================
+    cat > /etc/apt/apt.conf.d/99-compact <<'EOF'
+APT::Install-Recommends "false";
+APT::Install-Suggests   "false";
+EOF
+    cat > /etc/dpkg/dpkg.cfg.d/99-compact <<'EOF'
+path-exclude /usr/share/doc/*
+path-include /usr/share/doc/*/copyright
+path-exclude /usr/share/man/*
+path-exclude /usr/share/groff/*
+path-exclude /usr/share/info/*
+EOF
+    rm -rf /usr/share/doc /usr/share/man /usr/share/info
+
+    # apt: 理研ミラーへ切り替え
+    perl -p -i -e 's%(deb(?:-src|)\s+)https?://(?!archive\.canonical\.com|security\.ubuntu\.com)[^\s]+%$1http://ftp.riken.jp/Linux/ubuntu/%' /etc/apt/sources.list
+    mkdir -p /etc/apt/keyrings
+
+    # =======================================================================
+    # base system
+    #   CUDA toolkit はベースイメージ(-cudnn-devel)に既に入っているので
+    #   cuda-toolkit-XX-Y メタパッケージは入れない (数GBの無駄)
+    # =======================================================================
+    apt-get update
+    apt-get -y install \
+        ca-certificates curl wget git gnupg lsb-release build-essential pkg-config \
+        iputils-ping net-tools iproute2 avahi-utils \
+        locales language-pack-ja tzdata \
+        zsh neovim emacs-nox powerline fonts-powerline \
+        python3-dev python3-venv python3-pip python-is-python3 \
+        swig libopenblas-dev
+    sed --in-place -e 's/\[server\]/\[server\]\nenable-dbus=no/' /etc/avahi/avahi-daemon.conf
+    locale-gen en_US.UTF-8 ja_JP.UTF-8
+
+    ## python 基盤 + numpy 2 (以降 numpy 1系への降格を禁止する)
+    python3 -m pip install --no-cache-dir -U pip setuptools wheel packaging
+    python3 -m pip install --no-cache-dir -U pyyaml --ignore-installed
+    echo "numpy>=2,<3" > /etc/pip-constraints.txt
+    export PIP_CONSTRAINT=/etc/pip-constraints.txt
+    # 後続パッケージが torch を再解決しても cu126 ホイールが選ばれるようにする
+    # (PEP440 ではローカル版 '2.14.0+cu126' が '2.14.0' より優先される)
+    export PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/${TORCH_INDEX}"
+    pipi "numpy>=2,<3"
+
+    curl -sSL https://install.python-poetry.org | python3 - || warn_step "poetry installer"
+    ln -sf /root/.local/bin/poetry /usr/local/bin/poetry 2>/dev/null || true
+
+    ## node / npm (NodeSource。失敗したら distro の npm)
+    if curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" -o /opt/nodesource.sh && bash /opt/nodesource.sh; then
+        apt-get -y install nodejs
+    else
+        warn_step "nodesource ${NODE_MAJOR}.x -> fallback to distro npm"
+        apt-get update && apt-get -y install npm
+    fi
+    rm -f /opt/nodesource.sh
+
+    ## mongosh (旧: mongodb-org-shell 5.0 + focal の libssl1.1 hack)
+    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_VER}.asc" \
+        | gpg --dearmor --yes -o "/usr/share/keyrings/mongodb-server-${MONGO_VER}.gpg"
+    echo "deb [ arch=amd64 signed-by=/usr/share/keyrings/mongodb-server-${MONGO_VER}.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/${MONGO_VER} multiverse" \
+        > "/etc/apt/sources.list.d/mongodb-org-${MONGO_VER}.list"
+    apt-get update && apt-get -y install mongodb-mongosh
+
+    pipo powerline-shell powerline-status
+
+    # =======================================================================
+    # ROS 2 Humble (GUI なし: desktop / rviz2 / gazebo / webots / moveit / nav2 を入れない)
+    # =======================================================================
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu jammy main" \
+        > /etc/apt/sources.list.d/ros2.list
+    apt-get update
+    apt-get -y install \
+        ros-humble-ros-base ros-dev-tools \
+        ros-humble-ament-cmake ros-humble-ament-cmake-clang-format ros-humble-ament-cmake-ros \
+        ros-humble-rmw-fastrtps-cpp ros-humble-rmw-cyclonedds-cpp ros-humble-rmw-zenoh-cpp \
+        ros-humble-topic-tools \
+        ros-humble-cv-bridge ros-humble-image-geometry \
+        ros-humble-image-transport ros-humble-image-transport-plugins \
+        ros-humble-compressed-image-transport ros-humble-compressed-depth-image-transport \
+        ros-humble-image-proc \
+        ros-humble-realsense2-camera \
+        ros-humble-joint-state-publisher ros-humble-robot-state-publisher ros-humble-xacro \
+        ros-humble-nav2-msgs
+        # nav2-msgs: navigation2 本体は外したが、探査系ノードが
+        #   `import nav2_msgs` するため **メッセージ定義だけ**入れる (約16MB)。
+        #   navigation2 / nav2-bringup 一式は引き続き入れない。
+
+    # -----------------------------------------------------------------------
+    # zenoh bridge
+    #   ここに置く理由: apt 由来の失敗を「30分のコンパイル後」ではなく
+    #   ビルド開始数分で顕在化させるため。失敗してもビルドは止めない。
+    # -----------------------------------------------------------------------
+    mkdir -p /etc/apt/keyrings
+    if curl -fsSL https://download.eclipse.org/zenoh/debian-repo/zenoh-public-key \
+           | gpg --dearmor --yes --output /etc/apt/keyrings/zenoh-public-key.gpg; then
+        echo "deb [signed-by=/etc/apt/keyrings/zenoh-public-key.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" \
+            > /etc/apt/sources.list.d/zenoh.list
+        apt-get update
+        apt-get -y install "zenoh-bridge-ros2dds=${ZENOH_VER}" \
+            || warn_step "zenoh-bridge-ros2dds=${ZENOH_VER}"
+    else
+        warn_step "zenoh repo key fetch"
+    fi
+
+    # -----------------------------------------------------------------------
+    # cv_bridge / image_geometry を numpy 2 ヘッダで再ビルド (オーバーレイ)
+    # -----------------------------------------------------------------------
+    apt-get -y install libopencv-dev libboost-python-dev
+
+    # cv_bridge_boost が numpy2 ABI でビルドされたかを判定する検証スクリプト。
+    #   cv_bridge/__init__.py は boost 拡張の ImportError を握り潰すので
+    #   (`except ImportError: pass`)、`import cv_bridge` が通っても壊れている
+    #   ことがある。必ず boost 拡張を直接 import して確かめること。
+    cat > /opt/check_cv_bridge.py <<'CHECK'
+import numpy as np
+# numpy1 ABI でビルドされていると、ここで "_ARRAY_API not found" → ImportError
+from cv_bridge.boost.cv_bridge_boost import getCvType, cvtColorForDisplay  # noqa: F401
+import cv_bridge
+from cv_bridge import CvBridge
+
+b = CvBridge()
+img = (np.random.rand(16, 16, 3) * 255).astype(np.uint8)
+back = b.imgmsg_to_cv2(b.cv2_to_imgmsg(img, "bgr8"), "bgr8")
+assert (img == back).all(), "cv_bridge roundtrip mismatch"
+mono = b.imgmsg_to_cv2(b.cv2_to_imgmsg(img, "bgr8"), "mono8")
+assert mono.shape == (16, 16), mono.shape
+print("cv_bridge OK (numpy2 ABI) numpy", np.__version__, "from", cv_bridge.__file__)
+CHECK
+
+    # 念のため deb の numpy1 ヘッダを退けておく (実行時には不要)。
+    # ※ ros:humble-ros-base での検証ビルドでは、これが有っても numpy2 ヘッダが
+    #   使われた。4 回目ビルドが numpy1 ABI になった真因は未特定なので、
+    #   下の CMAKE_VERBOSE_MAKEFILE と CMakeCache ダンプで実機の実際の -I を残す。
+    rm -rf /usr/lib/python3/dist-packages/numpy/core/include \
+           /usr/lib/python3/dist-packages/numpy/_core/include
+
+    mkdir -p /opt/numpy2_ws/src
+    git clone --depth 1 -b humble https://github.com/ros-perception/vision_opencv /opt/numpy2_ws/src/vision_opencv
+    cd /opt/numpy2_ws
+    # ビルドに使う numpy ヘッダが 2.x であることを確認してから進む
+    python3 -c "import numpy,sys; print('build numpy:', numpy.__version__, numpy.get_include()); sys.exit(0 if numpy.__version__.startswith('2.') else 1)"
+    bash -c 'source /opt/ros/humble/setup.bash && \
+        colcon build --packages-select cv_bridge image_geometry \
+            --event-handlers console_direct+ \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON \
+                         -DPython3_EXECUTABLE=/usr/bin/python3 \
+                         -DPython3_NumPy_INCLUDE_DIR=$(python3 -c "import numpy;print(numpy.get_include())")'
+    # 実際に使われた numpy ヘッダを記録 (ABI 事故の切り分け用)
+    echo "### cv_bridge CMakeCache numpy entries"
+    grep -i numpy /opt/numpy2_ws/build/cv_bridge/CMakeCache.txt || true
+    echo "### numpy headers actually pulled in by cv_bridge_boost"
+    grep -ho "[^ ]*numpy[^ ]*ndarraytypes.h" /opt/numpy2_ws/build/cv_bridge/src/CMakeFiles/cv_bridge_boost.dir/*.o.d 2>/dev/null | sort -u || true
+    rm -rf /opt/numpy2_ws/build /opt/numpy2_ws/log /opt/numpy2_ws/src
+    cd /
+
+    # numpy2 ABI の検証 (この時点では deb の python3-opencv(numpy1 ABI) がまだ居るため
+    # cv2 側で失敗しうる。致命扱いにはせず警告として記録し、purge 後に再検証する)
+    echo "### cv_bridge diag"
+    python3 -c "import numpy; print('runtime numpy:', numpy.__version__, numpy.__file__)"
+    ls -l /opt/numpy2_ws/install/cv_bridge/local/lib/python3.10/dist-packages/cv_bridge/boost/ || true
+    # この時点では deb の python3-opencv (numpy1 ABI) がまだ居るので cv2 は触らず、
+    # boost 拡張の numpy ABI だけを検証する (駄目ならここで止める)
+    bash -c 'source /opt/ros/humble/setup.bash && source /opt/numpy2_ws/install/setup.bash && \
+             python3 -c "from cv_bridge.boost.cv_bridge_boost import getCvType; print(\"cv_bridge_boost numpy2 ABI OK\")"'
+
+    # =======================================================================
+    # audio / text / OCR 系ライブラリ
+    # =======================================================================
+    apt-get -y install \
+        portaudio19-dev ffmpeg \
+        libavdevice-dev libavfilter-dev libavformat-dev libavcodec-dev \
+        libswresample-dev libswscale-dev libavutil-dev \
+        tesseract-ocr tesseract-ocr-jpn libtesseract-dev
+
+    # =======================================================================
+    # CMake (faiss / dlib 用に最新を /opt/cmake へ)
+    # =======================================================================
+    cd /opt
+    wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VER}/cmake-${CMAKE_VER}-linux-x86_64.tar.gz"
+    tar zxf "cmake-${CMAKE_VER}-linux-x86_64.tar.gz"
+    mv "cmake-${CMAKE_VER}-linux-x86_64" /opt/cmake
+    rm -f "cmake-${CMAKE_VER}-linux-x86_64.tar.gz"
+    cmake --version
+    cd /
+
+    # =======================================================================
+    # PyTorch (torchaudio は 2.11 で更新停止のため除外)
+    # =======================================================================
+    apt-get purge -y python3-sympy || true
+    pipi torch torchvision --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
+    pipi einops
+
+    # =======================================================================
+    # scientific / ML
+    # =======================================================================
+    pipi scipy scikit-learn \
+         pytorch-metric-learning pytorch-lightning lightning \
+         tqdm joblib pytest h5py pymongo \
+         numpy-quaternion filterpy lap
+    pipo lightgbm
+    # scikit-learn-extra はメンテ停止済み。numpy2/sklearn 最新で失敗しうる
+    pipo scikit-learn-extra
+
+    # jupyter (jupyter_contrib_nbextensions は notebook>=7 非対応のため廃止)
+    pipi ipython notebook ipywidgets bqplot
+
+    pipi blinker --ignore-installed
+    pipi bottle flask
+    pipi janome
+    pipi pyowm gdown timm positional-encodings
+    pipo gtts
+    pipo pit
+    pipo bitsandbytes
+
+    # =======================================================================
+    # audio / speech (旧 ros2/audio/Dockerfile 由来)
+    # =======================================================================
+    pipi pyaudio pydub sentencepiece langdetect
+    pipo faster-whisper
+    pipo "git+https://github.com/openai/whisper.git"
+
+    ## 最新の transformers / accelerate
+    pipo "git+https://github.com/huggingface/transformers.git"
+    pipo "git+https://github.com/huggingface/accelerate.git"
+
+    # =======================================================================
+    # faiss (GPU)
+    # =======================================================================
+    cd /opt
+    if git clone --depth 1 -b "${FAISS_TAG}" https://github.com/facebookresearch/faiss faiss \
+       && cd /opt/faiss \
+       && cmake -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_PYTHON=ON \
+                -DCMAKE_BUILD_TYPE=Release -DFAISS_OPT_LEVEL=avx2 \
+                -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHS}" \
+                -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON \
+                -B build . \
+       && make -C build -j"$(nproc)" faiss faiss_avx2 swigfaiss swigfaiss_avx2 \
+       && make -C build install \
+       && (cd /opt/faiss/build/faiss/python && python3 -m pip install --no-cache-dir .) ; then
+        ldconfig
+    else
+        warn_step "faiss ${FAISS_TAG} GPU build"
+    fi
+    rm -rf /opt/faiss
+    cd /
+
+    # =======================================================================
+    # OCR / detectors / face
+    # =======================================================================
+    pipo pyocr easyocr
+    # dlib は GPU アーキテクチャを指定しないと nvcc の既定 (CUDA 12.6 では sm_52) で
+    # ビルドされる。sm_86 の RTX 3090 では実機コードが無いため、実行のたびに
+    # ドライバが PTX を JIT することになり、
+    #   - JIT にはその PTX ISA を解釈できるドライバが要る
+    #     (CUDA 12.6 が吐く ISA 8.5 は r560 以降)。古いドライバでは **動かない**。
+    #     CUDA 12 のマイナーバージョン互換は「新しい PTX の JIT」には適用されない
+    #   - --no-home / --containall では JIT キャッシュ (~/.nv/ComputeCache) が効かず
+    #     起動のたびにコンパイルが走る
+    # CMake 3.20+ の CUDAARCHS で実機コードを埋め込む (faiss と同じ CUDA_ARCHS)。
+    # ※ pip の --config-settings 経由で dlib の setup.py に --set を渡す方法は
+    #   "option --set not recognized" で失敗する (2026-09-28 実測)。
+    export CUDAARCHS="${CUDA_ARCHS}"
+    pipo dlib --no-binary :all:
+    unset CUDAARCHS
+    # 実機コードが埋まったか確認 (sm_52 のままだと古いドライバで動かない)
+    if cuobjdump --list-elf /usr/local/lib/python3.10/dist-packages/_dlib_pybind11*.so 2>/dev/null \
+       | grep -q "sm_86"; then
+        echo "### dlib: sm_86 の実機コードあり"
+    else
+        warn_step "dlib が sm_86 でビルドされていない (CUDAARCHS が効いていない)"
+    fi
+    pipo face_recognition
+    pipo "git+https://github.com/ageitgey/face_recognition_models"
+
+    # =======================================================================
+    # pose / detection ユーティリティ (rtmlib, supervision)
+    # =======================================================================
+    # onnxruntime-gpu: py3.10 では 1.23.x が上限。CUDA 12 / cuDNN 9 ビルドなので
+    # ベースイメージを CUDA 12 系にしてある (CUDA 13 では CUDA EP が読めない)。
+    # CUDA ライブラリは extra 扱いでベースイメージのものを使うため追加DLは無い。
+    pipi onnxruntime-gpu
+
+    # rtmlib は依存に opencv-python と opencv-contrib-python (いずれも GUI 版) を
+    # 両方書いているため、そのまま入れると headless 構成が壊れる。
+    # 実際に必要なのは numpy / onnxruntime / tqdm / cv2 で全て導入済みなので
+    # --no-deps で本体だけ入れる。
+    pipi --no-deps rtmlib
+    pipo supervision
+
+    # =======================================================================
+    # ベクトル DB
+    # =======================================================================
+    # chromadb は依存に CPU 版 onnxruntime を持つ。下の「入れ直し」で解消する。
+    pipi chromadb
+
+    # =======================================================================
+    # OpenCV は最後に入れ直す (他パッケージが引き込む opencv-python を掃除)
+    # =======================================================================
+    python3 -m pip uninstall -y opencv-python opencv-contrib-python \
+        opencv-python-headless opencv-contrib-python-headless || true
+    pipi "${OPENCV_SPEC}"
+
+    # =======================================================================
+    # onnxruntime も最後に入れ直す
+    #   faster-whisper と chromadb が **CPU 版** onnxruntime を依存に持つ。
+    #   onnxruntime と onnxruntime-gpu は同じ `onnxruntime` ディレクトリへ
+    #   ファイルを書き込むため、後にインストールされた方が勝つ。CPU 版が後に
+    #   なると CUDAExecutionProvider が消え、rtmlib が GPU で動かなくなる。
+    #   両方消してから GPU 版だけを入れ直す。
+    # =======================================================================
+    python3 -m pip uninstall -y onnxruntime onnxruntime-gpu || true
+    pipi onnxruntime-gpu
+    python3 -c "import onnxruntime as ort, sys; \
+        print('onnxruntime', ort.__version__, ort.get_available_providers()); \
+        sys.exit(0 if 'CUDAExecutionProvider' in ort.get_available_providers() else 1)"
+
+    # numpy が 1系に落とされていないことを最終確認し、落ちていたら戻す
+    pipi -U "numpy>=2,<3"
+
+    # torch が途中で PyPI 版に差し替えられていないか最終確認し、違えば戻す
+    if ! python3 -c "import torch,sys; sys.exit(0 if '+${TORCH_INDEX}' in torch.__version__ else 1)"; then
+        echo "### torch が ${TORCH_INDEX} ビルドでないため再インストールします"
+        pipi -U --force-reinstall torch torchvision \
+            --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
+    fi
+    python3 -c "import torch, torchvision; print('final torch', torch.__version__, torchvision.__version__)"
+
+    # =======================================================================
+    # ビルド専用の開発ヘッダを削除
+    #   自前ビルド物 (cv_bridge オーバーレイ / faiss / dlib / pyaudio) が
+    #   リンクする *ランタイム* ライブラリは autoremove で消えないよう
+    #   manual マークして保護してから purge する。
+    #   ※ これによりコンテナ内で OpenCV/Boost を使う C++ ROS パッケージを
+    #     colcon build することはできなくなる (colcon 自体は残る)。
+    # =======================================================================
+    keep=$(dpkg-query -W -f='${db:Status-Abbrev} ${Package}\n' \
+               'libopencv-*' 'libboost-python*' 'libav*' 'libsw*' 'libpostproc*' \
+               'libtesseract*' 'libopenblas*' 'liblapack*' 'libportaudio*' 2>/dev/null \
+           | awk '$1 ~ /^ii/ && $2 !~ /-dev$/ {print $2}')
+    # shellcheck disable=SC2086
+    apt-mark manual libgomp1 $keep >/dev/null 2>&1 || true
+
+    apt-get -y purge \
+        libopencv-dev libboost-python-dev portaudio19-dev libtesseract-dev \
+        libavdevice-dev libavfilter-dev libavformat-dev libavcodec-dev \
+        libswresample-dev libswscale-dev libavutil-dev \
+        libopenblas-dev swig || true
+    apt-get -y autoremove --purge
+
+    # 削除後も必須ライブラリが残っているか確認 (欠けていたらビルドを止める)
+    python3 -c "import cv2; print('cv2 ok', cv2.__version__)"
+    bash -c 'source /opt/ros/humble/setup.bash && source /opt/numpy2_ws/install/setup.bash && \
+             python3 /opt/check_cv_bridge.py'
+
+    # =======================================================================
+    # bind mount 用のマウントポイントを作る
+    #   overlay/underlay が使えないホストでは、バインド先がイメージ内に無いと
+    #   `apptainer exec -B /host/dir:/faces ...` が
+    #   "destination /faces doesn't exist in container" で失敗する。
+    # =======================================================================
+    # shellcheck disable=SC2086
+    mkdir -p ${MOUNTPOINTS}
+
+    # =======================================================================
+    # cleanup
+    # =======================================================================
+    apt-get clean
+    rm -rf /var/lib/apt/lists/* /root/.cache \
+           /usr/share/doc /usr/share/man /usr/share/info
+
+    # /tmp は *絶対に* 無条件で消さないこと。
+    #   apptainer はビルド中もホストの /tmp をコンテナ内へ bind mount するため、
+    #   `rm -rf /tmp/*` はホスト側の /tmp を破壊する (2026-09-21 に実際に発生)。
+    #   バインドされている場合はイメージに含まれないので掃除する意味も無い。
+    if awk '$2 == "/tmp" { found = 1 } END { exit !found }' /proc/self/mounts; then
+        echo "SKIP: /tmp is a bind mount from the host - not cleaning" >> "$WARN"
+    else
+        rm -rf /tmp/* || true
+    fi
+
+    echo "===================== build warnings ====================="
+    cat "$WARN" || true
+    echo "=========================================================="
+
+%runscript
+    if [ $# -eq 0 ]; then
+        exec /bin/bash
+    else
+        exec "$@"
+    fi
+
+%test
+    set +e
+    echo "--- numpy / opencv ---"
+    python3 -c "import numpy, cv2; print('numpy', numpy.__version__); print('cv2', cv2.__version__)"
+    python3 -c "import numpy; print('numpy2 ok' if numpy.__version__.startswith('2.') else 'NUMPY NOT 2.x')"
+
+    echo "--- cv_bridge (numpy2 rebuild) ---"
+    python3 /opt/check_cv_bridge.py || echo "  FAIL cv_bridge"
+
+    echo "--- torch ---"
+    python3 -c "import torch, torchvision; print('torch', torch.__version__, 'tv', torchvision.__version__, 'cuda built:', torch.version.cuda)"
+
+    echo "--- ROS ---"
+    python3 -c "import rclpy; from sensor_msgs.msg import Image; print('rclpy OK')"
+    python3 -c "from nav2_msgs.msg import Costmap; from nav2_msgs.action import NavigateToPose; print('nav2_msgs OK')"
+    ros2 pkg list > /dev/null && echo "ros2 CLI OK"
+    command -v zenoh-bridge-ros2dds >/dev/null && echo "zenoh bridge OK"
+
+    echo "--- dlib GPU アーキテクチャ ---"
+    python3 -c "import dlib; print('dlib', dlib.__version__, 'DLIB_USE_CUDA', dlib.DLIB_USE_CUDA)"
+    cuobjdump --list-elf /usr/local/lib/python3.10/dist-packages/_dlib_pybind11*.so 2>/dev/null \
+        | grep -o "sm_[0-9]*" | sort -u | tr '\n' ' '
+    echo "(sm_86 が無いと古いドライバで PTX JIT が必要になる)"
+
+    echo "--- onnxruntime (rtmlib 用) ---"
+    python3 -c "import onnxruntime as ort; print('onnxruntime', ort.__version__); print('providers:', ort.get_available_providers())"
+
+    echo "--- misc imports ---"
+    python3 - <<'PY'
+import importlib
+mods = ["scipy", "sklearn", "h5py", "pymongo",
+        "quaternion", "filterpy", "lap", "PIL", "timm", "transformers",
+        "faiss", "dlib", "easyocr", "janome",
+        "pydub", "sentencepiece", "langdetect", "faster_whisper", "whisper",
+        "rtmlib", "supervision", "chromadb"]
+for m in mods:
+    try:
+        importlib.import_module(m)
+        print("  ok  ", m)
+    except Exception as e:
+        print("  FAIL", m, type(e).__name__, str(e)[:120])
+PY
+    echo "--- build warnings recorded at build time ---"
+    cat /opt/build-warnings.txt || true

@@ -1,0 +1,4 @@
+/**/facepose_publisher_node:
+  ros__parameters:
+    world_frame: "map"
+    robot_frame: "body_link"

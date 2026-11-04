@@ -1,0 +1,21 @@
+/**/ros_audio_tracker_node:
+  ros__parameters:
+    client_number: 10
+    msg_size: 4096
+
+    socket_length:  13
+
+    need_transform: false
+
+/**/ros_audio_tracker_outer_camera_node:
+  ros__parameters:
+    audio_ip: "example.local"
+    audio_port: 3000
+    client_number: 10
+    msg_size: 4096
+
+    socket_length:  13
+
+    need_transform: true
+    # robot_link は launch で <ROBOT_NAME>_base_link を設定する
+    camera_link: at_camera_link

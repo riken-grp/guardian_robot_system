@@ -1,0 +1,23 @@
+audio_source_separator:
+  ros__parameters:
+    # Beamforming parameters
+    fft_size: 512
+    speed_of_sound: 343.0
+    diagonal_loading: 1.0e-1
+    forget_factor: 0.3          # EMA weight for covariance update (0 < alpha <= 1)
+
+    # VAD parameters
+    vad_threshold_db: -40.0
+    vad_hangover_frames: 10
+    vad_min_speech_frames: 3
+
+    # Segmentation parameters
+    min_speech_duration: 0.3    # seconds
+    max_speech_duration: 10.0   # seconds
+
+    # Person-DOA association
+    association_angle_threshold: 0.35   # radians (~20 degrees)
+    stale_association_timeout: 3.0      # seconds before dropping stale association
+
+    # Synchronisation: skip audio if DOA or person data is older than this
+    max_sync_age: 1.0                   # seconds

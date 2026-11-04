@@ -1,0 +1,161 @@
+@font-face {
+    font-family: NotoSansJP;
+    src: url(/fonts/notojp.ttf);
+    font-weight: 400;
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+.column {
+    float: left;
+}
+
+.column-left {
+    width: 33%;
+    height: 100%;
+    box-sizing: border-box;
+    border-style: inset;
+    border-width: 4px;
+    border-color: black;
+}
+
+.column-right {
+    width: 67%;
+    height: 100%;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    height: 100%;
+    align-items: stretch;
+}
+
+.row-headered {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    height: 100%;
+    align-items: stretch;
+    border-style: inset;
+    border-width: 4px;
+    border-color: black;
+}
+
+.memory-header {
+    background-color: #212121;
+    color: antiquewhite;
+    margin: 0 0 0 0;
+    padding: 5px 5px 5px 15px;
+    font-family: "VT323", serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.chitchat-header {
+    background-color: antiquewhite;
+    color: #212121;
+    margin: 0 0 0 0;
+    padding: 5px 5px 5px 15px;
+    font-family: "VT323", serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.half {
+    height: 50%;
+}
+
+.row::after {
+    content: "";
+    display: table;
+    clear:both;
+    box-sizing: border-box;
+    bottom: 0px;
+}
+
+.bubble-container {
+    height: 100%;
+}
+
+.memory-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    overflow-x: scroll;
+    background: #dce0dd;
+    padding: 10px 10px 10px 10px;
+    box-sizing: border-box;
+}
+
+.memory {
+    color: #212121;
+    background: rgba(255, 255, 255, 0.84);
+    padding: 8px 16px;
+    border-radius: 5px 15px 15px 5px;
+    font-weight: 400;
+    text-transform: none;
+    text-align: left;
+    font-size: 16px;
+    letter-spacing: .5px;
+    margin: 0 5px 0 0;
+    min-width: 300px;
+    max-width: 300px;
+    float: left;
+    clear: both;
+    line-height: 1.5em;
+    word-break: break-word;
+    transform-origin: left top;
+    transition: all 200ms;
+    box-sizing: border-box;
+    overflow-y: scroll;
+    font-family: NotoSansJP, sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.long-term {
+    min-width: 350px;
+    max-width: 350px;
+}
+
+/* .roboto-flex-indythought {
+  font-family: "Roboto Flex", serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings:
+    "slnt" 0,
+    "wdth" 100,
+    "GRAD" 0,
+    "XOPQ" 96,
+    "XTRA" 468,
+    "YOPQ" 79,
+    "YTAS" 750,
+    "YTDE" -203,
+    "YTFI" 738,
+    "YTLC" 514,
+    "YTUC" 712;
+} */
+ .robot-flex-indythought {
+    font-family: NotoSansJP;
+    font-size: 24px;
+ }
+
+ .bubble {
+    font-family: NotoSansJP;
+    font-size: 24px;
+ }
+
+.noto-sans-display-header {
+  font-family: "Noto Sans Display", serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings:
+    "wdth" 100;
+}

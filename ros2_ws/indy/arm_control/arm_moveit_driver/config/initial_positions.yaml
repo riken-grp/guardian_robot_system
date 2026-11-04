@@ -1,0 +1,7 @@
+# Default initial positions for guardian's ros2_control fake system
+
+initial_positions:
+  bracket_arm_a_joint: 0
+  bracket_arm_b_joint: 0
+  bracket_arm_c_joint: 0
+  bracket_arm_d_joint: 0

@@ -1,0 +1,3 @@
+speaker_id_node:
+  ros__parameters:
+    match_distance_threshold: 1.0   # Max distance for matching speech segment to person (m)

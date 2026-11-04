@@ -1,0 +1,155 @@
+/**/right_arm/arm_motor_control_node:
+  ros__parameters:
+    arm_status_file: "right_arm.txt"
+
+    can_interface: "rightarm"
+
+    joints_pub_cycle: 100 # [ms]
+
+    temp_check: true # 温度が高い場合disableする機能
+    restart_temp: 45.0 # [deg]
+    max_temp: 50.0 # [deg]
+
+    joint_names:
+      - "bracket_arm_a_joint"
+      - "bracket_arm_b_joint"
+      - "bracket_arm_c_joint"
+      - "bracket_arm_d_joint"
+
+    can_id:
+      - 0x01
+      - 0x02
+      - 0x03
+      - 0x04
+    
+    default_offset: 
+      - 0.0 # [rad]
+      - 0.0 # [rad]
+      - 1.3 # [rad]
+      - 0.0 # [rad]
+    
+    gain: 
+      - -0.8
+      - 1.0
+      - -1.0
+      - 1.0
+    
+    default_position: 
+      - 0.0 # [rad]
+      - -1.4 # [rad]
+      - 1.3 # [rad]
+      - -0.3 # [rad]
+
+    max_position: 
+      - 0.785 # [rad]
+      - 1.571 # [rad]
+      - 1.571 # [rad]
+      - 0.0 # [rad]
+    
+    min_position: 
+      - -3.142 # [rad]
+      - -1.571 # [rad]
+      - -1.571 # [rad]
+      - -2.094 # [rad]
+
+    max_velocity: 
+      - 0.314 # [rad/sec]
+      - 0.314 # [rad/sec]
+      - 0.314 # [rad/sec]
+      - 0.314 # [rad/sec]
+
+    default_velocity: 
+      - 0.5 # [rad/sec]
+      - 0.5 # [rad/sec]
+      - 0.5 # [rad/sec]
+      - 0.5 # [rad/sec]
+
+    default_acceleration: 
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+
+    default_torque: 
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+
+/**/left_arm/arm_motor_control_node:
+  ros__parameters:
+    arm_status_file: "left_arm.txt"
+
+    can_interface: "leftarm"
+
+    joints_pub_cycle: 100 # [ms]
+
+    temp_check: true # 温度が高い場合disableする機能
+    restart_temp: 45.0 # [deg]
+    max_temp: 50.0 # [deg]
+
+    joint_names:
+      - "bracket_arm_a_joint"
+      - "bracket_arm_b_joint"
+      - "bracket_arm_c_joint"
+      - "bracket_arm_d_joint"
+
+    can_id:
+      - 0x01
+      - 0x02
+      - 0x03
+      - 0x04
+    
+    default_offset: 
+      - 0.0 # [rad]
+      - 0.0 # [rad]
+      - -1.3 # [rad]
+      - 0.0 # [rad]
+    
+    gain: 
+      - -0.8
+      - 1.0
+      - -1.0
+      - 1.0
+    
+    default_position: 
+      - 0.0 # [rad]
+      - 1.4 # [rad]
+      - -1.3 # [rad]
+      - 0.3 # [rad]
+
+    max_position: 
+      - 3.142 # [rad]
+      - 1.571 # [rad]
+      - 1.571 # [rad]
+      - 2.094 # [rad]
+    
+    min_position: 
+      - -0.785 # [rad]
+      - -1.571 # [rad]
+      - -1.571 # [rad]
+      - 0.0 # [rad]
+
+    max_velocity: 
+      - 0.314 # [rad/sec]
+      - 0.314 # [rad/sec]
+      - 0.314 # [rad/sec]
+      - 0.314 # [rad/sec]
+
+    default_velocity: 
+      - 0.5 # [rad/sec]
+      - 0.5 # [rad/sec]
+      - 0.5 # [rad/sec]
+      - 0.5 # [rad/sec]
+
+    default_acceleration: 
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+
+    default_torque: 
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]

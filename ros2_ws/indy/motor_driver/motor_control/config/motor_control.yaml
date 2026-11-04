@@ -1,0 +1,54 @@
+/**/motor_control_node:
+  ros__parameters:
+
+    can_interface: "neck"
+
+    joint_name:
+      - "neck_yaw_joint"
+      - "neck_pitch_joint"
+      - "body_pitch_joint"
+
+    can_id:
+      - 0x02
+      - 0x03
+      - 0x01
+    
+    default_offset: 
+      - 0.0 # [rad]
+      - 0.0 # [rad]
+      - 0.0 # [rad]
+    
+    gain: 
+      - -1.0
+      - -1.0
+      - -1.0
+
+    max_position: 
+      - 1.396 # [rad]
+      - 0.785 # [rad]
+      - 0.0 # [rad]
+    
+    min_position: 
+      - -1.396 # [rad]
+      - -0.15 # [rad]
+      - -0.314 # [rad]
+
+    max_velocity: 
+      - 1.047 # [rad/sec]
+      - 0.349 # [rad/sec]
+      - 0.314 # [rad/sec]
+
+    default_velocity: 
+      - 1.0 # [rad/sec]
+      - 0.5 # [rad/sec]
+      - 0.5 # [rad/sec]
+
+    default_acceleration: 
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+
+    default_torque: 
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]

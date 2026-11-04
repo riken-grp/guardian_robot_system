@@ -1,0 +1,26 @@
+# 16-channel microphone array geometry for indy2e12
+#
+# Measured positions relative to $(robot_name)_body_link center.
+# Stored in microphone_array_base frame (coincident with body_link: xyz=0,0,0 rpy=0,0,0).
+#
+# Coordinate system: x-forward, y-left, z-up (ROS convention)
+# Source: sensor-indy2e12.txt
+#   Measurement frame: x=left, y=up, z=forward
+#   Conversion: ros_x=meas_z, ros_y=meas_x, ros_z=meas_y
+microphones:
+  - {channel: 0,  x: -0.0465, y: -0.0805, z:  0.0850}
+  - {channel: 1,  x:  0.0322, y: -0.1007, z:  0.0494}
+  - {channel: 2,  x:  0.0322, y: -0.1007, z: -0.0494}
+  - {channel: 3,  x: -0.0465, y: -0.0805, z: -0.0850}
+  - {channel: 4,  x:  0.0035, y:  0.0441, z: -0.0785}
+  - {channel: 5,  x:  0.0035, y:  0.0441, z:  0.0785}
+  - {channel: 6,  x: -0.0301, y:  0.0844, z:  0.0000}
+  - {channel: 7,  x: -0.0500, y:  0.0285, z: -0.0965}
+  - {channel: 8,  x: -0.0483, y:  0.0721, z: -0.0567}
+  - {channel: 9,  x: -0.0483, y:  0.0721, z:  0.0567}
+  - {channel: 10, x: -0.0500, y:  0.0285, z:  0.0965}
+  - {channel: 11, x:  0.0541, y:  0.0520, z:  0.0500}
+  - {channel: 12, x:  0.0031, y:  0.0740, z:  0.0388}
+  - {channel: 13, x:  0.0000, y:  0.0833, z:  0.0000}
+  - {channel: 14, x:  0.0031, y:  0.0740, z: -0.0388}
+  - {channel: 15, x:  0.0541, y:  0.0520, z: -0.0500}

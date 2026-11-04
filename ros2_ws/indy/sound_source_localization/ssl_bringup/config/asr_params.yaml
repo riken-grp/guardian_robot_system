@@ -1,0 +1,6 @@
+asr_node:
+  ros__parameters:
+    model_size: 'large-v3'
+    language: 'ja'
+    device: 'cuda'
+    compute_type: 'float16'

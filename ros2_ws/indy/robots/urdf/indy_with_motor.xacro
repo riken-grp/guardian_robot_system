@@ -1,0 +1,164 @@
+<?xml version="1.0"?>
+<robot name="indy" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:arg name="robot_name" default="indy" />
+  <xacro:property name="rover_size" value="0.5 0.5 0.3" /> <!-- 適当です -->
+  <xacro:property name="body_size" value="0.3 0.3 0.9" /> <!-- 適当です -->
+  <xacro:property name="neck_size" value="0.1 0.1 0.1" /> <!-- 適当です -->
+  <xacro:property name="upper_neck_size" value="0.1 0.1 0.15" /> <!-- 適当です -->
+  <xacro:property name="head_size" value="0.2 0.2 0.15" /> <!-- 適当です -->
+  <xacro:property name="camera_size" value="0.05 0.15 0.05" /> <!-- 適当です -->
+
+  <link name="$(arg robot_name)_base_footprint" />
+  <joint name="$(arg robot_name)_base_joint" type="fixed">
+    <origin xyz="0 0 0.15" rpy="0 0 0" />
+    <parent link="$(arg robot_name)_base_footprint" />
+    <child link="$(arg robot_name)_base_link" />
+  </joint>
+
+
+  <link name="$(arg robot_name)_base_link">
+    <visual>
+      <geometry>
+        <box size="${rover_size}" />
+      </geometry>
+      <material name="green">
+        <color rgba="0.5 1.0 0.5 1.0" />
+      </material>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="${rover_size}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="$(arg robot_name)_body_joint" type="fixed">
+    <origin xyz="0 0 0.6" rpy="0 0 0" />
+    <parent link="$(arg robot_name)_base_link" />
+    <child link="$(arg robot_name)_body_link" />
+  </joint>
+
+  <link name="$(arg robot_name)_body_link">
+    <visual>
+      <geometry>
+        <box size="${body_size}" />
+      </geometry>
+      <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0" />
+      </material>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="${body_size}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="$(arg robot_name)_microphone_array_base_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="$(arg robot_name)_body_link" />
+    <child link="$(arg robot_name)_microphone_array_base" />
+  </joint>
+
+  <link name="$(arg robot_name)_microphone_array_base" />
+
+  <joint name="$(arg robot_name)_body_pitch_joint" type="revolute">
+    <axis xyz="0 1 0" />
+    <limit effort="1000.0" lower="-0.5" upper="1.0" velocity="1.0" />
+    <origin xyz="0 0 0.45" rpy="0 0 0" />  <!-- this rotation should be set in neck joint --> 
+    <parent link="$(arg robot_name)_body_link" />
+    <child link="$(arg robot_name)_neck_link" />
+  </joint>
+
+  <link name="$(arg robot_name)_neck_link">
+    <visual>
+      <geometry>
+        <box size="${neck_size}" />
+      </geometry>
+      <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0" />
+      </material>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="${neck_size}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="$(arg robot_name)_neck_yaw_joint" type="revolute">
+    <axis xyz="0 0 1" />
+    <limit effort="1000.0" lower="-1.57" upper="1.57" velocity="1.0" />
+    <origin xyz="0 0 0.05" rpy="0 0 0" />  <!-- this rotation should be set in neck joint --> 
+    <parent link="$(arg robot_name)_neck_link" />
+    <child link="$(arg robot_name)_upper_neck_link" />
+  </joint>
+
+  <link name="$(arg robot_name)_upper_neck_link">
+    <visual>
+      <geometry>
+        <box size="${upper_neck_size}" />
+      </geometry>
+      <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0" />
+      </material>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="${upper_neck_size}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="$(arg robot_name)_neck_pitch_joint" type="revolute">
+    <axis xyz="0 1 0" />
+    <limit effort="1000.0" lower="-1.0" upper="1.0" velocity="1.0" />
+    <origin xyz="0 0 0.08" rpy="0 0 0" />  <!-- this rotation should be set in neck joint --> 
+    <parent link="$(arg robot_name)_upper_neck_link" />
+    <child link="$(arg robot_name)_head_link" />
+  </joint>
+
+  <link name="$(arg robot_name)_head_link">
+    <visual>
+      <geometry>
+        <box size="${head_size}" />
+      </geometry>
+      <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0" />
+      </material>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="${head_size}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="$(arg robot_name)_camera_joint" type="fixed">
+    <origin xyz="0.1 0 0.05" rpy="0 0 0" />
+    <parent link="$(arg robot_name)_head_link" />
+    <child link="$(arg robot_name)_camera_link" />
+  </joint>
+
+  <link name="$(arg robot_name)_camera_link">
+    <visual>
+      <geometry>
+        <box size="${camera_size}" />
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.5 0.5 1.0" />
+      </material>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="${camera_size}" />
+      </geometry>
+    </collision>
+  </link>
+</robot>

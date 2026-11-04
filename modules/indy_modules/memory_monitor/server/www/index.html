@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>INDY MEMORY MONITOR</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+Display:ital,wght@0,100..900;1,100..900&family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap"
+        rel="stylesheet">
+    <!-- stylesheets are conveniently separated into components -->
+    <link rel="stylesheet" media="all" href="chat-bubble/styles/setup.css" />
+    <link rel="stylesheet" media="all" href="chat-bubble/styles/says.css" />
+    <link rel="stylesheet" media="all" href="chat-bubble/styles/reply.css" />
+    <link rel="stylesheet" media="all" href="chat-bubble/styles/typing.css" />
+    <link rel="stylesheet" media="all" href="chat-bubble/styles/input.css" />
+    <link rel="stylesheet" media="all" href="styles/memory.css" />
+</head>
+
+<body>
+    <!-- container element for chat window -->
+    <!-- <h2 id="header">Memory Data <span id="t0"></span>-<span id="tf"></span></h2> -->
+    <div class="row">
+        <div class="column column-left">
+            <div class="row-headered">
+                <h3 class="chitchat-header noto-sans-display-header">Chitchat</h3>
+                <div id="chat"></div>
+            </div>
+        </div>
+        <div class="column column-right">
+            <div class="row-headered half">
+                <h3 class="memory-header noto-sans-display-header">Narrative Memory (Updated every minute)</h3>
+                <div id="stm-container" class="row memory-container"></div>
+            </div>
+            <div class="row-headered half">
+                <h3 class="memory-header noto-sans-display-header">Long-Term Memory (Updated every minute)</h3>
+                <div id="ltm-container" class="row memory-container"></div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- import the JavaScript file -->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="chat-bubble/Bubbles.js"></script>
+    <script>
+        let searchParams = new URLSearchParams(window.location.search)
+
+        const chatWindow = new Bubbles($("#chat")[0], "chat");
+        const INTV_CHAT = 1000;
+        var chat_ts = Number((new Date().getTime()) / 1000);
+
+        if (searchParams.has("ts")) {
+            chat_ts = parseFloat(searchParams.get("ts"));
+        }
+        var new_ts = chat_ts;
+        var ltm_ts = chat_ts;
+        var basets = chat_ts;
+
+        var firstLoad = true;
+
+        console.log(`STARTING FROM: ${chat_ts}`);
+
+        //chatWindow.dialogue({ utt: "TEST LEFT", pos: "left" });
+        //chatWindow.dialogue({ utt: "TEST RIGHT", pos: "right" });
+        var prev_ts = new_ts;
+        function displayConvo() {
+            new_ts = Number((new Date().getTime()) / 1000);
+            $.get(`/db/chat/${prev_ts}/${chat_ts}`).done((data) => {
+                console.log(`${prev_ts} - ${chat_ts} => ${data.length}`);
+
+                // Visualize the new data
+                for (const entry of data) {
+                    const speaker = entry["actor"];
+                    const utterance = entry["utterance"];
+                    const utt_ts = entry["created_at_ts"];
+                    // const bubbleContent = (speaker === 'Indy' ?
+                    //     { utt: { says: [utterance], reply: [] } } :
+                    //     { utt: { says: [], reply: [{ question: utterance, answer: null }] } }
+                    // );
+
+                    //console.log(`[Utterance@${utt_ts}] ${speaker}: "${utterance}"`);
+                    //console.log(`${entry}`)
+                    //chatWindow.talk(bubbleContent);
+                    const bubbleContent = {
+                        utt: utterance,
+                        pos: (speaker.includes('indy') ? "left" : "right"),
+                        _id: entry["_id"]
+                    };
+                    chatWindow.dialogue(bubbleContent);
+                }
+                prev_ts = chat_ts;
+                chat_ts = new_ts;
+
+                var maxHeight = $("#chat").outerHeight();
+                $("#chat").find(".bubble").each(function () {
+                    var elem = $(this);
+
+                    if (elem.offset().top + elem.height() < 0) {
+                        elem.remove();
+                    }
+                });
+
+                // chatWindow.think();
+                setTimeout(displayConvo, INTV_CHAT);
+            });
+        }
+
+        var last_id = "";
+        function displayConvoLatest() {
+            new_ts = Number((new Date().getTime()) / 1000);
+            $.get(`/db/chatlatest`).done((data) => {
+                const _id = data["_id"];
+                if (firstLoad) {
+                    last_id = _id;
+                    firstLoad = false;
+                }
+                if (_id !== last_id) {
+                    const speaker = data["actor"];
+                    const utterance = data["utterance"];
+                    const utt_ts = data["created_at_ts"];
+                    const origin = data[""]
+                    const bubbleContent = {
+                        utt: utterance,
+                        pos: (speaker.includes('indy') ? "left" : "right"),
+                        _id: _id
+                    };
+                    chatWindow.dialogue(bubbleContent);
+                    last_id = _id;
+
+                    var maxHeight = $("#chat").outerHeight();
+                    $("#chat").find(".bubble").each(function () {
+                        var elem = $(this);
+
+                        if (elem.offset().top + elem.height() < 0) {
+                            elem.remove();
+                        }
+                    });
+
+                    // chatWindow.think();
+                }
+
+                setTimeout(displayConvoLatest, 10);
+            });
+        }
+
+
+        function displayNarrative() {
+            new_ts = Number((new Date().getTime()) / 1000);
+            $.get(`/db/memory/${new_ts}`).done((data) => {
+                //console.log("Memory CHECK!!");
+                const stm_data = data["stm"];
+                const ltm_data = data["ltm"];
+
+                const stm_fetched = new Set();
+                const stm_container = $("#stm-container");
+
+                // Add/Update Narrative Memories
+                for (const entry of stm_data) {
+                    let _id = entry["_id"];
+                    let memory = entry["memory"];
+                    let type = entry["type"];
+                    let created_at_ts = entry["created_at_ts"];
+                    let forget_by_ts = entry["forgetting_curve"]["forget_time"];
+                    let duration = forget_by_ts - created_at_ts;
+
+                    let progress_val = Math.round(100 * (new_ts - created_at_ts) / duration);
+                    let elemF = $(`#STM_${_id}`);
+                    let newContents = `<progress value="${progress_val}" max="100"></progress><br/><span>${memory}</span>`;
+
+                    if (progress_val >= 100) {
+                        if (elemF.length > 0) {
+                            elemF.remove();
+                        }
+                    } else if (elemF.length > 0) {
+                        // Updated Existing
+                        elemF.html(newContents);
+                    } else {
+                        // Create New
+                        var cont = document.createElement("div")
+                        cont.className = "memory roboto-flex-indythought";
+                        cont.id = `STM_${_id}`;
+                        cont.innerHTML = newContents
+                        stm_container.prepend(cont)
+                    }
+                    stm_fetched.add(_id);
+                    //console.log(`Narrative: ${memory}`)
+                }
+
+                // Remove Forgotten Narrative Memories
+                const to_remove = new Set();
+                stm_container.children(".memory").each(() => {
+                    let _id = $(this).attr("id");
+                    if (!stm_fetched.has(_id)) {
+                        to_remove.add(_id);
+                    }
+                });
+
+                to_remove.forEach((_id, k, s) => {
+                    $(`#STM_${_id}`).remove()
+                    //narr_container.remove(`#STM_${_id}`);
+                });
+
+                // Add/Update Long-Term Memories
+                const ltm_fetched = new Set();
+                const ltm_container = $("#ltm-container");
+
+                // Add/Update Narrative Memories
+                for (const entry of ltm_data) {
+                    let _id = entry["_id"];
+                    let memory = entry["today_summ"];
+                    let created_at_ts = entry["created_at_ts"];
+                    let forget_by_ts = entry["forgetting_curve"]["forget_time"];
+                    let duration = forget_by_ts - created_at_ts;
+
+                    let progress_val = Math.round(100 * (new_ts - created_at_ts) / duration);
+                    let elemF = $(`#LTM_${_id}`);
+                    let newContents = `<progress value="${progress_val}" max="100"></progress><br/><span>${memory}</span>`;
+
+                    if (progress_val >= 100) {
+                        if (elemF.length > 0) {
+                            elemF.remove();
+                        }
+                    } else if (elemF.length > 0) {
+                        // Updated Existing
+                        elemF.html(newContents);
+                    } else {
+                        // Create New
+                        var cont = document.createElement("div")
+                        cont.className = "memory roboto-flex-indythought long-term";
+                        cont.id = `LTM_${_id}`;
+                        cont.innerHTML = newContents
+                        ltm_container.prepend(cont)
+                        //ltm_container.add(`<div class="memory" id="#LTM_${_id}">${newContents}</div>"`);
+                    }
+                    ltm_fetched.add(_id);
+                    // console.log(`LTM: ${memory}`)
+                }
+
+                // Remove Forgotten Narrative Memories
+                to_remove.clear();
+                ltm_container.children(".memory").each(() => {
+                    let _id = $(this).attr("id");
+                    if (!ltm_fetched.has(_id)) {
+                        to_remove.add(_id);
+                    }
+                });
+
+                to_remove.forEach((_id, k, s) => {
+                    $(`#LTM_${_id}`).remove()
+                    //ltm_container.remove(`#LTM_${_id}`);
+                });
+
+                ltm_ts = new_ts;
+                setTimeout(displayNarrative, 60000);
+            });
+        }
+
+
+        // chatWindow.think();
+        // displayConvo();
+        // displayNarrative();
+        //setTimeout(displayConvo, 1000);
+        setTimeout(displayConvoLatest, 10);
+        setTimeout(displayNarrative, 60000);
+
+    </script>
+</body>
+
+</html>

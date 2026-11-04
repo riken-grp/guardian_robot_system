@@ -1,0 +1,20 @@
+[本プロジェクトによる注記 / Annotation added by this project]
+
+上流リポジトリ (https://github.com/YDLIDAR/ydlidar_ros2_driver) の LICENSE.txt は
+内容が空のまま配布されている。本ファイルも同じ状態だったため、参照先を示す注記のみを記載する。
+
+- 本パッケージ (ydlidar_ros2_driver) のライセンス宣言: package.xml の <license>MIT</license>
+- 同梱している YDLidar-SDK のライセンス本文: YDLidar-SDK/LICENSE.txt
+
+詳細は THIRD_PARTY_NOTICES.md を参照。
+
+---
+
+The upstream repository ships this LICENSE.txt empty.
+This file previously had the same empty content; the note above was added by
+this project to point to where the actual license information lives:
+
+- Declared license of this package: <license>MIT</license> in package.xml
+- License text of the bundled YDLidar-SDK: YDLidar-SDK/LICENSE.txt
+
+See THIRD_PARTY_NOTICES.md for details.

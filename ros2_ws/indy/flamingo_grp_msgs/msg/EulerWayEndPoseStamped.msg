@@ -1,0 +1,5 @@
+std_msgs/Header header
+geometry_msgs/Point way_point
+geometry_msgs/Vector3 way_vector
+geometry_msgs/Point end_point
+geometry_msgs/Vector3 end_vector

@@ -1,0 +1,5 @@
+/**/mic_info_node:
+  ros__parameters:
+    receive_port: 5661
+    client_number: 10
+    msg_size: 8192

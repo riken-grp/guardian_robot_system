@@ -1,0 +1,23 @@
+tracker_node:
+  ros__parameters:
+    # Clustering parameters
+    cluster_distance_threshold: 0.15   # Max distance between consecutive points to be in same cluster (m)
+    min_cluster_size: 5                # Minimum number of points in a valid cluster
+    max_cluster_size: 50               # Maximum number of points in a valid cluster
+    min_cluster_width: 0.20            # Minimum cluster width to be considered a person (m)
+    max_cluster_width: 0.55            # Maximum cluster width to be considered a person (m)
+    max_cluster_depth: 0.40            # Maximum cluster depth (m) — person torso is shallow
+    min_detection_range: 0.3           # Ignore points closer than this range (m)
+    max_detection_range: 2.0           # Ignore points beyond this range (m)
+
+    # Tracking parameters
+    tracking_distance_threshold: 0.5   # Max distance for associating detection to track (m)
+    person_timeout: 2.0                # Remove track after this many seconds without update (s)
+
+    # Kalman filter tuning
+    process_noise: 0.5                 # Process noise multiplier
+    measurement_noise: 0.1             # Measurement noise multiplier
+
+    # Background subtraction
+    bg_learning_scans: 50              # Number of scans to learn static background (more = robust)
+    bg_threshold: 0.10                 # Distance difference to consider foreground (m)

@@ -1,0 +1,14 @@
+build/
+install/
+log/
+
+__pycache__
+
+*.env
+
+*.sif
+
+# マシンごとの設定ファイル
+modules/module_launch/enable/*
+!modules/module_launch/enable/.gitkeep
+settings/ros2/zenoh/bridge_zenoh.json5

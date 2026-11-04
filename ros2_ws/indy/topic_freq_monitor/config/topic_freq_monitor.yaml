@@ -1,0 +1,40 @@
+/**/topic_freq_monitor:
+  ros__parameters:
+    update_rate: 10.0 # [s]
+    timeout_time: 3.0 # [s]
+    comp_ratio: 3.0
+    avearge_size: 10
+
+    topic_list: [
+      # topic_name, package_name, msg_type_name, normal_freq[Hz]
+      human_tracker/recognition_result, human_tracker_msgs, TrackedPersons, "10.0",
+      # indy2_camera/aligned_depth_to_color/camera_info,
+      # indy2_camera/color/camera_info,
+      # indy2_camera/depth/camera_info,
+      # indy2_camera/resized_depth/image_raw,
+      # joint_states,
+      # keigan_motor/joints,
+      right_human_tracker/person_all_info, human_tracker_msgs, PersonAllInfoList, "12.0",
+      left_human_tracker/person_all_info, human_tracker_msgs, PersonAllInfoList, "12.0",
+      lidar1/scan, sensor_msgs, LaserScan, "12.0",
+      lidar2/scan, sensor_msgs, LaserScan, "12.0",
+      recog/object/detected, recognition_msgs, Objects, "12.0",
+      recog/object/tracked, recognition_msgs, Objects, "12.0",
+      # recog/object/tracked/marker, visualization_msgs, MarkerArray, "12.0",
+      # recog/object/tracklet, recognition_msgs, ObjectTracklet, "--",
+      recog/person/associated, recognition_msgs, Persons, "12.0",
+      recog/person/attributes, recognition_msgs, Persons, "14.0",
+      recog/person/hands, recognition_msgs, Pointings, "14.0",
+      recog/person/headpose, recognition_msgs, Persons, "13.0",
+      recog/person/name, recognition_msgs, Persons, "17.0",
+      recog/person/pointing_direction, recognition_msgs, Pointings, "12.0",
+      # recog/person/pointing_direction/marker, visualization_msgs, MarkerArray, "12.0",
+      recog/person/pointing_target, recognition_msgs, Pointings, "13.0",
+      recog/person/pose_face, recognition_msgs, Persons, "15.0",
+      recog/person/tracked, recognition_msgs, Persons, "12.0",
+      # recog/person/tracked/marker, visualization_msgs, MarkerArray, "12.0",
+      # recog/person/tracklet, recognition_msgs, PersonTracklet, "--",
+      rover/battery, sensor_msgs, BatteryState, "10.0",
+      rover/pose, geometry_msgs, PoseStamped, "10.0",
+      # weather, common_msgs, StringStamped, "--",
+    ]

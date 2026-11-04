@@ -1,0 +1,7 @@
+/**/eye_control_node:
+  ros__parameters:
+    image_lcd1: Lneutral1.jpg
+    image_lcd2: Rneutral1.jpg
+    pub_period_sec: 1
+    lcd1: left
+    lcd2: right

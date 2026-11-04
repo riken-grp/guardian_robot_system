@@ -1,0 +1,11 @@
+# Request
+bool activate
+string action_id
+---
+# Result
+bool succeeded
+string action_id
+---
+# Feedback
+string feedback
+string data_msg

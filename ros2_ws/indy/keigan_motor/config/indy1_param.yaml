@@ -1,0 +1,39 @@
+/**/keigan_motor_node:
+  ros__parameters:
+    joint_name:
+      - "neck_yaw_joint"
+      - "neck_pitch_joint"
+      - "body_pitch_joint"
+
+    joint_port:
+      - "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DM00KLZB-if00-port0"
+      - "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DM00KU8D-if00-port0"
+      - "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DM00KKFY-if00-port0"
+
+    max_velocity: 
+      - 3.0 # [rad/sec]
+      - 3.0 # [rad/sec]
+      - 3.0 # [rad/sec]
+
+    default_velocity: 
+      - 1.0 # [rad/sec]
+      - 1.0 # [rad/sec]
+      - 1.0 # [rad/sec]
+
+    default_acceleration: 
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+      - 3.0 # [rad/sec^2]
+
+    default_torque: 
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+      - 1.0 # [Nm]
+
+    report_hz: 10.0 # Frequency of joints info publisher [Hz]
+
+    nearly_zero_vel: 0.05 # Speed regarded as zero when executing target_vel_pose [rad/sec]
+
+    nearly_target_pose: 0.02 # Position difference regarded as target when executing target_vel_pose [rad]
+
+    max_duration: 15.0 # Max duration to stop rotation when executing target_vel_pose [sec]

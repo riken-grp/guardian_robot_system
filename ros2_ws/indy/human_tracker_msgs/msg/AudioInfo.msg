@@ -1,0 +1,13 @@
+int32 timestamp_sec
+int32 timestamp_msec
+int32 human_id
+int32 vad
+int32 x
+int32 y
+int32 z
+int32 power
+int32 sep_id
+int32 port
+int32 class_id
+int32 instance_id
+string person_name

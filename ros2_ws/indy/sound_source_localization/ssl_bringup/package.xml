@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+	<name>ssl_bringup</name>
+	<version>0.0.1</version>
+	<description>Launch and configuration for the sound source localization system</description>
+	<maintainer email="no-reply@example.com">username</maintainer>
+	<license>Apache-2.0</license>
+
+	<!-- Build -->
+	<buildtool_depend>ament_cmake</buildtool_depend>
+
+	<!-- Runtime -->
+	<exec_depend>lidar_person_tracker</exec_depend>
+	<exec_depend>sound_source_localizer</exec_depend>
+	<exec_depend>audio_source_separator</exec_depend>
+	<exec_depend>ssl_msgs</exec_depend>
+	<exec_depend>ssl_asr</exec_depend>
+	<exec_depend>microphone_array</exec_depend>
+	<exec_depend>sensor_msgs</exec_depend>
+
+	<export>
+		<build_type>ament_cmake</build_type>
+	</export>
+</package>
