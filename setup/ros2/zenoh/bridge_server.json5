@@ -1,0 +1,28 @@
+// zenoh-bridge-ros2dds 設定（サーバ側）
+//
+// このファイルは編集せずにそのまま使う。マシンごとの値は起動時に引数で渡す
+// （modules/module_launch/available/000_zenoh_bridge.sh が ON_ROBOT=1 以外のとき読み込む）:
+//   domain  : 環境変数 ROS_DOMAIN_ID
+//   connect : 環境変数 ZENOH_ROBOT_ADDR（接続先ロボットの IP アドレス）
+//   port    : 環境変数 ZENOH_PORT（未設定なら 7447。ロボット側と同じ値にする）
+//
+// サーバ側はロボットへ接続しに行くだけなので待ち受けはしない。
+// これにより、1台のサーバでロボットごと（ROS_DOMAIN_ID ごと）に複数のブリッジを起動しても
+// 待ち受けポートが衝突しない。
+{
+	plugins: {
+		ros2dds: {
+			reliable_routes_blocking: false,
+		},
+	},
+	mode: "router",
+	listen: { endpoints: [] },
+	scouting: {
+		multicast: { enabled: false },
+	},
+	transport: {
+		unicast: {
+			compression: { enabled: true },
+		},
+	},
+}

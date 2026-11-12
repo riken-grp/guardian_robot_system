@@ -1,6 +1,5 @@
 #!/bin/bash
 
-ROS_WORKSPACE=ros2_ws
 SLEEP_SEC=5
 
 filename=$(basename "$0" .sh)
@@ -19,7 +18,7 @@ else
   echo "$filename" is launching...
   tmux new -d -s $filename apptainer exec --nv $GUARDIAN_ROBOT_PATH/setup/container_image/ros2_12-6-3_on_server.sif \
                                       bash -c "\
-                                      cd $GUARDIAN_ROBOT_PATH/$ROS_WORKSPACE; 
+                                      cd $GUARDIAN_ROBOT_PATH/ros2_ws; 
                                       source ~/.bashrc; 
                                       source /opt/ros/humble/setup.bash;
                                       source install/setup.bash; 

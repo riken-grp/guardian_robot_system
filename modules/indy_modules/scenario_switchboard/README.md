@@ -22,4 +22,4 @@ Once the dependencies are installed, you can **run the project** from the same `
 node server.js MONGODB_URL MONGODB_PORT HTTP_PORT
 ```
 
-Once the server is running, from the host computer you can enter the address `http://localhost:PORT` (With `PORT` being the same as the one in the configuration file). This will display the Switchboard.
+Once the server is running, from the host computer you can enter the address `http://localhost:HTTP_PORT` (With `HTTP_PORT` being the same as the one passed to `server.js`). This will display the Switchboard.

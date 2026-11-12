@@ -1,6 +1,5 @@
 #!/bin/bash
 
-ROS_WORKSPACE=ros2_ws
 SLEEP_SEC=1
 
 filename=$(basename "$0" .sh)
@@ -17,7 +16,7 @@ if echo "$tmux_sessions" | grep -q "^$filename$"; then
   echo "$filename" already exists
 else
   echo "$filename" is launching...
-  tmux new -d -s $filename bash -c "source $GUARDIAN_ROBOT_PATH/$ROS_WORKSPACE/install/setup.bash;
+  tmux new -d -s $filename bash -c "source $GUARDIAN_ROBOT_PATH/ros2_ws/install/setup.bash;
                                     ros2 launch robot ros_watchdog_launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT"
   echo "sleep: $SLEEP_SEC [s]"
   sleep $SLEEP_SEC

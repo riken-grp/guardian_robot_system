@@ -1,7 +1,5 @@
 #!/bin/bash
 
-ROS_WORKSPACE=ros2_ws
-
 filename=$(basename "$0" .sh)
 tmux_sessions=$(tmux ls 2>/dev/null | cut -d':' -f1)
 
@@ -19,7 +17,7 @@ else
     #tmux new -d -s $filename apptainer exec --nv $GUARDIAN_ROBOT_PATH/setup/container_image/ros2_12-6-3_on_server.sif \
     tmux new -d -s $filename apptainer exec --nv $GUARDIAN_ROBOT_PATH/setup/container_image/ros2_12-6-3_on_server.sif \
         bash -c "\
-        cd $GUARDIAN_ROBOT_PATH/$ROS_WORKSPACE;
+        cd $GUARDIAN_ROBOT_PATH/ros2_ws;
         source ~/.bashrc;
         source /opt/ros/humble/setup.bash;
         source install/setup.bash;

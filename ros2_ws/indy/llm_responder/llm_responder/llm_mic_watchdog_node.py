@@ -161,7 +161,7 @@ class LlmMicWatchdogNode(Node):
             UtteranceManager,
             cleanup_action_manager(
                 UtteranceManager(
-                    mongo_uri, mongo_port, "indy1e", "subtitle_indy"
+                    mongo_uri, mongo_port, self.robot_name, "subtitle_indy"
                 ),
                 db_server,
             ),

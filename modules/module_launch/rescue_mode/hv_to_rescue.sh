@@ -20,7 +20,7 @@ stop_module_launch_sessions() {
             || true
     done
     tmux send-keys -t scenario C-c 2>/dev/null || true
-    50_cancel_all.py
+    "${GUARDIAN_ROBOT_PATH}/tools/bin/50_cancel_all.py"
 }
 
 # --------------------------------------------------------
@@ -69,9 +69,6 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Rescue mode started. Monitoring battery cur
 # motor_release_tool_for_rescueを起動
 if [ ! -f "${MOTOR_RELEASE_TOOL_FOR_RESCUE}" ]; then
     echo "Error: motor_release_tool_for_rescue not found: ${MOTOR_RELEASE_TOOL_FOR_RESCUE}"
-    echo "Please build it first:"
-    echo "  cd $(dirname ${MOTOR_RELEASE_TOOL_FOR_RESCUE})"
-    echo "  g++ motor_release_tool_for_rescue.cpp -o motor_release_tool_for_rescue"
     exit 1
 fi
 

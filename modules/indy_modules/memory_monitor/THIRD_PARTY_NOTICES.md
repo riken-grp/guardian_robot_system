@@ -13,7 +13,6 @@
 |---|---|
 | express | MIT |
 | cors | MIT |
-| dotenv | MIT |
 | mongodb | Apache-2.0 |
 
 ## フォント

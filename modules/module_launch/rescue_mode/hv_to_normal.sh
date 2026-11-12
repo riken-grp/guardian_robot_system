@@ -38,7 +38,7 @@ done
 # 復帰音声を1回だけ再生
 aplay "${SCRIPT_DIR}/tools/return_to_normal.wav" 2>/dev/null &
 
-50_cancel_all.py
+"${GUARDIAN_ROBOT_PATH}/tools/bin/50_cancel_all.py"
 sleep 2
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting module_launch.sh..."

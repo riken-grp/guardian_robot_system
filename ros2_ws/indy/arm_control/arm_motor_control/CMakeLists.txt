@@ -20,6 +20,8 @@ find_package(trajectory_msgs REQUIRED)
 
 # ヘッダーファイルのディレクトリを指定
 include_directories(include)
+# Robstride02 ドライバは motor_driver/Robstride02 のものを共用する
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../motor_driver/Robstride02/src)
 
 # 実行可能ファイルを定義
 add_executable(arm_motor_control src/arm_motor_control.cpp)

@@ -1,10 +1,10 @@
-# 16-channel microphone array geometry for indy2e12
+# 16-channel microphone array geometry (measured on a reference robot unit)
 #
 # Measured positions relative to $(robot_name)_body_link center.
 # Stored in microphone_array_base frame (coincident with body_link: xyz=0,0,0 rpy=0,0,0).
 #
 # Coordinate system: x-forward, y-left, z-up (ROS convention)
-# Source: sensor-indy2e12.txt
+# Source: sensor position measurement on that unit
 #   Measurement frame: x=left, y=up, z=forward
 #   Conversion: ros_x=meas_z, ros_y=meas_x, ros_z=meas_y
 microphones:

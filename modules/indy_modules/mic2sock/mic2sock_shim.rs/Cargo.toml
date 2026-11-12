@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["protocol", "clocksync", "shim", "mic2sock"]
+
+# mic2sock is excluded: it captures via ALSA, and alsa-sys's build script fails
+# on any machine without alsa.pc (libasound2-dev + pkg-config; never present on
+# Windows/macOS or in bare CI containers). So a bare `cargo build` /
+# `cargo test` covers only the pure-logic crates and silently does NOT build
+# the daemon. On the Pi: cargo build -p mic2sock --release
+# (jackd / libjack are no longer needed.)
+#
+# shim IS included: it has no ALSA dependency and must build everywhere,
+# including the Windows box that runs it.
+default-members = ["protocol", "clocksync", "shim"]

@@ -42,6 +42,14 @@ class NavigateToChargeServer(Node):
             10
         )
 
+        # Publisher to abort an ongoing docking process.  Without this the
+        # auto_charge node keeps driving after the goal is aborted/canceled.
+        self.dock_cancel_pub = self.create_publisher(
+            Empty,
+            'auto_charge/dock_cancel',
+            10
+        )
+
         # Subscriber to monitor docking status
         self.dock_status_sub = self.create_subscription(
             Bool,
@@ -98,6 +106,15 @@ class NavigateToChargeServer(Node):
         """Check if robot is charging (current <= 0.01)"""
         return self.battery_current <= 0.01
 
+    def cancel_docking(self, reason):
+        """Tell the auto_charge node to stop the docking process.
+
+        The node stops the rover and resets its state when it receives this,
+        so every failure path must go through here before returning.
+        """
+        self.get_logger().warn(f'Canceling docking: {reason}')
+        self.dock_cancel_pub.publish(Empty())
+
     def execute_callback(self, goal_handle):
         """Execute the navigate to charge action"""
         self.get_logger().info('Executing navigate to charge...')
@@ -127,6 +144,7 @@ class NavigateToChargeServer(Node):
             loop_count += 1
 
             if goal_handle.is_cancel_requested:
+                self.cancel_docking('canceled by client')
                 goal_handle.canceled()
                 self.get_logger().info('Goal canceled')
                 return NavigateToPose.Result()
@@ -147,6 +165,7 @@ class NavigateToChargeServer(Node):
 
             # Check if docking has not started within timeout
             if not docking_ever_started and elapsed_seconds > self.docking_start_wait_timeout:
+                self.cancel_docking('docking did not start in time')
                 goal_handle.abort()
                 self.get_logger().error(
                     f'Docking failed to start within {self.docking_start_wait_timeout} seconds - '
@@ -156,6 +175,7 @@ class NavigateToChargeServer(Node):
 
             # Check overall timeout
             if elapsed_seconds > self.docking_timeout:
+                self.cancel_docking('overall docking timeout')
                 goal_handle.abort()
                 self.get_logger().error(f'Docking timeout - failed to start charging after {self.docking_timeout} seconds')
                 return NavigateToPose.Result()

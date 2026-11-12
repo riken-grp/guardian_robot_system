@@ -47,12 +47,17 @@ class AutoCharge(Node):
         self.tolerance_delta_y = 0.03     #位置偏差閾値
         self.coarse_tolerance_delta_y = 0.1  #荒誘導終了時の左右ズレ許容値
         self.retry_count = 0       #リトライ回数
-        self.max_retry_count = 15          #最大リトライ回数
+        self.max_retry_count = 5           #最大リトライ回数
         self.precision_runnning = False   #精密誘導中かどうか
         self.precision_start_time = 0.0   #精密誘導開始時刻
         self.precision_timeout = 15.0     #精密誘導のタイムアウト時間
         self.coarse_close_backup_done = False  #荒誘導で近すぎた際の後退完了フラグ
         self.coarse_backing_up = False  #荒誘導でバックアップ中フラグ
+        self.cancel_requested = False   #外部からのドッキング中止要求
+        self.docking_start_time = 0.0   #ドッキング開始時刻
+        self.docking_timeout = 180.0    #ドッキング全体のタイムアウト時間
+                                        #（リトライ上限で止まらない経路の保険。
+                                        #  最大リトライ5回分の所要時間に余裕を見た値）
 
         docking_cb_group = MutuallyExclusiveCallbackGroup()
         get_pose_cb_group = MutuallyExclusiveCallbackGroup()
@@ -70,6 +75,9 @@ class AutoCharge(Node):
         self.buttery_sub = self.create_subscription(BatteryState, "rover/battery", self.battery_cb, qos.qos_profile_sensor_data)
         self.dock_start_sub = self.create_subscription(Empty, 'auto_charge/dock_start', self.dock_start_cb , 
                                                        10, callback_group=docking_cb_group)
+        # 中止要求はドッキング処理中にも受け取る必要があるため、
+        # docking_cb_group（ループで占有される）とは別のグループで受ける
+        self.dock_cancel_sub = self.create_subscription(Empty, 'auto_charge/dock_cancel', self.dock_cancel_cb, 10)
         self.target_pose_sub = self.create_subscription(PoseStamped, 'auto_charge/dock_target_pose', self.target_pose_cb, 
                                                         10, callback_group=get_pose_cb_group)
 
@@ -79,6 +87,11 @@ class AutoCharge(Node):
         if msg.data == "battery charge":
             pub_msg = Empty()
             self.dock_start_pub.publish(pub_msg)
+
+    def dock_cancel_cb(self, msg):
+        if self.now_docking:
+            self.get_logger().warn("Docking cancel requested")
+        self.cancel_requested = True
 
     def target_pose_cb(self, msg):
         x = -msg.pose.position.x
@@ -90,12 +103,15 @@ class AutoCharge(Node):
         delta_y_raw = x * math.sin(-diff_angle_from_robot) + y * math.cos(-diff_angle_from_robot)
         
         # 履歴に追加
-        self.delta_y_history.append(delta_y_raw)
-        if len(self.delta_y_history) > self.delta_y_history_size:
-            self.delta_y_history.pop(0)  # 古い値を削除
+        # ドッキング終了時に別スレッドから self.delta_y_history が差し替えられても
+        # 平均計算が壊れないよう、ローカル参照で扱う
+        history = self.delta_y_history
+        history.append(delta_y_raw)
+        if len(history) > self.delta_y_history_size:
+            history.pop(0)  # 古い値を削除
         
         # 平均値を計算
-        self.delta_y = sum(self.delta_y_history) / len(self.delta_y_history)
+        self.delta_y = sum(history) / len(history)
         
         self.follow_yaw = math.atan2(msg.pose.position.y, msg.pose.position.x)
         self.diff_angle = -diff_angle_from_robot
@@ -138,6 +154,9 @@ class AutoCharge(Node):
             return
 
         # ドッキング開始
+        # 待機中に届いていた中止要求は、今回のドッキングには持ち越さない
+        self.cancel_requested = False
+        self.docking_start_time = self.get_clock().now().nanoseconds * 1e-9
         self.now_docking = True
         self.now_sequence = 1
 
@@ -145,17 +164,29 @@ class AutoCharge(Node):
             # 充電状態であれば終了
             if self.battery_charge_state:
                 self.get_logger().info("docking complete")
-                self.stop_move()
-                self.precision_runnning = False
+                self.now_docking = False
+                break
+
+            # 外部から中止を要求された場合は終了
+            if self.cancel_requested:
+                self.get_logger().warn("Docking canceled")
+                self.now_docking = False
+                break
+
+            # 全体のタイムアウト
+            # リトライ上限では止まらない経路（後退できずシーケンス100に留まる等）に対する
+            # 最終的な保険。開始経路によらず必ずここで自力復帰する
+            if (self.check_time_diff(self.docking_start_time) > self.docking_timeout):
+                self.get_logger().error(
+                    f"Docking failed: overall timeout ({self.docking_timeout:.0f}s) exceeded")
                 self.now_docking = False
                 break
 
             # 充電ステーションが見つからない場合は終了
             if (self.check_time_diff(self.last_traget_time) > self.target_finding_time):
                 self.get_logger().warn("Could not find charging station")
-                self.stop_move()
                 self.now_docking = False
-                continue
+                break
 
             # ドッキング処理
             if(self.now_sequence == 1):
@@ -179,8 +210,19 @@ class AutoCharge(Node):
             time.sleep(0.1)
 
             if (self.retry_count > self.max_retry_count):
-                self.get_logger().warn("Failed to docking station by over retry limit")
+                self.get_logger().error(
+                    f"Docking failed: retry limit ({self.max_retry_count}) exceeded")
                 self.now_docking = False
+
+        # 成否によらず、必ずローバを停止させてから内部状態を初期化する。
+        # ここを通さずに抜けると最後の速度指令が残り続けるため、終了処理は
+        # ループ内ではなくこの1箇所に集約している。
+        self.stop_move()
+        self.precision_runnning = False
+        self.coarse_close_backup_done = False
+        self.coarse_backing_up = False
+        self.delta_y_history = []
+        self.cancel_requested = False
         self.retry_count = 0
         self.now_sequence = 0
 
@@ -238,9 +280,16 @@ class AutoCharge(Node):
                 self.get_logger().debug(f"Coarse induction complete: delta_x={self.delta_x:.3f}, delta_y={self.delta_y:.3f}")
                 return
             else:
-                # 近いが左右がずれている → その場旋回のみ
-                cmd_v = 0.0
-                self.get_logger().debug(f"Close but misaligned, rotating in place: delta_y={self.delta_y:.3f}")
+                # 近いが左右がずれている。
+                # その場旋回では横ズレ(delta_y)が変化せず条件も変わらないため、
+                # ここに留まると永久に抜けられない。下がり直してやり直す。
+                self.retry_count += 1
+                self.now_sequence = 100
+                self.stop_move()
+                self.get_logger().warn(
+                    f"Close but misaligned, retry {self.retry_count}/{self.max_retry_count}: "
+                    f"delta_y={self.delta_y:.3f}")
+                return
         else:
             # まだ遠い → 通常の前進制御
             if abs_delta_y > self.coarse_tolerance_delta_y:
@@ -297,9 +346,12 @@ class AutoCharge(Node):
             self.precision_start_time = self.get_clock().now().nanoseconds * 1e-9
             self.precision_runnning = True
         if (self.check_time_diff(self.precision_start_time) > self.precision_timeout):
+            # リトライへ移るので、この回は速度指令を出さずに抜ける
+            self.get_logger().warn("Precision induction timed out, retrying")
             self.retry_count += 1
             self.now_sequence = 100
             self.precision_runnning = False
+            return
         follow_yaw = self.follow_yaw
         cmd_v  = -self.precision_cmd_v * (self.delta_x - self.end_length_precision_induction) / (self.end_length_coarse_induction)
         cmd_v = min(cmd_v, -self.precision_min_cmd_v)

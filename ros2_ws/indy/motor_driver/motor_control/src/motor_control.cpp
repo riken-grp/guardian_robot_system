@@ -1,4 +1,4 @@
-#include "../include/Robstride02.hpp"
+#include "Robstride02.hpp"
 #include "../include/motor_control.hpp"
 
 // コンストラクタ

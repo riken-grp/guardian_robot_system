@@ -22,6 +22,6 @@ do
         || true
 done
 tmux send-keys -t scenario C-c 2>/dev/null || true
-50_cancel_all.py
+"${GUARDIAN_ROBOT_PATH}/tools/bin/50_cancel_all.py"
 
 echo kill_sessions completed

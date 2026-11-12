@@ -49,6 +49,7 @@ ros2 action send_goal /navigate_to_charge nav2_msgs/action/NavigateToPose "{}"
 |トピック名|トピックタイプ|概要|
 |---|---|---|
 |auto_charge/dock_start|std_msgs/msg/Empty|ドッキング開始指令|
+|auto_charge/dock_cancel|std_msgs/msg/Empty|ドッキング中止指令（受信するとローバを停止し内部状態を初期化する）|
 |auto_charge/in_docking_process|std_msgs/msg/Bool|ドッキング処理中か否かのステータス|
 |auto_charge/dock_target_pose|geometry_msgs/msg/PoseStamped|充電ステーションの相対位置・姿勢情報|
 |auto_charge/robot_pose_from_target|geometry_msgs/msg/PoseStamped|ロボットの相対位置・姿勢情報|
@@ -59,6 +60,7 @@ ros2 action send_goal /navigate_to_charge nav2_msgs/action/NavigateToPose "{}"
 |トピック名|トピックタイプ|概要|
 |---|---|---|
 |auto_charge/dock_start|std_msgs/msg/Empty|ドッキング開始指令|
+|auto_charge/dock_cancel|std_msgs/msg/Empty|ドッキング中止指令（受信するとローバを停止し内部状態を初期化する）|
 |auto_charge/in_docking_process|std_msgs/msg/Bool|ドッキング処理中か否かのステータス|
 |auto_charge/dock_target_pose|geometry_msgs/msg/PoseStamped|充電ステーションの相対位置・姿勢情報|
 |robot/action_ctl|std_msgs/msg/String|"battery charge"を受け取ると自動充電開始|

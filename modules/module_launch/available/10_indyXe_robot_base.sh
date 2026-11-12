@@ -1,8 +1,6 @@
 #!/bin/bash
 
-ROS_WORKSPACE=ros2_ws
-
-filename=$(basename "$" .sh)
+filename=$(basename "$0" .sh)
 tmux_sessions=$(tmux ls 2>/dev/null | cut -d':' -f1)
 
 # MongoDBの接続先は引数、無ければ環境変数から取得する
@@ -12,7 +10,7 @@ MONGO_PORT=${2:-$MONGO_PORT}
 : "${MONGO_URI:?MONGO_URI is not set. e.g. export MONGO_URI=<hostname>}"
 : "${MONGO_PORT:?MONGO_PORT is not set. e.g. export MONGO_PORT=9110}"
 
-cd $GUARDIAN_ROBOT_PATH/$ROS_WORKSPACE
+cd $GUARDIAN_ROBOT_PATH/ros2_ws
 source install/setup.bash
 
 if echo "$tmux_sessions" | grep -q "^$filename$"; then

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8 -*-
+import os
+
 from chromadb import PersistentClient
 from pyindy.llm.embed_db import OpenAIEmbeddingFunction, LocalEmbeddingFunction
 
@@ -7,7 +9,9 @@ from pyindy.llm.embed_db import OpenAIEmbeddingFunction, LocalEmbeddingFunction
 # It is also possible to change some of the settings (model name, etc.)
 
 # 0. Set important info (location of databases, etc.)
-ORIG_PATH = "~/.chromadb/indy1e/memorydb"
+# Same layout as settings.py ("~/.chromadb/{ROBOT_NAME}/memorydb").
+ROBOT_NAME = os.environ["ROBOT_NAME"]
+ORIG_PATH = f"~/.chromadb/{ROBOT_NAME}/memorydb"
 ORIG_API_URL = "http://localhost:8002/v1"
 ORIG_API_KEY = "NONE"
 ORIG_MODEL = "indy-instruct"
@@ -15,7 +19,7 @@ ORIG_EMBED_FN = LocalEmbeddingFunction(
     url=ORIG_API_URL, api_key=ORIG_API_KEY, model=ORIG_MODEL
 )
 
-NEW_PATH = "~/.chromadb/indy1e/memorydb_2"
+NEW_PATH = f"~/.chromadb/{ROBOT_NAME}/memorydb_2"
 NEW_API_URL = "http://localhost:8002/v1"
 NEW_API_KEY = "NONE"
 NEW_MODEL = "indy-instruct"

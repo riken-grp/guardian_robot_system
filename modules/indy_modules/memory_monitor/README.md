@@ -2,9 +2,7 @@
 
 This visualizer shows Indy's Conversations, Narrative and Long-Term Memories. It must be run after the Memory System. 
 
-It runs on a Node.js express server. To configure the server, the parameters need to be changed in the `server/configs/<robot name>.env` file:
-    - `MONGODB_URI` is the URL for the MongoDB database for the robot.
-    - `PORT` is the port from which the server will be listening.
+It runs on a Node.js express server.
 
 **To install the server dependencies**, navigate to the `server` directory and type the following command:
 
@@ -20,7 +18,7 @@ Once the dependencies are installed, you can **run the project** from the same `
 node server.js MONGODB_URL MONGODB_PORT HTTP_PORT
 ```
 
-Once the server is running, from the host computer you can enter the address `http://localhost:PORT` (With `PORT` being the same as the one in the configuration file). This will display the visualizer. Do note that the visualizer does not show historical data, only the memories generated since the visualizer loads on the browser are displayed.
+Once the server is running, from the host computer you can enter the address `http://localhost:HTTP_PORT` (With `HTTP_PORT` being the same as the one passed to `server.js`). This will display the visualizer. Do note that the visualizer does not show historical data, only the memories generated since the visualizer loads on the browser are displayed.
 
 The directories and files that can be accessed are limited to those used in the interface + backend calls. 
     - If you want to customize the interface with files and directories in the `www` directory, you may have to add them manually to the server routing script in `server/route_html.js`. 

@@ -61,7 +61,6 @@
 ```
 #!/bin/bash
 
-ROS_WORKSPACE=ros2_ws
 SLEEP_SEC=1
 
 filename=$(basename "$0" .sh)
@@ -77,14 +76,14 @@ if echo "$tmux_sessions" | grep -q "^$filename$"; then
   echo "$filename" already exists
 else
   echo "$filename" is launching...
-  tmux new -d -s $filename bash -c "source $GUARDIAN_ROBOT_PATH/$ROS_WORKSPACE/install/setup.bash;
+  tmux new -d -s $filename bash -c "source $GUARDIAN_ROBOT_PATH/ros2_ws/install/setup.bash;
                                     ros2 launch rover_tools rover_base.launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT"
   echo "sleep: $SLEEP_SEC [s]"
   sleep $SLEEP_SEC
   echo "$filename" started
 fi
 ```
-- ROS_WORKSPACEにて、起動する機能のワークスペースを設定しています。
+- ROSパッケージは `$GUARDIAN_ROBOT_PATH/ros2_ws` のビルド結果（install/setup.bash）を読み込んで起動します。
 - tmuxのセッション名はファイル名（.shを除いた部分まで）になっています。
 - tmux new -d -sから始まる行の""内で起動するlaunchファイルを指定しています。
 - 機能によっては起動後安定するまでsleepを入れています。

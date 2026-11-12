@@ -31,13 +31,13 @@ Collection: `system_parameters`
 
 `asr_ctrl`のROSトピックで、ポート番号を変更出来ます。
 
-例：`ros2 topic pub --once /indy1e/asr/asr_ctl std_msgs/msg/String 'data: "{\"sep_ports\":[5562, 5563, 5564]}"'`
+例：`ros2 topic pub --once /$ROBOT_NAME/asr/asr_ctl std_msgs/msg/String 'data: "{\"sep_ports\":[5562, 5563, 5564]}"'`
 
 
 ### ASRのポートリセット
 
 `asr_ctrl`のROSトピックで、
 
-`ros2 topic pub --once /indy1e/asr/asr_ctl std_msgs/msg/String 'data: "{\"reset_ports\":True}"'`
+`ros2 topic pub --once /$ROBOT_NAME/asr/asr_ctl std_msgs/msg/String 'data: "{\"reset_ports\":True}"'`
 
 って送ったら、全部のポートをリセットされます。

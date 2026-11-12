@@ -299,8 +299,17 @@ def main():
         "--mongo",
         help="MongoDB URI for writing results (e.g., mongodb://example.local:9130)",
     )
+    parser.add_argument(
+        "--actor",
+        default=os.getenv("ROBOT_NAME"),
+        help="Robot name written as 'actor' with --mongo (default: $ROBOT_NAME)",
+    )
 
     args = parser.parse_args()
+
+    if args.mongo and not args.actor:
+        print("error: --actor or ROBOT_NAME is required with --mongo")
+        return
 
     # NavigablePositionSelectorを初期化
     selector = NavigablePositionSelector(host=args.host, port=args.port)
@@ -330,7 +339,7 @@ def main():
         # MongoDBに書き込む場合
         if actions_collection is not None:
             doc = {
-                "actor": "indy3e",
+                "actor": args.actor,
                 "condition": {"type": "none"},
                 "status": "waiting",
                 "command": "navigation",

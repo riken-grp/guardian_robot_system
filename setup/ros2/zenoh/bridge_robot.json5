@@ -1,0 +1,39 @@
+// zenoh-bridge-ros2dds 設定（ロボット側）
+//
+// このファイルは編集せずにそのまま使う。マシンごとの値は起動時に引数で渡す
+// （modules/module_launch/available/000_zenoh_bridge.sh が ON_ROBOT=1 のとき読み込む）:
+//   domain : 環境変数 ROS_DOMAIN_ID
+//   listen : 環境変数 ZENOH_LISTEN（未設定なら全インタフェース）と ZENOH_PORT（未設定なら 7447）
+//
+// deny / pub_max_frequencies はロボット名に依存しない正規表現で書いている。
+{
+	plugins: {
+		ros2dds: {
+			reliable_routes_blocking: false,
+			deny: {
+				publishers: [
+					// td / bu カメラは丸ごと不要
+					".*_camera_td/.*",
+					".*_camera_bu/.*",
+					// <robot name>_camera の非圧縮データ
+					".*_camera/color/image_raw",
+					".*_camera/aligned_depth_to_color/image_raw",
+					".*_camera/depth/image_rect_raw",
+					".*_camera/depth/color/points",
+				],
+			},
+			pub_max_frequencies: [
+				".*map=1",
+				".*map_updates=2",
+				".*_camera/color/image_raw/compressed=10",
+				".*_camera/aligned_depth_to_color/image_raw/compressedDepth=10",
+			],
+		},
+	},
+	mode: "router",
+	transport: {
+		unicast: {
+			compression: { enabled: true },
+		},
+	},
+}
