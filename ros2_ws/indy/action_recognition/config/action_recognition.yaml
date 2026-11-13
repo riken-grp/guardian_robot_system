@@ -1,0 +1,46 @@
+/**/arm_state_node:
+  ros__parameters:
+    keypoint_indices:
+      l_ear: 1
+      l_shoulder: 5
+      l_elbow: 7
+      l_wrist: 9
+      r_ear: 2
+      r_shoulder: 6
+      r_elbow: 8
+      r_wrist: 10
+    confidence_threshold: 0.8
+
+/**/hand_waving_node:
+  ros__parameters:
+    # local file is used if it exists, otherwise downloaded from Hugging Face
+    model_path: "models/hand_waving_model.joblib"
+    model_repo_id: "yasutomo57jp/models-for-IndyXe"
+    model_revision: "main"
+    seq_len: 5
+
+/**/looking_at_simple_node:
+  ros__parameters:
+    # angle between the facing direction and the direction to the camera [deg]
+    looking_degree_threshold: 20.0          # turn on below this
+    looking_release_degree_threshold: 30.0  # turn off above this (hysteresis)
+    use_face_position: true                 # use face_location_sensor (else optical axis)
+    smoothing_alpha: 0.5                    # EMA weight of the new angle (1.0: no smoothing)
+    state_timeout_sec: 1.0                  # keep per-person state while unseen for this long [s]
+
+/**/wheelchair_node:
+  ros__parameters:
+    model_path: "models/wheelchair_model.joblib"
+    model_repo_id: "yasutomo57jp/models-for-IndyXe"
+    model_revision: "main"
+
+/**/noticed_node:
+  ros__parameters:
+    stale_sec: 1.0            # cues older than this are ignored [s]
+    looking_min_sec: 1.0      # continuous looking duration to be noticed [s]
+    approach_window_sec: 1.5  # window to estimate approaching speed [s]
+    approach_min_speed: 0.2   # approaching speed threshold [m/s]
+    approach_min_samples: 5
+    max_distance: 6.0         # ignore persons farther than this [m]
+    hold_sec: 2.0             # keep noticed state after the last evidence [s]
+    forget_sec: 10.0

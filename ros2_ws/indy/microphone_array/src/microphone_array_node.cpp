@@ -224,8 +224,21 @@ private:
         continue;
       }
 
+      // The message stamp is the capture time of the *first* sample of the
+      // block.  snd_pcm_readi() returns when the block is complete, i.e. at
+      // the time of the last sample; frames captured after it may also be
+      // waiting in the ALSA buffer (snd_pcm_delay).  Subtract both.
+      const rclcpp::Time read_time = now();
+      snd_pcm_sframes_t pending = 0;
+      if (snd_pcm_delay(pcm_handle_, &pending) < 0 || pending < 0) {
+        pending = 0;
+      }
+      const int64_t latency_ns =
+        (static_cast<int64_t>(frames_read) + static_cast<int64_t>(pending)) *
+        1000000000LL / static_cast<int64_t>(sample_rate_);
+
       auto msg = microphone_array::msg::AudioDataMultiChannel();
-      msg.stamp = now();
+      msg.stamp = read_time - rclcpp::Duration::from_nanoseconds(latency_ns);
       msg.sample_rate = static_cast<uint32_t>(sample_rate_);
       msg.channels = static_cast<uint16_t>(channels_);
       msg.frames_per_block = static_cast<uint16_t>(frames_read);

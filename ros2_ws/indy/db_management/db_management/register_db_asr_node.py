@@ -74,9 +74,11 @@ class RegisterDBASRNode(MongoDBNode):
             ret = self.dbmanager.tracking_db.find_one(
                 {"instance_id": d["instance_id"], "looking_at.target": 1}
             )
-            config = self.dbmanager.client["rism_configs"].rism_config.find_one()
+            # 設定 (起動時に dbmanager が読んだもの) が未登録，
+            # または ignore_non_looking が無い場合は無視しない
+            ignore_non_looking = bool(self.dbmanager.config.get("ignore_non_looking", False))
             # looking_atがFalseの場合は，asrの情報をDBに登録しない
-            if ret is not None or not config["ignore_non_looking"]:
+            if ret is not None or not ignore_non_looking:
                 self.dbmanager.update_asr(asr, vap_status=self.vap_status)
             return True
         if int(d["sep_port"]) == WHISPER_NAIVE_PORT:

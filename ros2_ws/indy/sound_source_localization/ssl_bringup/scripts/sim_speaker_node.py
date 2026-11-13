@@ -18,6 +18,7 @@ Parameters:
   speech_duration: Duration of synthetic fallback speech (default 1.5)
 """
 
+import array
 import math
 import sys
 import threading
@@ -207,7 +208,7 @@ class SimSpeakerNode(Node):
         n_ch = msg.channels
         n_frames = msg.frames_per_block
 
-        real = np.array(msg.data, dtype=np.int16).reshape(n_frames, n_ch).astype(np.float64)
+        real = np.frombuffer(msg.data, dtype=np.int16).reshape(n_frames, n_ch).astype(np.float64)
 
         n = min(n_frames, remaining)
         mono = np.zeros(n_frames, dtype=np.float64)
@@ -224,7 +225,7 @@ class SimSpeakerNode(Node):
         out.sample_rate = msg.sample_rate
         out.channels = n_ch
         out.frames_per_block = n_frames
-        out.data = pcm.tolist()
+        out.data = array.array('h', pcm.tobytes())
         self._pub_audio.publish(out)
 
     def _apply_direction(self, mono: np.ndarray, n_ch: int,

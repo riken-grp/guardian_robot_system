@@ -6,7 +6,7 @@ if [ -z "$ROBOT_NAME" ]; then
     exit 1
 fi
 
-TEMPLATE="$(cd "$(dirname "$0")" && pwd)/../../modules/indy_modules/rviz2/robot_config.rviz"
+TEMPLATE="$(dirname "$(readlink -f "$0")")/../../modules/indy_modules/rviz2/robot_config.rviz"
 CONFIG=$(mktemp --suffix=.rviz)
 trap 'rm -f "$CONFIG"' EXIT
 

@@ -16,6 +16,9 @@ from launch_ros.actions import Node, PushRosNamespace
 
 LOG_LEVEL = "INFO"
 
+# 使用するGPU番号（環境変数 ASR_GPU_ID で変更できる。既定: 3。GPUが4枚未満のマシンでは設定が必要）
+ASR_GPU_ID = os.getenv("ASR_GPU_ID") or "3"
+
 
 def generate_launch_description():
     """Returns the ROS2 Node Launch Description for Indy's ASR System.
@@ -35,7 +38,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            SetEnvironmentVariable(name="CUDA_VISIBLE_DEVICES", value="3"),
+            SetEnvironmentVariable(name="CUDA_VISIBLE_DEVICES", value=ASR_GPU_ID),
             declare_mongo_uri,
             declare_mongo_port,
             GroupAction(

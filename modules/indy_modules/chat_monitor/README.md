@@ -3,7 +3,7 @@ MongoDBからそれぞれのロボットの発言内容を取得し、チャッ�
 必要に応じて、DeepLで英訳した文を表示します。
 
 ## 構成
-- chet_monitor  
+- chat_monitor（`$GUARDIAN_ROBOT_PATH/modules/indy_modules/chat_monitor/chat_monitor`）  
   日本語文を取得し、チャット形式で表示します。  
   自動翻訳をONにすると、DeepL翻訳した英文のみを表示します（[自動翻訳の設定](#自動翻訳の設定)を参照）。
 
@@ -19,24 +19,19 @@ MongoDBからそれぞれのロボットの発言内容を取得し、チャッ�
    $ node --version                 ← バージョン確認  
    ```
 
-2. MongoDBのインストール
+2. ライブラリ（MongoDBのNode.js用ドライバ mongodb、express、deepl-node）のインストール  
+   sudo は付けずに、以下のディレクトリで実行します（`node_modules`はgit管理対象外です）。
    ```
-   $ sudo npm install mongodb       ※ ルートディレクトリ（/chat_monitor）で実行
-   ```
-
-3. expressのインストール
-   ```
-   $ sudo npm install express       ※ ルートディレクトリ（/chat_monitor）で実行
-   ```
-
-4. deepl-nodeのインストール
-   ```
-   $ sudo npm install deepl-node    ※ ルートディレクトリ（/chat_monitor）で実行
+   $ cd $GUARDIAN_ROBOT_PATH/modules/indy_modules/chat_monitor
+   $ npm install mongodb express deepl-node
    ```
 
 ## 起動方法
+module_launch の`30_chat_monitor.sh`（robodj では`60_robodj_chat_monitor.sh`）を enable に登録しておくと、`module_launch.sh`で自動的に起動します（MongoDBの接続先は環境変数 MONGO_URI、MONGO_PORT を`--mongo_uri`、`--mongo_port`で渡します）。  
+手動で起動する場合は、以下の手順で起動します。
+
 1. ターミナルで下記に移動します。  
-   パス：chat_monitor/chet_monitor/chat-bubble
+   パス：`$GUARDIAN_ROBOT_PATH/modules/indy_modules/chat_monitor/chat_monitor/chat-bubble`
 
 2. 下記コマンドで表示システムを起動します。
    ```
@@ -46,7 +41,7 @@ MongoDBからそれぞれのロボットの発言内容を取得し、チャッ�
    起動時引数で、MongoDBの接続先と表示用のポート番号を指定できます。  
    省略した引数は config_server.js の値（下表のデフォルト値）が使われます。
    ```
-   $ node getData.js --mongo_uri machine.local --mongo_port 9100 --display_port 3000
+   $ node getData.js --mongo_uri example.local --mongo_port 9100 --display_port 3000
    ```
 
    | 引数 | 内容 | デフォルト値 |
@@ -57,7 +52,7 @@ MongoDBからそれぞれのロボットの発言内容を取得し、チャッ�
 
    ※ `--mongo_port=9100` のように `=` 区切りでも指定できます。
 
-3. ブラウザで開きます（ポート番号は `--display_port` で指定したもの。省略時は config_server.js で設定したもの）。
+3. ブラウザで`http://<起動したマシンのホスト名>:<ポート番号>/`を開きます（ポート番号は `--display_port` で指定したもの。省略時は config_server.js で設定したもの）。
 
 
 ## 終了方法
@@ -67,7 +62,7 @@ MongoDBからそれぞれのロボットの発言内容を取得し、チャッ�
 
 
 ## 設定方法
-chet_monitor ディレクトリの下記ファイルから、動作やデザインを設定できます。
+`chat_monitor/chat_monitor` ディレクトリの下記ファイルから、動作やデザインを設定できます。
 
 - デザイン：settings.css
 - クライアント（フロントエンドの動作）：config_client.js
@@ -91,7 +86,8 @@ $ node getData.js
 翻訳に失敗した場合は、config_server.js の `translation_failed_text` に設定した文が表示されます。
 
 ## 注意事項
-- スクロールし遡って表示できる発言数を、メモリ解放のため一定数（ config_client.js から変更可能です）に制限しています。古い発言は表示から自動で消えます。
+- スクロールし遡って表示できる発言数を、メモリ解放のため一定数（ config_client.js の `messageLimit` から変更可能です）に制限しています。古い発言は表示から自動で消えます。
+- サーバー側で保持する発言数の上限は、config_server.js の `maxBubbles` で設定します。上限を超えると古い発言から破棄されます。
 - ブラウザのタブを複製すると、別個に独立したシステムが起動します。ひとつのシステムですべてのタブにチャットを表示しているわけではありません。
 - ブラウザの画面幅を変更すると、一時的にデザインが乱れることがあります。
 - 右側の吹出しをマウスでホバーやクリックすると、表示が乱れます。

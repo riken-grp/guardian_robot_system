@@ -1,0 +1,2312 @@
+[
+  {
+    "_id": {
+      "$oid": "66fa222286bbf60da15222ca"
+    },
+    "name": "default",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "trigger": [],
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "30"
+    },
+    "ignore_same_observations": true,
+    "return": false,
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "インディー 起動します。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_down",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "676d39b6d0a78d207a0830aa"
+    },
+    "name": "巡回 Standby",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": false,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "こっちはどうだろう。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "Look_around",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.5"
+            },
+            {
+              "$numberDouble": "0.8"
+            },
+            {
+              "$numberInt": "-2"
+            }
+          ]
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "窓の外はどうなってるのかな？"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "1"
+          },
+          "command": "look_up"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "僕も外に遊びに行きたいな"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "-1.3"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あっちはどうかな？"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "3"
+          },
+          "command": "look_down"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.6"
+            },
+            {
+              "$numberDouble": "1.8"
+            },
+            {
+              "$numberInt": "2"
+            }
+          ]
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "うんうん。"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "1.2"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ふぅー、よしよし。"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "1"
+          },
+          "command": "look_down"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "よし、よし"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "1"
+          },
+          "command": "look_down"
+        },
+        "interruptable": true
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "678a68c3b97b652eb3c38f39"
+    },
+    "name": "基地局へ移動",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": false,
+    "next_scenarios": [
+      "66fa222286bbf60da15222ca"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "来客対応モードを終了しました。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "raise_hand",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.88"
+            },
+            {
+              "$numberDouble": "1.88"
+            },
+            {
+              "$numberDouble": "-2.6"
+            }
+          ]
+        },
+        "utterance": {
+          "type": "normal",
+          "sentence": "僕はホームに帰ります。"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ホームに到着しました。来客タスク状況の確認済み。記憶のアップロード完了。タスクリストを作成しました。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_down",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "67eacb9db5603c990d0ead2f"
+    },
+    "name": "waiting mode Standby",
+    "status": "active",
+    "priority": {
+      "$numberInt": "3"
+    },
+    "trigger": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "現在、待機中です。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "speaking_a",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "僕にね"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "お話ししようって"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "声をかけると、"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "会話を始めるよ"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "うんうん"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_right",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "だれか？"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "お話しをして"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_left",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "くれないかな？"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "うーん"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_down",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "お客さん"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "来てくれるかな。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_up",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "お話し、したいな。"
+        },
+        "interruptable": true,
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68932a71a8fa7a2b5a25de8f"
+    },
+    "name": "scenario for waiting wakeup trigger Silence",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "trigger": [],
+    "interaction_subscenario_ids": [],
+    "ignore_same_observations": true,
+    "return": false,
+    "events": [
+      {
+        "actor": "robot1",
+        "gesture": {
+          "type": "normal",
+          "command": "look_down",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "eye": {
+          "type": "normal",
+          "image": "smile.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "gesture": {
+          "type": "normal",
+          "command": "look_forward",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "eye": {
+          "type": "normal",
+          "image": "default.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68ca7c46d658daf1b9079665"
+    },
+    "name": "Too close test",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "trigger": [],
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "30"
+    },
+    "ignore_same_observations": true,
+    "return": false,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あっちを見てきます．"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "raise_hand",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "-1.5"
+          }
+        },
+        "utterance": {
+          "type": "normal",
+          "sentence": "移動します。"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "move": {
+            "$numberDouble": "0.8"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "近いよ"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "asr": null
+          }
+        ],
+        "timeout": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "近いよ"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "move": {
+            "$numberDouble": "-0.2"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "近すぎると、僕よく見えないです"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ロボット初めてですか？"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "raise_hand",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "move": {
+            "$numberDouble": "0.2"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberInt": "-3"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "move": {
+            "$numberDouble": "-0.8"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "1.5"
+          }
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68cbd164d658daf1b9079667"
+    },
+    "name": "Too Close Test 2",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "trigger": [],
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "30"
+    },
+    "ignore_same_observations": true,
+    "return": false,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あっちを見てきます．"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "raise_hand",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "-1.5"
+          }
+        },
+        "utterance": {
+          "type": "normal",
+          "sentence": "移動します。"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "move": {
+            "$numberDouble": "0.8"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "近いよ"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "asr": null
+          }
+        ],
+        "timeout": {
+          "$numberInt": "10"
+        }
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "それなら大丈夫です。"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "こっちは異常が発見できていないです"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "asr": null
+          }
+        ],
+        "timeout": {
+          "$numberInt": "4"
+        }
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "それはよかったです"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberInt": "-3"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "move": {
+            "$numberDouble": "-0.8"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "1.5"
+          }
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68ddcd00588d7a23606025c7"
+    },
+    "name": "sample_d",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "trigger": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "現在、待機中です。ロボットが起動していても、あまり話しかけてくれる人はいません。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_right",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68ddcf529cf123228db06034"
+    },
+    "name": "GRP-standard-demo",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "0"
+    },
+    "trigger": [],
+    "return": false,
+    "next_scenarios": [
+      "68e4de7ad658daf1b9079675"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "こんにちは、ワタシはこころプラスロボット・ラボで開発されたロボットのインディーです。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "speaking_b",
+          "duration": {
+            "$numberInt": "2"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "smile.jpg",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あのね、お話するときは、はっきりしゃべってもらえると、うれしいです！"
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "よかったら、あなたの好きな食べ物とか、最近ハマっていることを、なにか教えてもらえませんか？"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_up",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "smile.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "_id": {
+          "$oid": "688b0644cf794265ddd2c66d"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "test",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[688b0644cf794265ddd2c66d][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "normal",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberDouble": "0.5"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "type": "observation"
+      },
+      {
+        "_id": {
+          "$oid": "688b02eacf794265ddd2c667"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "test",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[688b02eacf794265ddd2c667][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_up",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "normal",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "type": "observation"
+      },
+      {
+        "_id": {
+          "$oid": "6891c566cf794265ddd2c66e"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "test",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[6891c566cf794265ddd2c66e][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "normal",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "type": "observation"
+      },
+      {
+        "_id": {
+          "$oid": "688b02f6cf794265ddd2c668"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "test",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[688b02f6cf794265ddd2c668][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_up",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "normal",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "type": "observation"
+      },
+      {
+        "_id": {
+          "$oid": "68dc921d9b3cd75b57ed079b"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "test",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[68dc921d9b3cd75b57ed079b][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_b",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "normal",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "type": "observation"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ところで、ガーディアンロボットプロジェクトでは、お客さんにプレゼントを用意しているよ"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_up",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "smile.jpg",
+          "duration": {
+            "$numberInt": "5"
+          }
+        },
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "0.1"
+          }
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ぴったりなものを推薦してあげるよ。だから、簡単な質問をさせてね。"
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ロボットって、あなたにとってどんなものですか？"
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "_id": {
+          "$oid": "68ddce2c9b3cd75b57ed079c"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_present_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "test",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[68ddce2c9b3cd75b57ed079c][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "utterance": {
+              "type": "normal",
+              "sentence": "うんうん。難しいですねぇ。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "type": "action"
+          }
+        ],
+        "type": "observation"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あっ、……もうそろそろ, 帰る時間になってしまいました。"
+        },
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "-0.1"
+          }
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "来てくれて、ありがとう！またねー！プレゼント、一個、選んで帰ってね！"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_down",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "smile.jpg",
+          "duration": {
+            "$numberInt": "5"
+          }
+        },
+        "interruptable": false,
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68e4de7ad658daf1b9079675"
+    },
+    "name": "タスク終了",
+    "status": "inactive",
+    "return": false,
+    "priority": {
+      "$numberInt": "1"
+    },
+    "important": true,
+    "interaction_subscenario_ids": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "タスクを終了しました。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "bowing_max",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "今から待機場所に戻ります。"
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.6"
+            },
+            {
+              "$numberDouble": "1.8"
+            },
+            {
+              "$numberDouble": "-2.6"
+            }
+          ]
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "経験のアップロードとリセットを行います。"
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "action",
+        "ros_command": {
+          "type": "command",
+          "_id": "6982d70a2f77410a7abd2b79",
+          "topic": "memory/episode_ctl",
+          "topic_type": "std_msgs/msg/String",
+          "data": "memory end episode"
+        }
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "完了しました。"
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "次のタスクの準備を始めます。"
+        },
+        "type": "action",
+        "interruptable": true
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68e4e2afd658daf1b9079677"
+    },
+    "name": "GRP-short-demo",
+    "status": "inactive",
+    "return": false,
+    "priority": {
+      "$numberInt": "1"
+    },
+    "important": true,
+    "interaction_subscenario_ids": [],
+    "next_scenarios": [
+      "68e4de7ad658daf1b9079675"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "こんにちは、ワタシはこころプラスロボット・ラボで開発されたロボットのインディーです。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "bowing_max",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "smile.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あのね、お話するときは、はっきりしゃべってね。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "speaking_b",
+          "duration": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あなたの好きな食べ物とか、最近ハマっていることをなにか教えてもらえませんか？"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_up",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "smile.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "_id": {
+          "$oid": "688b0644cf794265ddd2c66d"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "short scenario",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[688b0644cf794265ddd2c66d][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "_id": {
+          "$oid": "688b02eacf794265ddd2c667"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "short scenario",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[688b02eacf794265ddd2c667][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "_id": {
+          "$oid": "6891c566cf794265ddd2c66e"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "short scenario",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[6891c566cf794265ddd2c66e][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "_id": {
+          "$oid": "688b02f6cf794265ddd2c668"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_loop_optmem"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "short scenario",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[688b02f6cf794265ddd2c668][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "えーっと。。うん。。"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "_id": {
+          "$oid": "688b030dcf794265ddd2c669"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "type": "observation",
+        "trigger": [
+          {
+            "llm-kd": {
+              "reply": "v3_dialogue_final"
+            }
+          }
+        ],
+        "timeout": {
+          "$numberInt": "60"
+        },
+        "task": "short scenario",
+        "success": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "{buffer[688b030dcf794265ddd2c669][contents][words]}"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "speaking_a",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ],
+        "failure": [
+          {
+            "actor": "robot1",
+            "interruptable": false,
+            "type": "action",
+            "utterance": {
+              "type": "blank",
+              "sentence": "えーっと…うん…あっ、……もうそろそろお話を終わらないといけない時間なんだ。来てくれて、ありがとう！またねー！"
+            },
+            "gesture": {
+              "type": "normal",
+              "command": "look_down",
+              "duration": {
+                "$numberInt": "1"
+              }
+            },
+            "eye": {
+              "type": "normal",
+              "image": "sad.jpg",
+              "duration": {
+                "$numberInt": "1"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68e4f22dd658daf1b9079679"
+    },
+    "name": "充電ステーションへ移動",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "trigger": [],
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "30"
+    },
+    "ignore_same_observations": true,
+    "return": true,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "基地局に移動します。"
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.5"
+            },
+            {
+              "$numberDouble": "1.15"
+            },
+            {
+              "$numberInt": "0"
+            }
+          ]
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "3.14"
+          }
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "interruptable": false,
+        "utterance": {
+          "type": "normal",
+          "sentence": "ナビゲーション機能を停止します。"
+        },
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "topic_type": "std_msgs/msg/String",
+          "data": "deactivate nav"
+        }
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "interruptable": false,
+        "utterance": {
+          "type": "normal",
+          "sentence": "バッテリの充電のため，自動でステーションに入ります。"
+        }
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "interruptable": false,
+        "utterance": {
+          "type": "normal",
+          "sentence": "ちゃんと戻れるか，応援してください．"
+        },
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "topic_type": "std_msgs/msg/String",
+          "data": "battery charge"
+        }
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "690c7740d658daf1b9079689"
+    },
+    "name": "waiting mode Standby A script with a drawn-out pace",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "trigger": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "現在、待機中です。声をかけると、ロボットがお話を始めます。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "speaking_a",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "現在、待機中です。事件は会議室で起こっているのではありません。現場で起こっています。"
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "現在、待機中です。ロボットが起動していても、あまり話しかけてくれる人はいません。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_right",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "現在、待機中です。量のないところに質もない。ので、積極的に話しかけてください。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_up",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "690c78d7d658daf1b907968b"
+    },
+    "name": "巡回 Standby 視覚入力があれば、使いたい",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": false,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "こっちはどうだろう。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "Look_around",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.5"
+            },
+            {
+              "$numberDouble": "0.8"
+            },
+            {
+              "$numberInt": "-2"
+            }
+          ]
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "窓の外には 認識結果を挿入したい が見えるなぁ。僕も外に遊びに行きたいな"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "1"
+          },
+          "command": "look_up"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "-1.3"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あっちはどうかな？"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "3"
+          },
+          "command": "look_down"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.6"
+            },
+            {
+              "$numberDouble": "1.8"
+            },
+            {
+              "$numberInt": "2"
+            }
+          ]
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "うんうん。"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "type": "normal",
+          "rotate": {
+            "$numberDouble": "1.2"
+          }
+        },
+        "interruptable": true,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ふぅー、よしよし。"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "1"
+          },
+          "command": "look_down"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "よし、よし"
+        },
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "1"
+          },
+          "command": "look_down"
+        },
+        "interruptable": true
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "690c79a2d658daf1b907968d"
+    },
+    "name": "タスク終了 本当は、まとめとか、変数を使いたい",
+    "status": "inactive",
+    "return": false,
+    "priority": {
+      "$numberInt": "1"
+    },
+    "important": true,
+    "interaction_subscenario_ids": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "タスクを終了しました。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "bowing_max",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "今から待機場所に戻ります。"
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.6"
+            },
+            {
+              "$numberDouble": "1.8"
+            },
+            {
+              "$numberDouble": "-2.6"
+            }
+          ]
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "状況チェック開始"
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "経験のアップロード完了"
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "次のタスクの準備を始めます。"
+        },
+        "type": "action",
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "バッテリ残量は 不明 です"
+        },
+        "type": "action",
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ただ今の時刻は 不明 です。"
+        },
+        "type": "action",
+        "interruptable": true
+      }
+    ]
+  }
+]

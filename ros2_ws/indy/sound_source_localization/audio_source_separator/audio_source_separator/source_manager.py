@@ -1,6 +1,7 @@
 """Source manager for person-DOA association and audio buffering."""
 
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -23,6 +24,11 @@ class SpeechSource:
     last_update_time: float = 0.0
     last_audio_timestamp_ns: int = 0
     total_buffered_samples: int = 0
+    # End time (ns) of the last processed block (to detect gaps)
+    last_audio_end_ns: int = 0
+    # Pre-roll ring buffer of (timestamp_ns, block) while not speaking, so
+    # the blocks that led to the VAD onset are not lost.
+    preroll: deque = field(default_factory=deque)
 
 
 @dataclass
@@ -56,6 +62,7 @@ class SourceManager:
         vad_min_speech_frames: int = 3,
         sample_rate: int = 16000,
         time_func: Callable[[], float] | None = None,
+        vad_preroll_frames: int = 5,
     ):
         """Initialize the source manager.
 
@@ -72,6 +79,9 @@ class SourceManager:
             time_func: Callable returning current time in seconds. Defaults to
                 time.monotonic. Inject node.get_clock().now().nanoseconds * 1e-9
                 for ROS-time-aware operation (rosbag / simulation support).
+            vad_preroll_frames: Number of blocks kept before the VAD onset and
+                prepended to the segment.  At least ``vad_min_speech_frames -
+                1`` (the blocks the onset detector needs) is always kept.
         """
         self.association_angle_threshold = association_angle_threshold
         self.stale_timeout = stale_timeout
@@ -80,6 +90,8 @@ class SourceManager:
         self.vad_threshold_db = vad_threshold_db
         self.vad_hangover_frames = vad_hangover_frames
         self.vad_min_speech_frames = vad_min_speech_frames
+        self.vad_preroll_frames = max(int(vad_preroll_frames),
+                                      int(vad_min_speech_frames) - 1, 0)
         self.sample_rate = sample_rate
         self._time_func: Callable[[], float] = (
             time_func if time_func is not None else time.monotonic
@@ -156,6 +168,7 @@ class SourceManager:
                         min_speech_frames=self.vad_min_speech_frames,
                     ),
                     last_update_time=now,
+                    preroll=deque(maxlen=self.vad_preroll_frames),
                 )
             else:
                 self.sources[pid].azimuth = matched_az
@@ -163,6 +176,11 @@ class SourceManager:
                 self.sources[pid].last_update_time = now
 
         return associations
+
+    def speaking_sources(self) -> dict[int, float]:
+        """person_id -> last associated azimuth for sources inside an utterance."""
+        return {pid: src.azimuth for pid, src in self.sources.items()
+                if src.is_speaking}
 
     def process_audio(
         self,
@@ -172,10 +190,16 @@ class SourceManager:
     ) -> list[CompletedSegment]:
         """Process beamformed audio for a person and detect speech segments.
 
+        Note: this does *not* refresh the association time
+        (``last_update_time``); only :meth:`associate_persons_with_doa` does,
+        so a source that keeps being fed with its last known direction is
+        still finalised by :meth:`cleanup_stale` once it has not been
+        re-associated for ``stale_timeout`` seconds.
+
         Args:
             person_id: The person ID.
             beamformed_audio: Beamformed single-channel audio (float).
-            timestamp_ns: Timestamp in nanoseconds for this audio block.
+            timestamp_ns: Time of the first sample of this block (ns).
 
         Returns:
             List of CompletedSegment (0, 1, or 2 elements). Two segments can
@@ -186,8 +210,18 @@ class SourceManager:
             return []
 
         source = self.sources[person_id]
-        source.last_update_time = self._time_func()
+        block_ns = int(round(len(beamformed_audio) * 1e9 / self.sample_rate))
+        end_ns = timestamp_ns + block_ns
+
+        # A gap in the audio fed to this source (e.g. it was not associated
+        # for a while) invalidates the pre-roll and the onset counter.
+        if (not source.is_speaking and source.last_audio_end_ns
+                and timestamp_ns - source.last_audio_end_ns > block_ns // 2):
+            source.preroll.clear()
+            source.vad.reset()
+
         source.last_audio_timestamp_ns = timestamp_ns
+        source.last_audio_end_ns = end_ns
 
         onset, offset = source.vad.detect_onset(beamformed_audio)
 
@@ -200,24 +234,31 @@ class SourceManager:
                 if seg is not None:
                     results.append(seg)
             source.is_speaking = True
-            source.speech_start_ns = timestamp_ns
-            source.audio_buffer = [beamformed_audio.copy()]
-            source.total_buffered_samples = len(beamformed_audio)
+            # Prepend the pre-roll (blocks before the onset was confirmed)
+            pre = list(source.preroll)
+            source.preroll.clear()
+            source.speech_start_ns = pre[0][0] if pre else timestamp_ns
+            source.audio_buffer = [b for _, b in pre] + [beamformed_audio.copy()]
+            source.total_buffered_samples = sum(len(b) for b in source.audio_buffer)
 
         elif source.is_speaking:
             source.audio_buffer.append(beamformed_audio.copy())
             source.total_buffered_samples += len(beamformed_audio)
 
-            # Check max duration
+            # Check max duration: split, but keep the utterance going (the
+            # VAD state is preserved, so no audio is lost at the split).
             duration = source.total_buffered_samples / self.sample_rate
-            if duration >= self.max_speech_duration:
-                seg = self._finalize_segment(source, timestamp_ns)
+            if duration >= self.max_speech_duration and not offset:
+                seg = self._finalize_segment(source, end_ns, keep_speaking=True)
                 if seg is not None:
                     results.append(seg)
                 return results
 
+        else:
+            source.preroll.append((timestamp_ns, beamformed_audio.copy()))
+
         if offset and source.is_speaking:
-            seg = self._finalize_segment(source, timestamp_ns)
+            seg = self._finalize_segment(source, end_ns)
             if seg is not None:
                 results.append(seg)
 
@@ -227,24 +268,36 @@ class SourceManager:
         self,
         source: SpeechSource,
         end_timestamp_ns: int,
+        keep_speaking: bool = False,
     ) -> CompletedSegment | None:
         """Finalize a speech segment from a source's buffer.
+
+        Args:
+            keep_speaking: When True (max-duration split) the source stays in
+                the speaking state and the next segment starts right at
+                ``end_timestamp_ns``; the VAD is not reset.
 
         Returns:
             CompletedSegment if duration meets minimum, else None.
         """
         if not source.audio_buffer:
-            source.is_speaking = False
+            source.is_speaking = keep_speaking
             return None
 
         audio = np.concatenate(source.audio_buffer)
         duration = len(audio) / self.sample_rate
+        start_ns = source.speech_start_ns
 
         # Reset source state
-        source.is_speaking = False
         source.audio_buffer = []
         source.total_buffered_samples = 0
-        source.vad.reset()
+        if keep_speaking:
+            source.is_speaking = True
+            source.speech_start_ns = end_timestamp_ns
+        else:
+            source.is_speaking = False
+            source.preroll.clear()
+            source.vad.reset()
 
         if duration < self.min_speech_duration:
             return None
@@ -255,7 +308,7 @@ class SourceManager:
             distance=source.distance,
             sample_rate=self.sample_rate,
             audio_data=audio,
-            speech_start_ns=source.speech_start_ns,
+            speech_start_ns=start_ns,
             speech_end_ns=end_timestamp_ns,
         )
 
@@ -276,7 +329,7 @@ class SourceManager:
                 if source.is_speaking and source.audio_buffer:
                     seg = self._finalize_segment(
                         source,
-                        source.last_audio_timestamp_ns,
+                        source.last_audio_end_ns,
                     )
                     if seg is not None:
                         segments.append(seg)

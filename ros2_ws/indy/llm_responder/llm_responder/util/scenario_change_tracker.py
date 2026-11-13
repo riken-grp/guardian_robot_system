@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List
 
+# robot settings from the RISM config DB (9100)
+from pyindy.mongo import load_robot_settings
 from pyindy.mongo.internal_state_logger import get_internal_state_logger
 from pymongo import MongoClient
 
@@ -30,7 +32,7 @@ class ScenarioInfo:
 class ScenarioChangeTracker:
     def __init__(self, db: MongoClient) -> None:
         # Load Config, ISL
-        self.__config = db.rism_configs.rism_config.find_one({})
+        self.__config = load_robot_settings() or {}
         if not self.__config:
             raise Exception("No Configuration Found")
         self.__isl = get_internal_state_logger(self.__config)

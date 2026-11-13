@@ -39,8 +39,10 @@ FT232H経由でSPI通信を行うため、FTDIの D2XX ドライバと LibMPSSE 
     lcd_control.yamlから下記を設定します。  
     - image_lcd1: LCD1番で、ノード起動直後に表示する画像のファイル名を指定。
     - image_lcd2: LCD2番で、ノード起動直後に表示する画像のファイル名を指定。
-    - pub_period_sec: (robot_name)/lcd1/displayed_file及び(robot_name)/lcd2/displayed_fileトピックの配信周期を秒単位で指定。
-    - lcd1(2)：lcd1(2)が左右どちらのディスプレイか指定します。
+    - pub_period_sec: /$ROBOT_NAME/eye_display/(lcd1の値)/displayed_file及び/$ROBOT_NAME/eye_display/(lcd2の値)/displayed_fileトピックの配信周期を秒単位で指定。
+    - lcd1(2)：lcd1(2)が左右どちらのディスプレイか指定します（`left`/`right`）。この値がトピック名に使われます。
+
+  ノード`eye_control_node`は`/$ROBOT_NAME`名前空間で起動するため、以下のトピックの実際の名前は`/$ROBOT_NAME/eye_display/...`となる。
 
   - subscriber
     - eye_display/right(left)/target_file : 「std_msgs::msg::String」型で入力したファイルの画像を右(左)眼に表示します。

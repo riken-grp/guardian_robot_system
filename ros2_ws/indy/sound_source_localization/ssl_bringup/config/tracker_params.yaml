@@ -1,4 +1,4 @@
-tracker_node:
+/**/tracker_node:
   ros__parameters:
     # Clustering parameters
     cluster_distance_threshold: 0.15   # Max distance between consecutive points to be in same cluster (m)

@@ -8,14 +8,20 @@ import requests
 
 
 class FaceDetector:
-    def __init__(self):
+    def __init__(self, upsample=0):
+        """upsample: number of times dlib upsamples the image before detection.
+
+        Each upsample doubles the image size (finds ~2x smaller faces) but
+        roughly quadruples the CNN cost on the full frame.
+        """
         model_file = "mmod_human_face_detector.dat"
         self.check_and_get_file(model_file)
         self.model = dlib.cnn_face_detection_model_v1(model_file)
+        self.upsample = int(upsample)
 
     def __call__(self, img):
         pimg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        dets = self.model(pimg, 1)
+        dets = self.model(pimg, self.upsample)
         return dets
 
     def check_and_get_file(self, model_file):

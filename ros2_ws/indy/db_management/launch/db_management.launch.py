@@ -36,6 +36,7 @@ def generate_launch_description():
                     ("in_hand_waving_topic", "recog/person/hand_waving"),
                     ("in_lookingat_topic", "recog/person/looking_at"),
                     ("in_wheelchair_topic", "recog/person/wheelchair"),
+                    ("in_noticed_topic", "recog/person/noticed"),
                 ],
                 on_exit=Shutdown(),
             ),

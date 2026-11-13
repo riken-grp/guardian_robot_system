@@ -1,0 +1,57 @@
+# ロボット 1 台分の MongoDB と mongo-express（Web 管理画面）を起動する構成．使い方は README.md を参照．
+#
+# - マシンごとの値（ホスト名・ポート・データの置き場所・uid など）はすべて mongo.env で与える．
+#   compose が自動で読む .env ではないので，コマンドには毎回 --env-file mongo.env を付ける．
+# - MongoDB は単一ノードのレプリカセット（rs0）として動く．メンバー名は外部から到達できる
+#   <MONGO_PUBLIC_HOST>:<MONGO_PORT> で登録するため，コンテナ内でも公開ポートと同じ番号で待ち受ける．
+#   初期化とメンバー名の修正は rs-healthcheck.js が自動で行う．
+# - 複数台分を同じサーバで動かすときは，env ファイルとプロジェクト名を変えてこのファイルを複数回起動する
+#   （docker compose -p <名前> --env-file mongo_<名前>.env up -d）．README.md の「複数台分を起動する」を参照．
+
+services:
+
+  mongo:
+    image: "${MONGO_IMAGE:?MONGO_IMAGE を mongo.env に設定してください（docker compose には --env-file mongo.env を付ける）}"
+    restart: always
+    user: "${MONGO_UID:-1001}:${MONGO_GID:-1001}"
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "${MONGO_PORT:?MONGO_PORT を mongo.env に設定してください（docker compose には --env-file mongo.env を付ける）}", "--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-1}"]
+    ports:
+      - ${MONGO_PORT}:${MONGO_PORT}
+    volumes:
+      - ./rs-healthcheck.js:/rs-healthcheck.js:ro
+      - ${MONGO_DATA_DIR:?MONGO_DATA_DIR を mongo.env に設定してください（docker compose には --env-file mongo.env を付ける）}/data:/data/db
+      - ${MONGO_DATA_DIR}/config:/data/configdb
+      - ${MONGO_DATA_DIR}/var_cache:/var/cache
+    environment:
+      MONGO_PORT: "${MONGO_PORT}"
+      RS_HOST: "${MONGO_PUBLIC_HOST:?MONGO_PUBLIC_HOST を mongo.env に設定してください（docker compose には --env-file mongo.env を付ける）}:${MONGO_PORT}"
+    # mongod はメンバー名（MONGO_PUBLIC_HOST）が自分自身を指すかをコンテナ内から確かめる．
+    # DNS に頼らずに済むよう，コンテナ内ではこの名前をホスト自身（host-gateway）に向ける．
+    extra_hosts:
+      - "${MONGO_PUBLIC_HOST}:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "HOME=/tmp mongosh --quiet --port $${MONGO_PORT} /rs-healthcheck.js"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+    logging: &logging
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mongo-express:
+    image: "${ME_IMAGE:-mongo-express:1.0.2}"
+    restart: always
+    ports:
+      - ${ME_BIND_ADDR:-0.0.0.0}:${ME_PORT:-8081}:8081
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Tokyo
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_DOCUMENTS_PER_PAGE: 100
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:${MONGO_PORT}/?directConnection=true
+    logging: *logging

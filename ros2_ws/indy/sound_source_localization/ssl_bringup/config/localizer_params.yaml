@@ -1,4 +1,4 @@
-sound_source_localizer:
+/**/localizer_node:
   ros__parameters:
     # Number of sound sources to detect simultaneously
     num_sources: 5
@@ -8,3 +8,11 @@ sound_source_localizer:
 
     # Frequency band for processing (Hz)
     frequency_range: [300.0, 3500.0]
+
+    # Minimum normalised SRP-PHAT power (0..1, 1 = all mic pairs perfectly
+    # coherent) for a DOA peak to be reported; silence -> no estimates.
+    # Tune on the robot (diffuse low-frequency noise raises the floor).
+    power_threshold: 0.05
+
+    # GCC oversampling factor for fractional-delay resolution (1 = off)
+    interp_factor: 4

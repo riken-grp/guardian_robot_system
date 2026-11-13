@@ -41,8 +41,10 @@ class HeadPoseEstimator:
         idx_tensor = [idx for idx in range(66)]
         self.idx_tensor = torch.FloatTensor(idx_tensor).cuda()
 
-    def estimate(self, img, face):
-        l, t, r, b = face
+    @staticmethod
+    def _crop_face(img, face):
+        """Crop the (enlarged) head region of a face bbox (l, t, r, b)."""
+        l, t, r, b = map(int, face)
 
         bbw = r - l
         bbh = b - t
@@ -54,23 +56,50 @@ class HeadPoseEstimator:
         t = max(t, 0)
         r = min(img.shape[1], r)
         b = min(img.shape[0], b)
+        if r <= l or b <= t:
+            return None
+        return img[t:b, l:r]
 
-        fimg = img[t:b, l:r]
-        fimg = Image.fromarray(fimg)
+    def estimate_batch(self, img, faces):
+        """Estimate (yaw, pitch, roll) of all faces in one forward pass.
 
-        fimg = self.transformations(fimg)
-        fimg = fimg.unsqueeze(0).cuda()
-        yaw, pitch, roll = self.model(fimg)
+        img: BGR image (cv2).  faces: list of (l, t, r, b).
+        Returns a list aligned with ``faces``; None for faces whose crop is
+        empty.
+        """
+        results = [None] * len(faces)
+        tensors = []
+        indices = []
+        for i, face in enumerate(faces):
+            fimg = self._crop_face(img, face)
+            if fimg is None:
+                continue
+            # Hopenet is trained on RGB images
+            fimg = Image.fromarray(cv2.cvtColor(fimg, cv2.COLOR_BGR2RGB))
+            tensors.append(self.transformations(fimg))
+            indices.append(i)
+        if not tensors:
+            return results
 
-        yaw_predicted = F.softmax(yaw)
-        pitch_predicted = F.softmax(pitch)
-        roll_predicted = F.softmax(roll)
+        with torch.inference_mode():
+            batch = torch.stack(tensors, dim=0).to(self.idx_tensor.device)
+            yaw, pitch, roll = self.model(batch)
+            # expected value of the bin distributions -> degrees, (B, 3)
+            angles = torch.stack(
+                [
+                    torch.sum(F.softmax(x, dim=1) * self.idx_tensor, dim=1) * 3 - 99
+                    for x in (yaw, pitch, roll)
+                ],
+                dim=1,
+            )
+            angles = angles.cpu().numpy()  # single GPU -> CPU sync
 
-        yaw_predicted = torch.sum(yaw_predicted.data[0] * self.idx_tensor) * 3 - 99
-        pitch_predicted = torch.sum(pitch_predicted.data[0] * self.idx_tensor) * 3 - 99
-        roll_predicted = torch.sum(roll_predicted.data[0] * self.idx_tensor) * 3 - 99
+        for i, a in zip(indices, angles):
+            results[i] = (float(a[0]), float(a[1]), float(a[2]))
+        return results
 
-        return float(yaw_predicted), float(pitch_predicted), float(roll_predicted)
+    def estimate(self, img, face):
+        return self.estimate_batch(img, [face])[0]
 
     def visualize(self, img, ltrb, ypr, with_bb=True):
         l, t, r, b = ltrb  # face bb

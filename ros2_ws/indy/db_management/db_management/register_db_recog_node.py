@@ -3,6 +3,7 @@
 
 import rclpy
 from common_msgs.msg import StringStamped
+from rcl_interfaces.msg import ParameterDescriptor
 from rclpy import qos
 from .mongo_node_base import MongoDBNode
 from recognition_msgs.msg import Objects, Persons, Pointings, Relations
@@ -15,10 +16,19 @@ class RegisterDBNode(MongoDBNode):
         super().__init__(name)
 
         mongo_uri, mongo_port, dbname = self._init_mongo_params("")
-        self.declare_parameter("distance_threshold", 2.0)
+        self.declare_parameter("distance_threshold", 3.0)
         self.distance_threshold = self.get_parameter("distance_threshold").value
+        # person_in_range: 人が初めてこの距離 [m] 以内に入ったときに1回出す
+        # (action_recognition noticed_node の max_distance に合わせる)
+        self.declare_parameter(
+            "in_range_distance", 6.0, ParameterDescriptor(dynamic_typing=True)
+        )
+        self.in_range_distance = float(self.get_parameter("in_range_distance").value)
+        self.declare_parameter("lost_timeout", 3.0)
+        self.lost_timeout = self.get_parameter("lost_timeout").value
 
         self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname)
+        self.prune_timer = self.create_timer(0.5, self.callback_prune)
 
         self.sub_track = self.create_subscription(
             Objects,
@@ -75,8 +85,20 @@ class RegisterDBNode(MongoDBNode):
             qos_profile=qos.qos_profile_system_default,
         )
 
+        self.sub_noticed = self.create_subscription(
+            StringStamped,
+            "in_noticed_topic",
+            self.callback_noticed,
+            qos_profile=qos.qos_profile_system_default,
+        )
+
     def callback_obj(self, tracklets):
-        self.dbmanager.update_objects(tracklets, self.distance_threshold)
+        self.dbmanager.update_objects(
+            tracklets, self.distance_threshold, self.in_range_distance
+        )
+
+    def callback_prune(self):
+        self.dbmanager.prune_lost_objects(self.lost_timeout)
 
     def callback_pose(self, poses):
         self.dbmanager.update_poses(poses)
@@ -101,6 +123,9 @@ class RegisterDBNode(MongoDBNode):
 
     def callback_wheelchair(self, wheelchairs):
         self.dbmanager.update_wheelchair(wheelchairs)
+
+    def callback_noticed(self, noticed):
+        self.dbmanager.update_noticed(noticed)
 
 
 def main():

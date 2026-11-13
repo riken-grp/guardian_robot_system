@@ -11,8 +11,11 @@
 
 ## 起動方法
 ```
-ros2 launch network_check network_check_launch.py mongo_uri:=<アドレス> mongo_port:=<ポート番号>
+ros2 launch network_check network_check_launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT
 ```
+- launch引数
+  - mongo_uri / mongo_port：記録先MongoDBの接続先。
+  - network_interface：監視する無線インターフェース名（例: `wlan0`）。省略時（デフォルト値：`''`）は`iw dev`で検出したインターフェースのうち、接続中の最初のものを使用する。
 
 ## 操作方法
 ### 主なROSトピック

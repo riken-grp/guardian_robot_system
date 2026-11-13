@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import cv2
 import numpy as np
+from rcl_interfaces.msg import ParameterDescriptor
 import rclpy
 from geometry_msgs.msg import TransformStamped
 from rclpy.qos import qos_profile_system_default
@@ -11,6 +12,7 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
 from . import configs as cfg
+from .gpu_check import log_torch_device
 from .image_processing_node import ImageProcessingNode
 from .mapper import Sensor3DMapper
 from .message_builders import ObjectMessageBuilder
@@ -29,30 +31,52 @@ class DetectionAndTrackingNode(ImageProcessingNode):
     def _declare_parameters(self):
         self.declare_parameter("model", "PekingU/rtdetr_r101vd_coco_o365")
         self.declare_parameter("thresh", 0.7)
-        self.declare_parameter("track_thresh", 0.5)
-        self.declare_parameter("track_buffer", 300)
-        self.declare_parameter("match_thresh", 0.8)
+        # ByteTrack (trackers.ByteTrackTracker); the defaults reproduce the
+        # previous sv.ByteTrack(track_thresh=0.5, track_buffer=300,
+        # match_thresh=0.8) settings, see object_detector.legacy_to_bytetrack
+        any_number = ParameterDescriptor(dynamic_typing=True)
+        # splits high / low confidence detections (was track_thresh)
+        self.declare_parameter("high_conf_det_threshold", 0.5, any_number)
+        # confidence needed to start a new track (was track_thresh + 0.1)
+        self.declare_parameter("track_activation_threshold", 0.6, any_number)
+        # IoU needed to match a track (was 1 - match_thresh)
+        self.declare_parameter("minimum_iou_threshold", 0.2, any_number)
+        # frames (at frame_rate) a lost track is kept (was track_buffer)
+        self.declare_parameter("lost_track_buffer", 300)
+        self.declare_parameter("frame_rate", 30.0, any_number)
+        # 2 = an id is assigned on the second matched frame (sv default 1)
+        self.declare_parameter("minimum_consecutive_frames", 2)
         self.declare_parameter("world_frame_id", "map")
 
     def _initialize_components(self):
         model = self.get_parameter("model").value
         self.thresh = self.get_parameter("thresh").value
-        track_thresh = self.get_parameter("track_thresh").value
-        track_buffer = self.get_parameter("track_buffer").value
-        match_thresh = self.get_parameter("match_thresh").value
+        tracker_params = {
+            name: self.get_parameter(name).value
+            for name in (
+                "high_conf_det_threshold",
+                "track_activation_threshold",
+                "minimum_iou_threshold",
+                "lost_track_buffer",
+                "frame_rate",
+                "minimum_consecutive_frames",
+            )
+        }
+        self.get_logger().info(f"ByteTrack parameters: {tracker_params}")
         world_frame_id = self.get_parameter("world_frame_id").value
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.mapper = Sensor3DMapper(self.tf_buffer, world_frame_id)
+        self.mapper = Sensor3DMapper(
+            self.tf_buffer, world_frame_id, logger=self.get_logger()
+        )
 
         self.det_proc = RTDetrTracker(
             model,
-            track_thresh=track_thresh,
-            track_buffer=track_buffer,
-            match_thresh=match_thresh,
+            **tracker_params,
         )
+        log_torch_device(self.get_logger(), "RT-DETR", self.det_proc.model)
 
         self.message_builder = ObjectMessageBuilder(self.det_proc.names)
 
@@ -79,29 +103,34 @@ class DetectionAndTrackingNode(ImageProcessingNode):
         """
         if self.pub is None:
             return
-        if self.pub.get_subscription_count() == 0:
-            if self.pub_vis is None:
-                return
-            if self.pub_vis.get_subscription_count() == 0:
-                return
+        if self.pub.get_subscription_count() == 0 and not self.has_subscribers(
+            self.pub_vis
+        ):
+            return
 
         cinfo = self.camera_info
         if cinfo is None:
-            self.get_logger().warn("CameraInfo not available yet; skipping.")
+            self.get_logger().warn(
+                "CameraInfo not available yet; skipping.", throttle_duration_sec=5.0
+            )
             return
-        # Update TF
+        # Update TF (non-blocking; falls back to the last known transform)
         if not self.mapper.update_tf(cinfo.header.frame_id, header.stamp):
-            self.get_logger().warn("World TF not available yet; location_global will be (0,0,0).")
-        # Decode depth
-        mdimg = cv2.medianBlur(cv_depth, ksize=5)
+            self.get_logger().warn(
+                "World TF not available yet; location_global will be (0,0,0).",
+                throttle_duration_sec=5.0,
+            )
         # Run detection
-        detections = self.det_proc.track(cv_image, conf=self.thresh)
-        if len(detections) == 0 or len(detections[0]) < 7:
-            return
+        detections = np.asarray(self.det_proc.track(cv_image, conf=self.thresh))
+        if len(detections) == 0 or detections.ndim != 2 or detections.shape[1] < 7:
+            # no detections / no confirmed tracks: publish an empty message so
+            # that downstream synchronizers (association_node) keep running
+            detections = np.zeros((0, 7))
         detections = detections[detections[:, cfg.CONFIDENCE_COLUMN] > self.thresh]
         detections[:, 2] = detections[:, 2] - detections[:, 0]
         detections[:, 3] = detections[:, 3] - detections[:, 1]
-        detections3d = self.mapper.get_3d_value(detections, mdimg, cinfo)
+        # the mapper computes a robust (median) depth itself; no blur needed
+        detections3d = self.mapper.get_3d_value(detections, cv_depth, cinfo)
         self.publish(header, detections3d, cv_image)
 
     def _tf_broadcast(self, header, detections):
@@ -123,11 +152,14 @@ class DetectionAndTrackingNode(ImageProcessingNode):
             self.br.sendTransform(t)
 
     def publish(self, header, detections, img):
-        msg, jsondata, markers, oimg = self.message_builder.build_from_tracklets(
-            header, detections, img, self.pub_vis is not None
+        is_visualize = self.has_subscribers(self.pub_vis)
+        msg, _, markers, oimg = self.message_builder.build_from_tracklets(
+            header, detections, img, is_visualize
         )
 
-        if self.pub_vis is not None:
+        self.pub.publish(msg)
+
+        if is_visualize:
             encoded_image = self._encode_image(oimg)
             if encoded_image is None:
                 return
@@ -136,8 +168,6 @@ class DetectionAndTrackingNode(ImageProcessingNode):
             mimg.format = "jpeg"
             mimg.data = encoded_image.tobytes()
             self.pub_vis.publish(mimg)
-
-        self.pub.publish(msg)
 
     def _encode_image(self, oimg):
         success, encoded_image = cv2.imencode(

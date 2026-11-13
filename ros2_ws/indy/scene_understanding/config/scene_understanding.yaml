@@ -5,22 +5,38 @@
     number: 250
     marker_size: 0.2
 
+/**/association_node:
+  ros__parameters:
+    # IoU threshold to match tracker boxes with pose / scene graph boxes
+    iou_threshold: 0.5
+
 /**/body_pose_estimation_node:
   ros__parameters:
     model: "balanced"
     thresh: 0.3
+    keypoint_thresh: 0.5
     world_frame_id: "map"
 
 /**/detection_and_tracking_node:
   ros__parameters:
     world_frame_id: "map"
     thresh: 0.6
+    # ByteTrack (trackers.ByteTrackTracker).  Equivalent to the previous
+    # sv.ByteTrack(track_thresh=0.5, track_buffer=300, match_thresh=0.8)
+    high_conf_det_threshold: 0.5     # high / low confidence split (old track_thresh)
+    track_activation_threshold: 0.6  # start a new track (old track_thresh + 0.1)
+    minimum_iou_threshold: 0.2       # IoU to match (old 1 - match_thresh)
+    lost_track_buffer: 300           # frames at frame_rate (old track_buffer)
+    frame_rate: 30.0
+    minimum_consecutive_frames: 2    # id on the 2nd matched frame (= old default 1)
 
 /**/head_pose_estimation_node:
   ros__parameters:
     model: "hopenet_alpha1.pkl"
     device: "cuda"
     world_frame_id: "map"
+    # dlib CNN face detector upsampling (0: fast, 1: ~2x smaller faces, ~4x cost)
+    face_detector_upsample: 0
 
 /**/scene_text_node:
   ros__parameters:

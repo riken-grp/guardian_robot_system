@@ -9,16 +9,23 @@ environment variables when an argument is omitted:
   MONGO_URI     --server    MongoDB host
   MONGO_PORT    --port      MongoDB port
 
-Run as follows from test_program folder:
+schedule_scripts.py refers to the test scripts with relative paths ("../sh/..."),
+so run it with launch.sh (it changes to the inner test_program/test_program
+directory and passes all arguments through):
 
 export ROBOT_NAME=<robot name>
 export MONGO_URI=<hostname>          # e.g. example.local
 export MONGO_PORT=9000
-python3 schedule_scripts.py
+$GUARDIAN_ROBOT_PATH/modules/indy_modules/test_program/launch.sh
 
 or pass them explicitly:
 
-python3 schedule_scripts.py --server=example.local --port=9000
+$GUARDIAN_ROBOT_PATH/modules/indy_modules/test_program/launch.sh --server=example.local --port=9000
+
+To run schedule_scripts.py directly, run it from the inner directory
+(modules/indy_modules/test_program/test_program):
+
+python3 schedule_scripts.py
 
 The same server holds the configuration and the test results. Databases used:
 
@@ -46,7 +53,10 @@ Format of the entries is as follows:
     frequency: '5'
 }
 
-When schedule_scripts.py is run, it fetches the tests for the current robot and host and runs each test in a separate thread. Frequency determines how often the test is run.
+When schedule_scripts.py is run, it fetches the tests for the current robot and host and runs each test in a separate thread.
+An entry is selected when its robot equals ROBOT_NAME and its host equals the hostname of
+the machine running the tests with ".local" appended (e.g. hostname "robot-pc" -> host 'robot-pc.local';
+".local" is not added twice if the hostname already ends with it). Frequency determines how often the test is run.
 Valid test types are LSUSB, DEVPERMS, PING, DISK
 
 When an error is found, tBlackBoard physical_topic gets a error entry where hyphens are converted to underscores and an _error is added. For the above: hw_ttyusb0_error

@@ -26,15 +26,17 @@ keigan_motor/
   - 公式リポジトリ([keigan-motor/pykeigan_motor](https://github.com/keigan-motor/pykeigan_motor))から取得して配置し、import文を相対importに修正する。
     ```
     git clone https://github.com/keigan-motor/pykeigan_motor.git
-    cp -r pykeigan_motor/pykeigan (ROS2ワークスペース)/indy/blr/keigan_motor/keigan_motor/
-    cd (ROS2ワークスペース)/indy/blr/keigan_motor/keigan_motor/pykeigan
+    cp -r pykeigan_motor/pykeigan $GUARDIAN_ROBOT_PATH/ros2_ws/indy/keigan_motor/keigan_motor/
+    cd $GUARDIAN_ROBOT_PATH/ros2_ws/indy/keigan_motor/keigan_motor/pykeigan
     sed -i 's/^from pykeigan/from ..pykeigan/' *.py
     ```
     - 修正後、各ファイルのimport文が`from ..pykeigan import controller as base`、`from ..pykeigan.utils import *`の形式になっていることを確認する。
 - 配置後、パッケージをビルドする。
   ```
+  cd $GUARDIAN_ROBOT_PATH/ros2_ws
   colcon build --packages-select keigan_motor
   ```
+  - pykeiganが配置されていない場合、ビルド時に警告が出て、ノード・launch・設定ファイルはインストールされない。
 
 ### モータの実行権限の設定
 設定手順は以下の通りです。
@@ -46,7 +48,7 @@ keigan_motor/
     ```
 
 ### 設定ファイルの更新
-本ノードの設定ファイルは、"/config/(robot_name)_param.yaml"に格納されています。  
+本ノードの設定ファイルは、パッケージ内の`config/<ROBOT_NAME>_param.yaml`（`<ROBOT_NAME>`は環境変数`ROBOT_NAME`の値）です。launch時にこのファイルが読み込まれるため、使用するロボット名のファイルが必要です。現状は`indy1_param.yaml`と`indy2_param.yaml`のみ用意されています。  
 
 設定ファイルを更新したら、以下のコマンドを実行してビルドをし直す必要があります。
 ```
@@ -110,31 +112,32 @@ colcon build --packages-select keigan_motor
 
 
 ## 起動方法
-- ROS2ワークスペースにて以下のコマンドを実行することで起動する。
+- ROS2ワークスペース（`$GUARDIAN_ROBOT_PATH/ros2_ws`）にて以下のコマンドを実行することで起動する。
   ```
   source install/setup.bash
   ros2 launch keigan_motor keigan_motor_launch.py
   ```
+- ノードは`/$ROBOT_NAME`名前空間で起動する（環境変数`ROBOT_NAME`が必要）。
 
 ## 操作方法
 ### 主なROSトピック
 **publish**
 |トピック名|トピックタイプ|概要|
 |---|---|---|
-|/keigan_motor/joints|sensor_msgs/JointState|モータの名称、角度、角速度、トルク値を一定周期で配信|
+|/$ROBOT_NAME/keigan_motor/joints|sensor_msgs/JointState|モータの名称、角度、角速度、トルク値を一定周期で配信|
 
 **subscribe**
 |トピック名|トピックタイプ|概要|
 |---|---|---|
-|/keigan_motor/goal_pose|sensor_msgs/JointState|モータごとの角度制御コマンド(目標角度指定)|
-|/keigan_motor/relative_goal_pose|sensor_msgs/JointState|モータごとの角度制御コマンド(相対角度指定)|
-|/keigan_motor/target_velocity|sensor_msgs/JointState|モータごとの角速度制御コマンド|
-|/keigan_motor/target_vel_pose|sensor_msgs/JointState|モータごとの角速度・角度制御コマンド|
-|/keigan_motor/set_velocity|keigan_grp_msgs/JointData|モータのデフォルトの動作速度設定コマンド|
-|/keigan_motor/set_acceleration|keigan_grp_msgs/JointData|モータのデフォルトの動作加速度設定コマンド|
-|/keigan_motor/set_torque|keigan_grp_msgs/JointData|モータの最大トルク設定コマンド|
-|/keigan_motor/reset_offset|std_msgs/String|モータの角度リセットコマンド|
-|/keigan_motor/stop_move|std_msgs/String|モータの動作停止コマンド|
+|/$ROBOT_NAME/keigan_motor/goal_pose|sensor_msgs/JointState|モータごとの角度制御コマンド(目標角度指定)|
+|/$ROBOT_NAME/keigan_motor/relative_goal_pose|sensor_msgs/JointState|モータごとの角度制御コマンド(相対角度指定)|
+|/$ROBOT_NAME/keigan_motor/target_velocity|sensor_msgs/JointState|モータごとの角速度制御コマンド|
+|/$ROBOT_NAME/keigan_motor/target_vel_pose|sensor_msgs/JointState|モータごとの角速度・角度制御コマンド|
+|/$ROBOT_NAME/keigan_motor/set_velocity|keigan_grp_msgs/JointData|モータのデフォルトの動作速度設定コマンド|
+|/$ROBOT_NAME/keigan_motor/set_acceleration|keigan_grp_msgs/JointData|モータのデフォルトの動作加速度設定コマンド|
+|/$ROBOT_NAME/keigan_motor/set_torque|keigan_grp_msgs/JointData|モータの最大トルク設定コマンド|
+|/$ROBOT_NAME/keigan_motor/reset_offset|std_msgs/String|モータの角度リセットコマンド|
+|/$ROBOT_NAME/keigan_motor/stop_move|std_msgs/String|モータの動作停止コマンド|
 
 
 ### 操作方法
@@ -142,7 +145,7 @@ colcon build --packages-select keigan_motor
   - モータごとに指定した目標角度まで移動する。
   - モータごとに速度を指定しなかった場合、デフォルトのモータ動作速度で動作する。
     ```
-    ros2 topic pub -1 /(robot_name)/keigan_motor/goal_pose sensor_msgs/msg/JointState "header:
+    ros2 topic pub -1 /$ROBOT_NAME/keigan_motor/goal_pose sensor_msgs/msg/JointState "header:
     stamp:
         sec: 0
         nanosec: 0
@@ -157,7 +160,7 @@ colcon build --packages-select keigan_motor
   - モータごとに指定した相対角度まで移動する。
   - モータごとに速度を指定しなかった場合、デフォルトのモータ動作速度で動作する。
     ```
-    ros2 topic pub -1 /(robot_name)/keigan_motor/relative_goal_pose sensor_msgs/msg/JointState "header:
+    ros2 topic pub -1 /$ROBOT_NAME/keigan_motor/relative_goal_pose sensor_msgs/msg/JointState "header:
     stamp:
         sec: 0
         nanosec: 0
@@ -171,7 +174,7 @@ colcon build --packages-select keigan_motor
 - 角速度指令
   - モータごとに指定した角速度で動作する。
     ```
-    ros2 topic pub -1 /(robot_name)/keigan_motor/target_velocity sensor_msgs/msg/JointState "header:
+    ros2 topic pub -1 /$ROBOT_NAME/keigan_motor/target_velocity sensor_msgs/msg/JointState "header:
     stamp:
         sec: 0
         nanosec: 0
@@ -185,7 +188,7 @@ colcon build --packages-select keigan_motor
 - 角度指令(速度自動調節)
   - モータごとに指定した目標角度まで、速度を制御して移動する。
     ```
-    ros2 topic pub -1 /(robot_name)/keigan_motor/target_vel_pose sensor_msgs/msg/JointState "header:
+    ros2 topic pub -1 /$ROBOT_NAME/keigan_motor/target_vel_pose sensor_msgs/msg/JointState "header:
     stamp:
         sec: 0
         nanosec: 0
@@ -199,32 +202,32 @@ colcon build --packages-select keigan_motor
 - デフォルト動作速度設定
   - モータのデフォルトの動作速度を設定値に変更する。
     ```
-    ros2 topic pub -1 /(robot_name)/keigan_motor/set_velocity keigan_grp_msgs/msg/JointData "joint_name: 'joint_name'
+    ros2 topic pub -1 /$ROBOT_NAME/keigan_motor/set_velocity keigan_grp_msgs/msg/JointData "joint_name: 'joint_name'
     data: 0.5"
     ``` 
 
 - デフォルト動作加速度設定
   - モータのデフォルトの動作加速度を設定値に変更する。
     ```
-    ros2 topic pub -1 /(robot_name)/keigan_motor/set_acceleration keigan_grp_msgs/msg/JointData "joint_name: 'joint_name'
+    ros2 topic pub -1 /$ROBOT_NAME/keigan_motor/set_acceleration keigan_grp_msgs/msg/JointData "joint_name: 'joint_name'
     data: 0.5"
     ```
 
 - 最大トルク値設定
   - モータの最大トルクを設定値に変更する。
     ```
-    ros2 topic pub -1 /(robot_name)/keigan_motor/set_torque keigan_grp_msgs/msg/JointData "joint_name: 'joint_name'
+    ros2 topic pub -1 /$ROBOT_NAME/keigan_motor/set_torque keigan_grp_msgs/msg/JointData "joint_name: 'joint_name'
     data: 0.5"
     ```
 
 - モータ角度リセット
   - 指定したモータの現在の角度を0[rad]とする。
     ```
-    ros2 topic pub /(robot_name)/keigan_motor/reset_offset std_msgs/msg/String "data: 'joint_name'"
+    ros2 topic pub /$ROBOT_NAME/keigan_motor/reset_offset std_msgs/msg/String "data: 'joint_name'"
     ```
 
 - モータ動作停止
   - 指定したモータの動作をストップする。
     ```
-    ros2 topic pub /(robot_name)/keigan_motor/stop_move std_msgs/msg/String "data: 'joint_name'"
+    ros2 topic pub /$ROBOT_NAME/keigan_motor/stop_move std_msgs/msg/String "data: 'joint_name'"
     ```

@@ -1,6 +1,7 @@
 separator_node:
   ros__parameters:
-    # Beamforming parameters
+    # Beamforming parameters (delay-and-sum; fft_size / diagonal_loading /
+    # forget_factor are only used by the optional MVDR path)
     fft_size: 512
     speed_of_sound: 343.0
     diagonal_loading: 1.0e-4  # regularization for MVDR
@@ -10,6 +11,7 @@ separator_node:
     vad_threshold_db: -40.0
     vad_hangover_frames: 10
     vad_min_speech_frames: 3
+    vad_preroll_frames: 5       # blocks kept before VAD onset and prepended
 
     # Segmentation parameters
     min_speech_duration: 0.3   # seconds
@@ -19,5 +21,12 @@ separator_node:
     association_angle_threshold: 0.35  # radians (~20 degrees)
     stale_association_timeout: 3.0     # seconds before dropping stale association
 
-    # Synchronisation: skip audio if DOA or person data is older than this
+    # Synchronisation: do not (re-)associate if DOA or person data is older
+    # than this; persons inside an utterance continue with the last direction
     max_sync_age: 0.5                  # seconds
+
+    # Frames: LiDAR persons are transformed into the array frame with tf2.
+    # '' = use audio/array_info (or DOA) frame_id / TrackedPersonArray frame_id
+    array_frame: ''
+    persons_frame: ''
+    use_tf: true

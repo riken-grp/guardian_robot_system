@@ -1,6 +1,6 @@
 # LLM-Based Response Generator for Indy
 
-Version `1.0.0`
+Package version (`setup.py`): `1.0.0`
 
 ## Requirements
 
@@ -14,29 +14,30 @@ setuptools==65.5.0
 
 It also requires the following packages, which may in turn have requirements of their own:
 - [ROS 2 Humble](https://docs.ros.org/en/humble/index.html) library, required for its `rclpy` package.
-- [PyIndy](https://github.com/riken-grp/pyindy/tree/develop/pyindy) (Latest version)
-- Other Indy internal packages built with ROS: `std_msgs`, `recognition_msgs` and `common_params`. These contain message and parameter file definitions that are common among all of Indy's modules.
+- PyIndy, included in this repository at `modules/pyindy`.
+- Other Indy internal packages built with ROS: `recognition_msgs` and `common_msgs` (in addition to the standard `std_msgs` and `sensor_msgs`). These contain message definitions that are common among Indy's modules.
 
 ## Running the Responder
 
-After building using `colcon build`, the responder is run using the following command:
+After building using `colcon build` (in `$GUARDIAN_ROBOT_PATH/ros2_ws`), the responder is run using the following command (the `ROBOT_NAME` environment variable must be set; the node runs in the `/$ROBOT_NAME` namespace):
 
-`ros2 launch llm_responder llm_responder_launch.py`
+`ros2 launch llm_responder llm_responder_launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT`
 
-The launcher supports the following ROS2 parameters:
-- `mongodb`: The URI for the MongoDB in which the memory will be stored. The default is `localhost`.
-- `mongoport`: The Port for the MongoDB. The default is `6000`.
+The launcher supports the following launch arguments:
+- `mongo_uri`: The URI of the MongoDB server. The launch default is an empty string, so it should always be given.
+- `mongo_port`: The Port of the MongoDB server. The launch default is `1`, so it should always be given.
+
+The responder settings (LLM/embedding API, prompts collection, ASR timeouts, `adintool_ports`, etc.) are read from the MongoDB database `robot_config`, collection `system_parameters`, in the Document whose `name` is `llm_responder` (its `config` field). The default data is in `setup/mongo_docker/default_data/robot_config.system_parameters.json`.
 
 # Features
 
 The Responder has the following components:
 
-- `LlmResponseNode`: Main Node. Maintains a loop that waits for a `llm-kd` trigger from Indy's Actions database. Once the trigger occurs, execution is given to `LlmObservationHandler`.
-  - `LlmObservationHandler`: Maintains a loop that waits for user's utterance in the form of text transcribed by ASR. Then, it generates a response based on that utterance, dialogue history, and a memory if it makes sense (this is the default behavior).
-    - `LlmObservationChecker`: Checks if there is a new ASR entry in the `dialogue_history` collection in Indy's MongoDB, and creates a new dialogue history with N turns.
-  - `ScenarioChecker`: Used to check whenever a Scenario changes. In particular, it is used to check the start of an Episode, which is used to ignore wake keyword scenario start.
-- `LlmMicWatchdogNode`: This Node has two purposes. First, it detects whether the ASR results come from the ports of a Microphone array, or from adintool (Right now, the mic array ports are hard-coded to `[5562, 5563, 5564]`). Input from adintool is then processed and inserted into the proper databases. The second objective is to use LLM calls to make a basic intent recognizer: it calls the LLM with a special prompt and the user's utterance transcription and asks if the user's intent is to talk. When it does, it inserts that intention into Physical DB.
-- `AsrInputTracker`: Helper class that is used to access Dialog Memory, 
+- `LlmResponderNode` (node name `llm_responder_node`): Main Node. Maintains a loop that waits for a `llm-kd` trigger from Indy's Actions database. Once the trigger occurs, execution is given to `LlmResponseHandler`.
+  - `LlmResponseHandler`: Waits for user's utterance in the form of text transcribed by ASR. Then, it generates a response based on that utterance, dialogue history, and a memory if it makes sense (this is the default behavior).
+    - `AsrInputTracker`: Helper class that checks if there is a new ASR entry in the dialogue history (`sensor_memory` database, `dia` collection) and builds a dialogue history with N turns.
+  - `EpisodeStateTracker`: Holds the current episode state (`OFF` / `WAITING` / `IN_EPISODE` / `LOOPING`), which is changed through the `memory/episode_ctl` topic. The initial state is given by `initial_mode` in the MongoDB parameters.
+- `LlmMicWatchdogNode` (node name `llm_adintool_watchdog`, runs in the same process): This Node has two purposes. First, it checks whether the ASR results (`asr/meta_data`) come from adintool ports, which are listed in `adintool_ports` of the `llm_responder` MongoDB parameters (default `[5580]` when the parameters are not found). Input from adintool is then processed and inserted into the proper databases. The second objective is to use LLM calls to make a basic intent recognizer: it calls the LLM with the user's utterance transcription and asks if the user's intent is to talk. When it does, it inserts that intention into Physical DB.
 
 ## Triggering the Responder
 
@@ -94,6 +95,6 @@ The `hist_to_prompt` parameter is a special one that tells the LLM Responder tha
 
 # Development
 
-## Version 1.0.5
+## Recent changes
 
 Improvements to Dialogue Intention triggerer, Episode-tracking, compatibility with some  Prompt substitutions.

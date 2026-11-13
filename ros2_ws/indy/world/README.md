@@ -3,7 +3,7 @@ MongoDBで設定された2種類のマップファイル(通常マップ、keepo
 
 ## 起動方法
 ```
-ros2 launch world map_grp_space.launch.py mongo_uri:=example.local mongo_port:=9110
+ros2 launch world map_grp_space.launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT
 ```
 
 ## 設定方法

@@ -13,7 +13,7 @@ class ScenarioStartTracker:
         try:
             self.scenario_checker = ScenarioChangeTracker(db)
         except Exception as e:
-            self.logger.error(f"Cannot Check Scenario State: {str(e)}")
+            self.parent.get_logger().error(f"Cannot Check Scenario State: {str(e)}")
             self.scenario_checker = None
 
         self.current: float = 0

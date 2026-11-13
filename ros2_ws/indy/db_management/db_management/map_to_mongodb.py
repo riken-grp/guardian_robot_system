@@ -21,7 +21,9 @@ class Map2MongoDB(MongoDBNode):
             OccupancyGrid, "/keepout_filter_mask", self.keepout_callback, qos_profile
         )
         mongo_uri, mongo_port, dbname = self._init_mongo_params("")
-        self.client = MongoClient(f"mongodb://{mongo_uri}:{mongo_port}/")
+        # mongo_uri はホスト名でも mongodb:// 形式の URI でも受け付ける
+        # (他ノードと同じく MongoClient(host, port) で接続する)
+        self.client = MongoClient(mongo_uri, mongo_port)
         self.db = self.client[dbname]
 
     def map_callback(self, msg):

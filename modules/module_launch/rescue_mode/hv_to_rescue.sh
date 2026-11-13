@@ -19,7 +19,7 @@ stop_module_launch_sessions() {
             && echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sent Ctrl+C to session: ${session_name}" \
             || true
     done
-    tmux send-keys -t scenario C-c 2>/dev/null || true
+    tmux send-keys -t scenario_manager C-c 2>/dev/null || true
     "${GUARDIAN_ROBOT_PATH}/tools/bin/50_cancel_all.py"
 }
 

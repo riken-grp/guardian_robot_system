@@ -12,6 +12,7 @@
   <depend>microphone_array</depend>
   <depend>ssl_msgs</depend>
   <depend>recognition_msgs</depend>
+  <depend>tf2_ros</depend>
 
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-scipy</exec_depend>

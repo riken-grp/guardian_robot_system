@@ -7,6 +7,10 @@ from visualization_msgs.msg import Marker, MarkerArray
 from . import configs as cfg
 from .kana_romanizer import to_hepburn
 
+# keypoints below this confidence are not drawn (YOLO keypoint confidences are
+# always > 0, so "conf > 0" would draw every keypoint)
+VIS_KEYPOINT_CONF_THRESH = 0.5
+
 
 class MessageBuilder:
     def visualize_image(self, oimg, x, y, w, h, name, cls_id):
@@ -36,6 +40,11 @@ class ObjectMessageBuilder(MessageBuilder):
         self.colors = cfg.colors
 
     def build_from_tracklets(self, header, tracklets, img, is_visualize):
+        """Returns (Objects msg, None, MarkerArray, visualization image or None).
+
+        The second element used to be an unused JSON-like dict; it is kept as
+        None for call-site compatibility.
+        """
         msg = Objects()
         msg.header = header
         oimg = None
@@ -44,36 +53,24 @@ class ObjectMessageBuilder(MessageBuilder):
             oimg = np.copy(img)
 
         m_objects = []
-        j_objects = []
         m_markers = MarkerArray()
         for t in tracklets:
             x, y, w, h = t[:4]
-            lo_sensor = t[cfg.LOCATION_SENSOR_COLUMN]
-            lo_global = t[cfg.LOCATION_GLOBAL_COLUMN]
             cls_id = int(t[cfg.CLASS_ID_COLUMN])
             conf = t[cfg.CONFIDENCE_COLUMN]
-            instance_id = int(t[cfg.INSTANCE_ID_COLUMN])
 
-            om, oj = self.build_object_2d(msg.header, x, y, w, h, conf, cls_id)
-            om.instance_id = instance_id
-            om.location_sensor = lo_sensor.tolist()
-            om.location_global = lo_global.tolist()
-            oj["instance_id"] = instance_id
-            oj["location_sensor"] = lo_sensor
-            oj["location_global"] = lo_global
+            om = self.set_object_info(msg.header, cls_id, [x, y, w, h], conf)
+            om.instance_id = int(t[cfg.INSTANCE_ID_COLUMN])
+            om.location_sensor = t[cfg.LOCATION_SENSOR_COLUMN].tolist()
+            om.location_global = t[cfg.LOCATION_GLOBAL_COLUMN].tolist()
             m_objects.append(om)
-            j_objects.append(oj)
 
             if is_visualize:
                 oimg = self.visualize_image(oimg, x, y, w, h, om.name, cls_id)
 
         msg.objects = m_objects
 
-        jsondata = {}
-        jsondata["timestamp"] = f"{msg.header.stamp.sec}.{msg.header.stamp.nanosec}"
-        jsondata["detections"] = j_objects
-
-        return msg, jsondata, m_markers, oimg
+        return msg, None, m_markers, oimg
 
     def set_object_info(self, header, cls_id, location, conf):
         om = Object()
@@ -152,7 +149,20 @@ class PersonMessageBuilder(MessageBuilder):
     def __init__(self):
         super().__init__()
 
-    def build_from_tracklets(self, header, detections3d, poses3d, img, is_visualize):
+    def build_from_tracklets(
+        self,
+        header,
+        detections3d,
+        poses3d,
+        img,
+        is_visualize,
+        keypoint_thresh=VIS_KEYPOINT_CONF_THRESH,
+    ):
+        """Returns (Persons msg, None, MarkerArray, visualization image or None).
+
+        The second element used to be an unused JSON-like dict; it is kept as
+        None for call-site compatibility.
+        """
         msg = Persons()
         mmsg = MarkerArray()
         msg.header = header
@@ -161,99 +171,65 @@ class PersonMessageBuilder(MessageBuilder):
         if is_visualize:
             oimg = np.copy(img)
 
-        j_persons = []
         for instance_id, (det, pose) in enumerate(zip(detections3d, poses3d)):
-            lo_image = det[:4].tolist()
             lo_sensor = det[cfg.POSE_DET_LOCATION_SENSOR_COLUMN].tolist()
-            lo_global = det[cfg.POSE_DET_LOCATION_GLOBAL_COLUMN].tolist()
             conf = det[cfg.POSE_DET_CONFIDENCE_COLUMN]
             cls_id = int(det[cfg.POSE_CLASS_ID_COLUMN])
-            pm, pj = self.build_person_2d(header, lo_image, conf, cls_id)
+            pm = self.set_person_info(header, cls_id, det[:4].tolist(), conf)
             pm.instance_id = -1
-            pj["instance_id"] = -1
             pm.body_location_sensor = lo_sensor
-            pj["body_location_sensor"] = lo_sensor
-            pm.body_location_global = lo_global
-            pj["body_location_global"] = lo_global
+            pm.body_location_global = det[cfg.POSE_DET_LOCATION_GLOBAL_COLUMN].tolist()
 
-            ppm, ppj = self.build_pose_2d(pose)
-            ppm3, ppj3 = self.build_pose_3d(pose)
-            ppm3g, ppj3g = self.build_pose_3d_global(pose)
+            pm.pose = self._pose_msg(pose, cfg.POSE_KEYPOINT_IMAGE_COLUMN)
+            pm.pose_sensor = self._pose_msg(pose, cfg.POSE_KEYPOINT_SENSOR_COLUMN)
+            pm.pose_global = self._pose_msg(pose, cfg.POSE_KEYPOINT_GLOBAL_COLUMN)
 
-            pm.pose = ppm
-            pm.pose_sensor = ppm3
-            pm.pose_global = ppm3g
-            pj["pose"] = ppj
-            pj["pose_sensor"] = ppj3
-            pj["pose_global"] = ppj3g
-
-            pp11 = pose[11, cfg.POSE_KEYPOINT_SENSOR_COLUMN]
-            pp12 = pose[12, cfg.POSE_KEYPOINT_SENSOR_COLUMN]
-            x, y, z = (pp11 + pp12) / 2
-            pmm = self.set_marker(header, x, y, z, instance_id)
             msg.persons.append(pm)
-            j_persons.append(pj)
-            mmsg.markers.append(pmm)
+            x, y, z = lo_sensor
+            if z > 0:  # no valid depth -> no marker
+                pmm = self.set_marker(header, x, y, z, instance_id)
+                mmsg.markers.append(pmm)
 
             if is_visualize:
                 x, y, w, h = det[:4]
                 oimg = self.visualize_image(oimg, x, y, w, h, "person", 0)
-                oimg = self.pose_visualize(oimg, pose)
+                oimg = self.pose_visualize(oimg, pose, keypoint_thresh)
 
-        jsondata = {}
-        jsondata["timestamp"] = f"{msg.header.stamp.sec}.{msg.header.stamp.nanosec}"
-        jsondata["detections"] = j_persons
+        return msg, None, mmsg, oimg
 
-        return msg, jsondata, mmsg, oimg
+    @staticmethod
+    def _pose_msg(pose, columns):
+        pm = Pose()
+        pm.dim = len(columns)
+        pm.keypoints = pose[:, columns].reshape((-1,)).tolist()
+        pm.confidences = pose[:, cfg.POSE_KEYPOINT_CONF_COLUMN].reshape((-1,)).tolist()
+        return pm
 
     def build_pose_2d(self, pose):
-        pm = Pose()
-        pj = {}
-        pm.dim = 2
-        pj["dim"] = 2
-        pm.keypoints = pose[:, cfg.POSE_KEYPOINT_IMAGE_COLUMN].reshape((-1,)).tolist()
-        pj["keypoints"] = pm.keypoints
-        pm.confidences = pose[:, cfg.POSE_KEYPOINT_CONF_COLUMN].reshape((-1,)).tolist()
-        pj["confidences"] = pm.confidences
-
-        return pm, pj
+        pm = self._pose_msg(pose, cfg.POSE_KEYPOINT_IMAGE_COLUMN)
+        return pm, {"dim": 2, "keypoints": pm.keypoints, "confidences": pm.confidences}
 
     def build_pose_3d(self, pose):
-        pm = Pose()
-        pj = {}
-        pm.dim = 3
-        pj["dim"] = 3
-        pm.keypoints = pose[:, cfg.POSE_KEYPOINT_SENSOR_COLUMN].reshape((-1,)).tolist()
-        pj["keypoints"] = pm.keypoints
-        pm.confidences = pose[:, cfg.POSE_KEYPOINT_CONF_COLUMN].reshape((-1,)).tolist()
-        pj["confidences"] = pm.confidences
-
-        return pm, pj
+        pm = self._pose_msg(pose, cfg.POSE_KEYPOINT_SENSOR_COLUMN)
+        return pm, {"dim": 3, "keypoints": pm.keypoints, "confidences": pm.confidences}
 
     def build_pose_3d_global(self, pose):
-        pm = Pose()
-        pj = {}
-        pm.dim = 3
-        pj["dim"] = 3
-        pm.keypoints = pose[:, cfg.POSE_KEYPOINT_GLOBAL_COLUMN].reshape((-1,)).tolist()
-        pj["keypoints"] = pm.keypoints
-        pm.confidences = pose[:, cfg.POSE_KEYPOINT_CONF_COLUMN].reshape((-1,)).tolist()
-        pj["confidences"] = pm.confidences
+        pm = self._pose_msg(pose, cfg.POSE_KEYPOINT_GLOBAL_COLUMN)
+        return pm, {"dim": 3, "keypoints": pm.keypoints, "confidences": pm.confidences}
 
-        return pm, pj
-
-    def pose_visualize(self, show_img, pose):
-        c = (0, 255, 255)
+    def pose_visualize(self, show_img, pose, keypoint_thresh=VIS_KEYPOINT_CONF_THRESH):
         pdata = pose[:, :2]
-        confs = pose[:, 5]
+        confs = pose[:, cfg.POSE_KEYPOINT_CONF_COLUMN]
 
         for d, c in zip(pdata, confs):
             kp = list(map(int, d[:2]))
-            if c > 0:
+            if c >= keypoint_thresh:
                 show_img = cv2.circle(show_img, kp, 4, (255, 255, 0), -1)
 
         for b in cfg.bones:
-            show_img = self.draw_part_line(show_img, pdata, confs, b[0], b[1])
+            show_img = self.draw_part_line(
+                show_img, pdata, confs, b[0], b[1], keypoint_thresh
+            )
 
         return show_img
 
@@ -424,7 +400,7 @@ class PersonMessageBuilder(MessageBuilder):
             for d in pdata:
                 kp = list(map(int, d[:2]))
                 c = d[2]
-                if c > 0:
+                if c >= VIS_KEYPOINT_CONF_THRESH:
                     show_img = cv2.circle(show_img, kp, 4, (255, 255, 0), -1)
 
             for b in cfg.bones:
@@ -434,8 +410,13 @@ class PersonMessageBuilder(MessageBuilder):
 
         return show_img
 
-    def draw_part_line(self, img, kps, conf, i, j):
-        if conf[i] > 0 and conf[j] > 0 and kps[i][0] > 0 and kps[j][0] > 0:
+    def draw_part_line(self, img, kps, conf, i, j, thresh=VIS_KEYPOINT_CONF_THRESH):
+        if (
+            conf[i] >= thresh
+            and conf[j] >= thresh
+            and kps[i][0] > 0
+            and kps[j][0] > 0
+        ):
             k1 = list(map(int, kps[i]))
             k2 = list(map(int, kps[j]))
             img = cv2.line(img, k1, k2, (255, 255, 255), 3)

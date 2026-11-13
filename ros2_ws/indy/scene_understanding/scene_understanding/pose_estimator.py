@@ -15,6 +15,15 @@ class RTMPoseEstimator:
         # time, so setting it after construction is the only way to apply it.
         self.body.det_model.score_thr = score_thr
 
+    def providers(self) -> dict:
+        # onnxruntime は CUDAExecutionProvider が使えないと警告のみで CPU に
+        # フォールバックするため，実際に使われている provider を返す
+        result = {}
+        for name, model in [("det", self.body.det_model), ("pose", self.body.pose_model)]:
+            session = getattr(model, "session", None)
+            result[name] = session.get_providers() if session is not None else []
+        return result
+
     def pose(self, img):
         # Body.__call__() computes bboxes internally via det_model() but never
         # returns them, so we call det_model/pose_model ourselves to get both.

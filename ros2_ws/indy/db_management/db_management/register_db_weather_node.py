@@ -12,31 +12,52 @@ from .dbmanager import TopicDBManager
 from .mongo_node_base import MongoDBNode
 from .mongo_utils import load_config
 
+# OpenWeatherMap API の HTTP タイムアウト [s]
+HTTP_TIMEOUT_SEC = 10
+
 
 class RegisterDBWeatherNode(MongoDBNode):
     def __init__(self, name="RegisterDBWeatherNode"):
         super().__init__(name)
         mongo_uri, mongo_port, dbname = self._init_mongo_params("")
 
-        config = load_config(mongo_uri, mongo_port)
+        self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname)
+        self.JST = tz.gettz("Asia/Tokyo")
+        self.mgr = None
+
+        config = load_config()
+        if "openweathermap_token" not in config or "city" not in config:
+            # 設定が無い場合はノードを落とさず (launch 全体を道連れにせず) 天気取得を無効化する
+            self.get_logger().error(
+                "robot settings have no 'openweathermap_token' / 'city'; "
+                "weather registration is disabled"
+            )
+            return
+
         config_dict = get_default_config()
-        config_dict["language"] = config["language"]
+        config_dict["language"] = config.get("language", "ja")
+        config_dict["connection"]["timeout_secs"] = HTTP_TIMEOUT_SEC
         self.city = config["city"]
 
-        self.JST = tz.gettz("Asia/Tokyo")
         owm = OWM(config["openweathermap_token"], config_dict)
         self.mgr = owm.weather_manager()
-
-        self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname)
 
         self.timer = self.create_timer(600, self.timer_callback)
 
     def timer_callback(self):
-        try:
-            w = self.mgr.weather_at_place(self.city).weather
-        except InvalidSSLCertificateError as e:
-            print(e)
+        if self.mgr is None:
             return
+        try:
+            self._fetch_and_store()
+        except InvalidSSLCertificateError as e:
+            self.get_logger().warn(f"weather fetch failed (SSL): {e}")
+        except Exception as e:
+            # HTTP エラー・タイムアウト・API エラー・DB エラー等でノードを落とさない
+            # (on_exit=Shutdown のため，ここで落ちると db_management launch 全体が終了する)
+            self.get_logger().warn(f"weather fetch failed: {type(e).__name__}: {e}")
+
+    def _fetch_and_store(self):
+        w = self.mgr.weather_at_place(self.city).weather
 
         data = {}
         data["location"] = self.city

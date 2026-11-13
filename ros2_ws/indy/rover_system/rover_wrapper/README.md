@@ -10,6 +10,8 @@
 ```
 ros2 launch rover_wrapper rover_wrapper.launch.py
 ```
+- 環境変数`ON_ROBOT=1`のときのみビルドされる。
+- ノード（`rover_wrapper_node`）は`/$ROBOT_NAME`名前空間で起動する。以下のトピック名は名前空間からの相対名。
 
 ## 操作方法
 ### 主なROSトピック
@@ -22,8 +24,10 @@ ros2 launch rover_wrapper rover_wrapper.launch.py
 |rover/initialpose|geometry_msgs/PoseWithCovarianceStamped|ロボットの初期位置を設定|
 |rover/bumper_clear|std_msgs/UInt8|バンパークリア指令 1:バンパクリア|
 |rover/motor_release|std_msgs/UInt8|モータリリース指令 1:モータリリース|
-|right_arm/disable|std_msgs/Empty|右アーム無効化指令|
-|left_arm/disable|std_msgs/Empty|左アーム無効化指令|
+|right_arm/disable|std_msgs/Empty|右アーム無効化指令（バンパ接触時）|
+|left_arm/disable|std_msgs/Empty|左アーム無効化指令（バンパ接触時）|
+|right_arm/enable|std_msgs/Empty|右アーム有効化指令（バンパ接触で無効化したアームを、モータリリース解除時に再度有効化）|
+|left_arm/enable|std_msgs/Empty|左アーム有効化指令（同上）|
 
 **subscribe**
 |トピック名|トピックタイプ|概要|
@@ -89,5 +93,5 @@ rover_wrapper/config/default_param.yamlにて設定されている。
 |:--|:--|:--|
 |report_rate|0.05|配信周期 [s]|
 |move_speed|0.7|移動速度 [m/s]|
-|rorate_speed|0.5|回転速度 [rad/s]|
+|rotate_speed|0.5|回転速度 [rad/s]|
 |motor_release_time|10.0|モータリリース時間 [s]|

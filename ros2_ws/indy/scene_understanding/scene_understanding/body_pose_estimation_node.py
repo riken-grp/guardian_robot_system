@@ -12,6 +12,7 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from visualization_msgs.msg import MarkerArray
 
+from .gpu_check import log_onnx_providers
 from .image_processing_node import ImageProcessingNode
 from .mapper import Sensor3DMapper
 from .message_builders import PersonMessageBuilder
@@ -34,19 +35,25 @@ class PoseProc(ImageProcessingNode):
     def _declare_parameters(self):
         self.declare_parameter("model", "balanced")
         self.declare_parameter("thresh", 0.3)
+        self.declare_parameter("keypoint_thresh", 0.5)
         self.declare_parameter("world_frame_id", "map")
 
     def _initialize_components(self):
         model = self.get_parameter("model").value
         self.thresh = self.get_parameter("thresh").value
+        self.keypoint_thresh = self.get_parameter("keypoint_thresh").value
         world_frame_id = self.get_parameter("world_frame_id").value
 
         self.pose_proc = RTMPoseEstimator(mode=model, score_thr=self.thresh)
+        for name, providers in self.pose_proc.providers().items():
+            log_onnx_providers(self.get_logger(), f"RTMPose {name} model", providers)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.mapper = Sensor3DMapper(self.tf_buffer, world_frame_id)
+        self.mapper = Sensor3DMapper(
+            self.tf_buffer, world_frame_id, logger=self.get_logger()
+        )
 
         self.message_builder = PersonMessageBuilder()
 
@@ -72,25 +79,30 @@ class PoseProc(ImageProcessingNode):
         """
         if self.pub is None:
             return
-        if self.pub.get_subscription_count() == 0:
-            if self.pub_vis is None:
-                return
-            if self.pub_vis.get_subscription_count() == 0:
-                return
+        if self.pub.get_subscription_count() == 0 and not self.has_subscribers(
+            self.pub_vis
+        ):
+            return
 
         cinfo = self.camera_info
         if cinfo is None:
-            self.get_logger().warn("CameraInfo not available yet; skipping.")
+            self.get_logger().warn(
+                "CameraInfo not available yet; skipping.", throttle_duration_sec=5.0
+            )
             return
-        # Update TF
+        # Update TF (non-blocking; falls back to the last known transform)
         if not self.mapper.update_tf(cinfo.header.frame_id, header.stamp):
-            self.get_logger().warn("World TF not available yet; location_global will be (0,0,0).")
-        # Decode depth
-        mdimg = cv2.medianBlur(cv_depth, ksize=5)
+            self.get_logger().warn(
+                "World TF not available yet; location_global will be (0,0,0).",
+                throttle_duration_sec=5.0,
+            )
         # Pose estimation
         detections, poses = self._process_poses(cv_image)
-        detections3d = self.mapper.get_3d_value(detections, mdimg, cinfo)
-        poses3d = self.mapper.get_3d_pose(poses, mdimg, cinfo)
+        # 3D body location (from torso keypoints / bbox depth) and 3D keypoints
+        # (the mapper computes a robust median depth itself; no blur needed)
+        detections3d, poses3d = self.mapper.get_3d_person(
+            detections, poses, cv_depth, cinfo, keypoint_thresh=self.keypoint_thresh
+        )
         self.publish(header, detections3d, poses3d, cv_image)
 
     def _process_poses(self, color_img):
@@ -98,20 +110,25 @@ class PoseProc(ImageProcessingNode):
         detections, poses = self.pose_proc.pose(color_img)
 
         # detections: xyxy, conf, class
-        detections = detections[detections[:, 4] > self.thresh]
+        # keep detections and poses aligned (same row = same person)
+        keep = detections[:, 4] > self.thresh
+        detections = detections[keep]
+        poses = poses[keep]
         detections[:, 2] = detections[:, 2] - detections[:, 0]
         detections[:, 3] = detections[:, 3] - detections[:, 1]
 
         return detections, poses
 
     def publish(self, header, detections3d, poses3d, color_img):
-        msg, jsondata, markers, show_img = self.message_builder.build_from_tracklets(
-            header, detections3d, poses3d, color_img, self.pub_vis is not None
+        is_visualize = self.has_subscribers(self.pub_vis)
+        msg, _, markers, show_img = self.message_builder.build_from_tracklets(
+            header, detections3d, poses3d, color_img, is_visualize,
+            keypoint_thresh=self.keypoint_thresh,
         )
 
         self.pub.publish(msg)
         self.marker_pub.publish(markers)
-        if self.pub_vis:
+        if is_visualize:
             self._publish_visualization(header, show_img)
 
     def _publish_visualization(self, header, show_img):

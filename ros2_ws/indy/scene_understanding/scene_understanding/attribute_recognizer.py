@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import torch
 import torch.nn as nn
@@ -166,12 +167,13 @@ class AttributeRecognizer:
 
     def __call__(self, imgs):
         """
-        imgs: list of cv2 image
+        imgs: list of cv2 (BGR) images
         """
+        # the model (Swin, ImageNet normalization) expects RGB images
         imgs = torch.stack(
-            [self.tfms(Image.fromarray(img)) for img in imgs], dim=0
+            [self.tfms(self._to_pil(img)) for img in imgs], dim=0
         ).cuda()
-        with torch.no_grad():
+        with torch.inference_mode():
             results = self.model(imgs).cpu().numpy()
 
         presults = results[:, 1:] > 0.7
@@ -183,16 +185,22 @@ class AttributeRecognizer:
             else:
                 att["Female"] = r[0]
 
-            att.update({x: float(y) for x, y in zip(self.class_names[p], r[1:])})
+            # pair the selected names with their own (selected) scores
+            att.update({x: float(y) for x, y in zip(self.class_names[p], r[1:][p])})
             attributes.append(att)
         return attributes
 
+    @staticmethod
+    def _to_pil(img):
+        """cv2 BGR image -> PIL RGB image."""
+        return Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+
     def __call_fujishiro__(self, imgs):
         """
-        imgs: list of cv2 image
+        imgs: list of cv2 (BGR) images
         """
         img = torch.stack(
-            [self.tfms(Image.fromarray(img)) for img in imgs], dim=0
+            [self.tfms(self._to_pil(img)) for img in imgs], dim=0
         ).cuda()
         with torch.no_grad():
             age, gender, cloth_color = self.model(img)

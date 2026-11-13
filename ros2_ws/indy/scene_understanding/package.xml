@@ -15,6 +15,8 @@
   <depend>recognition_msgs</depend>
   <depend>realsense2_camera</depend>
   <depend>robot_looking</depend>
+  <!-- attribute_recognition_node が model_loader を import する -->
+  <depend>action_recognition</depend>
 
   <export>
     <build_type>ament_python</build_type>

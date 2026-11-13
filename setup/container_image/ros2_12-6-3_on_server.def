@@ -15,14 +15,14 @@ From: nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
 #    mkdir -p /var/tmp/fakehome
 #    export HOME=/var/tmp/fakehome DOCKER_CONFIG=/var/tmp/empty-docker
 #    apptainer build --notest --mount type=bind,src=/var/tmp/ros2_va_tmp,dst=/tmp \
-#        -F ros2_vision_audio_12-6-3.sif ros2_vision_audio.def
-#    apptainer test ros2_vision_audio_12-6-3.sif       # 検証は sif 生成後に別途
+#        -F ros2_12-6-3_on_server.sif ros2_12-6-3_on_server.def
+#    apptainer test ros2_12-6-3_on_server.sif       # 検証は sif 生成後に別途
 #
 #  デバッグ時は --sandbox で作ると中で反復できる (1 ステップの試行が数秒で済む):
 #    apptainer build --notest --sandbox --mount type=bind,src=/var/tmp/ros2_va_tmp,dst=/tmp \
-#        /var/tmp/ros2_va_sandbox ros2_vision_audio.def
+#        /var/tmp/ros2_va_sandbox ros2_12-6-3_on_server.def
 #    apptainer exec --writable --fakeroot /var/tmp/ros2_va_sandbox bash
-#    apptainer build ros2_vision_audio_12-6-3.sif /var/tmp/ros2_va_sandbox   # 固める
+#    apptainer build ros2_12-6-3_on_server.sif /var/tmp/ros2_va_sandbox   # 固める
 #    ※ --mount で /tmp を隔離すること。apptainer はビルド中もホストの /tmp を
 #      bind mount するため、隔離しないと %post 内の /tmp 操作がホストに及ぶ。
 #    ※ --notest 必須。%test の失敗でビルド成果物 (約40分) が捨てられるため。
@@ -67,6 +67,15 @@ From: nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
     export PATH=/usr/local/cuda/bin:/opt/cmake/bin:$PATH
     export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
+    # ホストの ~/.local (user site-packages) を読ませない。
+    #   apptainer は既定で $HOME をマウントし、コンテナも python3.10 なので
+    #   ~/.local/lib/python3.10/site-packages がイメージ内の dist-packages より
+    #   **優先**される。ホスト側で pip install --user した onnxruntime / rtmlib /
+    #   chromadb / opencv(GUI版) 等があると、コンテナの GPU 版 onnxruntime や
+    #   headless OpenCV を覆い隠してしまう。実行ホストを問わず効くよう予防的に無効化。
+    #   どうしても ~/.local を使いたいときは --env PYTHONNOUSERSITE= で上書きする。
+    export PYTHONNOUSERSITE=1
+
     export ROS_DISTRO=humble
     if [ -f /opt/ros/humble/setup.sh ]; then
         . /opt/ros/humble/setup.sh
@@ -107,6 +116,8 @@ From: nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
 
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Tokyo
+    # ビルド中もホストの ~/.local を参照しない (%environment の注を参照)
+    export PYTHONNOUSERSITE=1
     export PATH=/usr/local/cuda/bin:/opt/cmake/bin:$PATH
     # CMake 4 で古い cmake_minimum_required を持つ依存をビルドするため
     export CMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -292,7 +303,12 @@ CHECK
     # =======================================================================
     # audio / text / OCR 系ライブラリ
     # =======================================================================
+    # libasound2-dev / libyaml-cpp-dev: ros2_ws/indy/microphone_array を
+    #   コンテナ内で colcon build するのに必要 (pkg_check_modules(alsa), yaml-cpp)。
+    #   libasound2-dev は portaudio19-dev の依存として入るだけだと、後段の
+    #   purge + autoremove で消えるため明示的に入れて manual 扱いにしておく。
     apt-get -y install \
+        libasound2-dev libyaml-cpp-dev \
         portaudio19-dev ffmpeg \
         libavdevice-dev libavfilter-dev libavformat-dev libavcodec-dev \
         libswresample-dev libswscale-dev libavutil-dev \
@@ -345,9 +361,12 @@ CHECK
     pipo faster-whisper
     pipo "git+https://github.com/openai/whisper.git"
 
-    ## 最新の transformers / accelerate
-    pipo "git+https://github.com/huggingface/transformers.git"
-    pipo "git+https://github.com/huggingface/accelerate.git"
+    ## transformers / accelerate
+    #   GitHub main は python_requires>=3.11 (transformers 5.21〜, accelerate main) で
+    #   jammy の python3.10 には入らない (2026-11-01 確認)。PyPI から入れれば
+    #   pip が requires-python を見て 3.10 対応の最新版を選ぶ
+    #   (transformers 5.20.2 / accelerate 1.15.0 が 3.10 対応の最終版)。
+    pipo transformers accelerate
 
     # =======================================================================
     # faiss (GPU)
@@ -411,7 +430,17 @@ CHECK
     # 実際に必要なのは numpy / onnxruntime / tqdm / cv2 で全て導入済みなので
     # --no-deps で本体だけ入れる。
     pipi --no-deps rtmlib
-    pipo supervision
+    # supervision>=0.31 + trackers: sv.ByteTrack は supervision-0.31.0 で削除され、
+    #   後継は別パッケージ `trackers` の ByteTrackTracker
+    #   (ros2_ws/indy/scene_understanding/scene_understanding/object_detector.py が使用)。
+    #   trackers は依存に opencv-python (GUI 版) を書いており headless 構成を壊すので、
+    #   rtmlib と同様 --no-deps で本体だけ入れ、残りの必須依存を個別に入れる
+    #   (numpy>=2 / scipy は導入済み)。
+    pipo "supervision>=0.31"
+    pipo --no-deps trackers
+    pipo rich "jsonargparse>=4.48,<5" pydeprecate
+    # onnx: %test で CUDA EP のセッション生成を試すための最小モデル作成に使う
+    pipo onnx
 
     # =======================================================================
     # ベクトル DB
@@ -433,12 +462,43 @@ CHECK
     #   ファイルを書き込むため、後にインストールされた方が勝つ。CPU 版が後に
     #   なると CUDAExecutionProvider が消え、rtmlib が GPU で動かなくなる。
     #   両方消してから GPU 版だけを入れ直す。
+    #   uninstall は 2 回: 片方を消すと共有ファイルが欠けた状態で残った方の
+    #   RECORD と食い違うことがあるので、ディレクトリも直接消してから入れる。
+    #   --index-url で PyPI に固定する (PIP_EXTRA_INDEX_URL の pytorch index
+    #   から別ビルドを拾わないように)。
     # =======================================================================
     python3 -m pip uninstall -y onnxruntime onnxruntime-gpu || true
-    pipi onnxruntime-gpu
-    python3 -c "import onnxruntime as ort, sys; \
-        print('onnxruntime', ort.__version__, ort.get_available_providers()); \
-        sys.exit(0 if 'CUDAExecutionProvider' in ort.get_available_providers() else 1)"
+    python3 -m pip uninstall -y onnxruntime onnxruntime-gpu || true
+    ORT_SITE=/usr/local/lib/python3.10/dist-packages
+    rm -rf "${ORT_SITE}"/onnxruntime "${ORT_SITE}"/onnxruntime-*.dist-info \
+           "${ORT_SITE}"/onnxruntime_gpu-*.dist-info
+    PIP_EXTRA_INDEX_URL= pipi --force-reinstall --no-deps --index-url https://pypi.org/simple onnxruntime-gpu
+    # 依存 (coloredlogs/flatbuffers/protobuf/sympy...) を満たす。
+    # ※ ここで onnxruntime (CPU) を引き込むパッケージは無いが、念のため下で検査する
+    PIP_EXTRA_INDEX_URL= pipi --index-url https://pypi.org/simple onnxruntime-gpu
+
+    # 検証: (1) CPU 版の dist-info が無い (2) CUDA EP の共有ライブラリが実在する
+    #       (3) CUDA EP が providers に載っている。どれか駄目ならビルドを止める。
+    #   ※ build 時は GPU が見えないので、実際の CUDA セッション生成は %test で行う
+    python3 - <<'PY'
+import importlib.metadata as md, os, sys
+import onnxruntime as ort
+dists = {d.metadata["Name"].lower() for d in md.distributions()}
+capi = os.path.join(os.path.dirname(ort.__file__), "capi")
+cuda_so = os.path.join(capi, "libonnxruntime_providers_cuda.so")
+print("onnxruntime", ort.__version__, "from", ort.__file__)
+print("providers:", ort.get_available_providers())
+ok = True
+if "onnxruntime" in dists:
+    print("NG: CPU 版 onnxruntime の dist-info が残っている"); ok = False
+if "onnxruntime-gpu" not in dists:
+    print("NG: onnxruntime-gpu が入っていない"); ok = False
+if not os.path.exists(cuda_so):
+    print("NG: libonnxruntime_providers_cuda.so が無い (中身が CPU 版)"); ok = False
+if "CUDAExecutionProvider" not in ort.get_available_providers():
+    print("NG: CUDAExecutionProvider が無い"); ok = False
+sys.exit(0 if ok else 1)
+PY
 
     # numpy が 1系に落とされていないことを最終確認し、落ちていたら戻す
     pipi -U "numpy>=2,<3"
@@ -540,7 +600,27 @@ CHECK
     echo "(sm_86 が無いと古いドライバで PTX JIT が必要になる)"
 
     echo "--- onnxruntime (rtmlib 用) ---"
-    python3 -c "import onnxruntime as ort; print('onnxruntime', ort.__version__); print('providers:', ort.get_available_providers())"
+    python3 -c "import onnxruntime as ort; print('onnxruntime', ort.__version__, 'from', ort.__file__); print('providers:', ort.get_available_providers())"
+    pip list 2>/dev/null | grep -i '^onnxruntime' || true
+    echo "(onnxruntime-gpu だけが /usr/local/lib/... から読まれていること。~/.local なら PYTHONNOUSERSITE を確認)"
+    # 実際に CUDA EP でセッションを作れるか (--nv 付きで test したときのみ意味がある)
+    python3 - <<'PY'
+import onnxruntime as ort
+try:
+    import onnx
+    from onnx import helper, TensorProto
+    x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+    y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+    g = helper.make_graph([helper.make_node("Relu", ["x"], ["y"])], "t", [x], [y])
+    m = helper.make_model(g, opset_imports=[helper.make_opsetid("", 13)])
+    m.ir_version = 8
+    s = ort.InferenceSession(m.SerializeToString(),
+                             providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+    p = s.get_providers()
+    print("session providers:", p, "-> GPU OK" if p[0] == "CUDAExecutionProvider" else "-> FALLBACK TO CPU")
+except ImportError:
+    print("onnx 未導入のため CUDA セッション試験はスキップ")
+PY
 
     echo "--- misc imports ---"
     python3 - <<'PY'
@@ -556,6 +636,17 @@ for m in mods:
         print("  ok  ", m)
     except Exception as e:
         print("  FAIL", m, type(e).__name__, str(e)[:120])
+try:
+    import numpy as np, supervision as sv
+    from trackers import ByteTrackTracker
+    t = ByteTrackTracker(minimum_consecutive_frames=1)
+    d = sv.Detections(xyxy=np.array([[0, 0, 10, 10]], float),
+                      confidence=np.array([0.9]), class_id=np.array([0]))
+    t.update(d); r = t.update(d)
+    print("  ok  " if (r.tracker_id != -1).any() else "  FAIL",
+          "trackers.ByteTrackTracker (supervision", sv.__version__ + ")")
+except Exception as e:
+    print("  FAIL trackers.ByteTrackTracker", type(e).__name__, str(e)[:120])
 PY
     echo "--- build warnings recorded at build time ---"
     cat /opt/build-warnings.txt || true

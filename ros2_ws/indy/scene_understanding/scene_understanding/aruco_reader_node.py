@@ -10,6 +10,27 @@ from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, CompressedImage
 from tf2_ros import TransformBroadcaster
 
+from .image_processing_node import IMAGE_QOS
+
+
+def rvec_to_quaternion(rvec):
+    """Rodrigues rotation vector -> unit quaternion (x, y, z, w).
+
+    Computed directly from the axis-angle form, which is numerically stable
+    for all angles (the trace-based formula qw = sqrt(1 + trace(R)) / 2
+    divides by ~0 near 180 deg).
+    """
+    rvec = np.asarray(rvec, dtype=np.float64).reshape(3)
+    theta = np.linalg.norm(rvec)
+    if theta < 1e-12:
+        return 0.0, 0.0, 0.0, 1.0
+    axis = rvec / theta
+    s = np.sin(theta / 2.0)
+    q = np.array([axis[0] * s, axis[1] * s, axis[2] * s, np.cos(theta / 2.0)])
+    if q[3] < 0:  # keep w >= 0 (same rotation)
+        q = -q
+    return float(q[0]), float(q[1]), float(q[2]), float(q[3])
+
 
 class ArucoTfBroadcaster(Node):
     def __init__(self):
@@ -45,7 +66,7 @@ class ArucoTfBroadcaster(Node):
             CompressedImage,
             "in_color_topic",
             self.image_callback,
-            qos_profile=qos.qos_profile_system_default,
+            qos_profile=IMAGE_QOS,
         )
         self.camera_info_sub = self.create_subscription(
             CameraInfo,
@@ -82,6 +103,7 @@ class ArucoTfBroadcaster(Node):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         corners, ids, _ = self.aruco_detector.detectMarkers(gray)
+        is_visualize = self.vis_pub.get_subscription_count() > 0
 
         if ids is not None:
             rvecs, tvecs, _ = self.estimatePoseSingleMarkers(
@@ -102,11 +124,7 @@ class ArucoTfBroadcaster(Node):
                 t.transform.translation.z = float(tvec[0][2])
 
                 # 回転ベクトルをクォータニオンに変換
-                R, _ = cv2.Rodrigues(rvec)
-                qw = np.sqrt(1.0 + np.trace(R)) / 2.0
-                qx = (R[2, 1] - R[1, 2]) / (4.0 * qw)
-                qy = (R[0, 2] - R[2, 0]) / (4.0 * qw)
-                qz = (R[1, 0] - R[0, 1]) / (4.0 * qw)
+                qx, qy, qz, qw = rvec_to_quaternion(rvec)
 
                 t.transform.rotation.w = float(qw)
                 t.transform.rotation.x = float(qx)
@@ -118,6 +136,8 @@ class ArucoTfBroadcaster(Node):
 
                 # self.get_logger().info(f"Published TF for Marker {marker_id}")
 
+                if not is_visualize:
+                    continue
                 # ---- 可視化描画 ----
                 aruco.drawDetectedMarkers(frame, [corner])
                 cv2.drawFrameAxes(
@@ -129,8 +149,9 @@ class ArucoTfBroadcaster(Node):
                     self.marker_length * 0.5,
                 )
 
-        # 検出画像をCompressedImageに変換してPublish
-        self._publish_visualization(msg.header, frame)
+        # 検出画像をCompressedImageに変換してPublish (購読者がいる場合のみ)
+        if is_visualize:
+            self._publish_visualization(msg.header, frame)
 
     def _publish_visualization(self, header, show_img):
         success, encoded_image = cv2.imencode(

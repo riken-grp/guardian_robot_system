@@ -81,8 +81,10 @@ modes_description_w_action_server.py
 ## Usage
 
 ```
-ros2 launch gestures_modes gestures_modes_ac_launch.py
+ros2 launch gestures_modes gestures_modes_ac_launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT
 ```
+
+`mongo_uri` / `mongo_port` are the MongoDB server from which the motor parameters below are read (launch defaults: empty string / `1`, so they should always be given). The same command is used in `modules/module_launch/available/20_grs_action_gesture.sh`.
 
 ## Motor parameters
 

@@ -1,7 +1,8 @@
-// zenoh-bridge-ros2dds 設定（ロボット側）
+// zenoh-bridge-ros2dds 設定（待ち受け側：ロボット側、robodj）
 //
 // このファイルは編集せずにそのまま使う。マシンごとの値は起動時に引数で渡す
-// （modules/module_launch/available/000_zenoh_bridge.sh が ON_ROBOT=1 のとき読み込む）:
+// （modules/module_launch/available/000_zenoh_bridge.sh が ZENOH_MODE=listen のとき読み込む。
+//   ZENOH_MODE 未設定の場合は ON_ROBOT=1 のとき）:
 //   domain : 環境変数 ROS_DOMAIN_ID
 //   listen : 環境変数 ZENOH_LISTEN（未設定なら全インタフェース）と ZENOH_PORT（未設定なら 7447）
 //

@@ -4,3 +4,7 @@ asr_node:
     language: 'ja'
     device: 'cuda'
     compute_type: 'float16'
+    # Decoding (fast settings for short utterances)
+    beam_size: 1
+    condition_on_previous_text: false
+    without_timestamps: true

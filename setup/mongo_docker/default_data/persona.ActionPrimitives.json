@@ -1,0 +1,3153 @@
+[
+  {
+    "_id": {
+      "$oid": "669f489edd4a4a5c53704b9d"
+    },
+    "name": "null",
+    "option": {
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": {
+        "$numberInt": "0"
+      },
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "669f8d5dae1d29e02b2d9236"
+    },
+    "name": "type2_format",
+    "option": {
+      "head": "tracking",
+      "body": "dontmove",
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-1.8"
+        },
+        {
+          "$numberDouble": "1.1"
+        },
+        {
+          "$numberInt": "-2"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a0a429e65101309804cb61"
+    },
+    "name": "default_posture",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a0a4ace65101309804cb62"
+    },
+    "name": "look_right_raise_hand",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "-0.4"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "1.8"
+        },
+        {
+          "$numberDouble": "-1.1"
+        },
+        {
+          "$numberInt": "2"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a0a522e65101309804cb63"
+    },
+    "name": "bowing_max",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.8"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "-0.3"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.3"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a0a5a4e65101309804cb64"
+    },
+    "name": "look_front_point_hand",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.1"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a0a6a0e65101309804cb66"
+    },
+    "name": "surprise_pose",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-0.55"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "2"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.8"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "-2"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.8"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a0a6eee65101309804cb67"
+    },
+    "name": "lets_go_pose",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.5"
+        },
+        {
+          "$numberDouble": "-0.55"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-2.4"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberInt": "1"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a0cff937c5402adf4c03d4"
+    },
+    "name": "yes_pose",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.5"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.8"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.5"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.8"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.5"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.8"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a8383c37c5402adf4c03d9"
+    },
+    "name": "look_right_deguchi",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "-0.87"
+        },
+        {
+          "$numberDouble": "-0.01"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.0001"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a8383c37c5402adf4c04d6"
+    },
+    "name": "look_left_deguchi",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.87"
+        },
+        {
+          "$numberDouble": "-0.2"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.0001"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a8883c37c5402adf4c03d6"
+    },
+    "name": "look_right",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "-0.35"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a8884b37c5402adf4c03d7"
+    },
+    "name": "look_left",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.35"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a8885837c5402adf4c03d8"
+    },
+    "name": "look_front",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a8886037c5402adf4c03d9"
+    },
+    "name": "look_up",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-0.15"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66a8890b37c5402adf4c03db"
+    },
+    "name": "look_down",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.8"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66d58439fbb7352315a106c2"
+    },
+    "name": "look_down2",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "0.3"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.8"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.001"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66e2959b462500e20e65ec8b"
+    },
+    "name": "temp",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "1E-05"
+        },
+        {
+          "$numberDouble": "0.15"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.0001"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66e2959b462500e20e65ec8c"
+    },
+    "name": "temp_left",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "0.8"
+        },
+        {
+          "$numberDouble": "0.001"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.0001"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "66e2959b462500e20e65ec8d"
+    },
+    "name": "temp_right",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "-0.8"
+        },
+        {
+          "$numberDouble": "0.001"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.0001"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6715e5749f60fe9b654ce3a1"
+    },
+    "name": "type1",
+    "option": {
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": {
+        "$numberInt": "0"
+      },
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-1.8"
+        },
+        {
+          "$numberDouble": "1.1"
+        },
+        {
+          "$numberInt": "-2"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6715e5749f60fe9b654ce3a2"
+    },
+    "name": "type2",
+    "option": {
+      "head": "tracking",
+      "body": "dontmove",
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-1.8"
+        },
+        {
+          "$numberDouble": "1.1"
+        },
+        {
+          "$numberInt": "-2"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "671b3f292a22ae9f112b0e29"
+    },
+    "name": "look_down_yamaguchi",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "1E-06"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.4"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "-0.3"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.3"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "671b412a2a22ae9f112b0e2b"
+    },
+    "name": "look_right_yamaguchi",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "-1.1"
+        },
+        {
+          "$numberDouble": "-0.2"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.0001"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.0001"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "674d143bc34ea2b7c3e2d331"
+    },
+    "name": "raise_right_hand",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "1.8"
+        },
+        {
+          "$numberDouble": "-1.1"
+        },
+        {
+          "$numberInt": "2"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67ada25f08af88f0b160ff5a"
+    },
+    "name": "waving_pose_1",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "1.8"
+        },
+        {
+          "$numberDouble": "-1.1"
+        },
+        {
+          "$numberInt": "2"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67ada26408af88f0b160ff5b"
+    },
+    "name": "waving_pose_2",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "1.8"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-1.4"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67ada5cbb97b652eb3c38f89"
+    },
+    "name": "bowing",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "-0.3"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.3"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adad1108af88f0b160ff60"
+    },
+    "name": "explaining_pose_1",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "2.1"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.2"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adad2208af88f0b160ff61"
+    },
+    "name": "explaining_pose_2",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-0.55"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberInt": "1"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.2"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adae3208af88f0b160ff62"
+    },
+    "name": "surprising",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-0.55"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "2"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.8"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "-2"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.8"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adb13808af88f0b160ff63"
+    },
+    "name": "encouraging",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.5"
+        },
+        {
+          "$numberDouble": "-0.55"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-2.4"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberInt": "1"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adb23c08af88f0b160ff64"
+    },
+    "name": "excited",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.5"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.8"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.5"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.8"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.5"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.8"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adb78208af88f0b160ff69"
+    },
+    "name": "pointing_front",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.7"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-0.1"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adbd8c08af88f0b160ff6f"
+    },
+    "name": "pointing_right",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "-0.3"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.7"
+        },
+        {
+          "$numberDouble": "-1.2"
+        },
+        {
+          "$numberDouble": "2.1"
+        },
+        {
+          "$numberInt": "-1"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adbdda08af88f0b160ff70"
+    },
+    "name": "pointing_left",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.3"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.7"
+        },
+        {
+          "$numberDouble": "1.2"
+        },
+        {
+          "$numberDouble": "-2.1"
+        },
+        {
+          "$numberInt": "1"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adbe7e08af88f0b160ff71"
+    },
+    "name": "suggesting",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "1.8"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-1.4"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adc07308af88f0b160ff74"
+    },
+    "name": "thumbs_up",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.7"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.2"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adc38a08af88f0b160ff76"
+    },
+    "name": "concerned",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.8"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "1"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-1.8"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "-1"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "1.8"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67adc7ca08af88f0b160ff79"
+    },
+    "name": "laughing",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-0.55"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "1.8"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.5"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.8"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.5"
+        },
+        {
+          "$numberDouble": "1.6"
+        },
+        {
+          "$numberDouble": "-1.6"
+        },
+        {
+          "$numberDouble": "1.8"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67aee389b97b652eb3c38f8b"
+    },
+    "name": "nodding",
+    "option": {
+      "type": "compound",
+      "hold_time": {
+        "$numberDouble": "0.8"
+      },
+      "simple_poses": [
+        "nodding_1",
+        "nodding_2",
+        "nodding_1"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67b2f4c7b97b652eb3c38fa3"
+    },
+    "name": "waving",
+    "option": {
+      "type": "compound",
+      "hold_time": {
+        "$numberInt": "2"
+      },
+      "simple_poses": [
+        "waving_pose_1",
+        "waving_pose_2",
+        "waving_pose_1"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67b2f589b97b652eb3c38fa5"
+    },
+    "name": "speaking_a",
+    "option": {
+      "type": "compound",
+      "hold_time": {
+        "$numberInt": "2"
+      },
+      "simple_poses": [
+        "speaking_a1",
+        "speaking_a2",
+        "speaking_a1"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67bda3424a8709df7da1eff5"
+    },
+    "name": "raise_hand",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-2.4"
+        },
+        {
+          "$numberDouble": "0.8"
+        },
+        {
+          "$numberInt": "-1"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67da9a05a98233fe1029dc3e"
+    },
+    "name": "hand_over",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "0.2"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "1.2"
+        },
+        {
+          "$numberDouble": "-1.2"
+        },
+        {
+          "$numberDouble": "2.87"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67da9a4aa98233fe1029dc40"
+    },
+    "name": "holding",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.3"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "1.4"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67da9aa7a98233fe1029dc42"
+    },
+    "name": "look_slight_left",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67da9b9ea98233fe1029dc44"
+    },
+    "name": "look_slight_right",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberDouble": "-0.2"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67da9be3a98233fe1029dc46"
+    },
+    "name": "walking_pose_1",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67da9bfda98233fe1029dc48"
+    },
+    "name": "walking_pose_2",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "-0.2"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.2"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67da9c70a98233fe1029dc4a"
+    },
+    "name": "walking",
+    "option": {
+      "type": "compound",
+      "hold_time": {
+        "$numberInt": "1"
+      },
+      "simple_poses": [
+        "walking_pose_1",
+        "look_slight_left",
+        "walking_pose_2",
+        "look_slight_right",
+        "walking_pose_1",
+        "look_slight_left",
+        "walking_pose_2",
+        "look_front"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "67ebc5e8b5603c990d0ead31"
+    },
+    "name": "look_down_s",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.15"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.01"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68131f258a9db0e6cdaccaa3"
+    },
+    "name": "speaking_b",
+    "option": {
+      "type": "compound",
+      "hold_time": {
+        "$numberInt": "2"
+      },
+      "simple_poses": [
+        "speaking_b1",
+        "speaking_b2",
+        "speaking_b1"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68132a328a9db0e6cdaccaa5"
+    },
+    "name": "turning",
+    "option": {
+      "type": "compound",
+      "hold_time": {
+        "$numberDouble": "0.8"
+      },
+      "simple_poses": [
+        "turning_1",
+        "turning_2",
+        "turning_1"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68132ef26a2991a0d48c1095"
+    },
+    "name": "speaking_a1",
+    "option": {
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.05"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "-1.2"
+        },
+        {
+          "$numberDouble": "1.9"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.2"
+        },
+        {
+          "$numberDouble": "1.2"
+        },
+        {
+          "$numberDouble": "-1.9"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68132f1c6a2991a0d48c1097"
+    },
+    "name": "speaking_a2",
+    "option": {
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-0.1"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.1"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.2"
+        },
+        {
+          "$numberDouble": "-1.2"
+        },
+        {
+          "$numberDouble": "1.2"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.2"
+        },
+        {
+          "$numberDouble": "1.2"
+        },
+        {
+          "$numberDouble": "-1.2"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "681330536a2991a0d48c109c"
+    },
+    "name": "speaking_b1",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "0.01"
+        },
+        {
+          "$numberDouble": "-0.1"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "-0.2"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "-0.3"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "1.25"
+        },
+        {
+          "$numberDouble": "-0.7"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.25"
+        },
+        {
+          "$numberDouble": "1.25"
+        },
+        {
+          "$numberDouble": "-1.35"
+        },
+        {
+          "$numberDouble": "0.8"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "681330566a2991a0d48c109d"
+    },
+    "name": "speaking_b2",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "-0.01"
+        },
+        {
+          "$numberDouble": "-0.02"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.1"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "681330f56a2991a0d48c10a0"
+    },
+    "name": "nodding_1",
+    "option": {
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-0.1"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.05"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.05"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "681330f76a2991a0d48c10a1"
+    },
+    "name": "nodding_2",
+    "option": {
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.5"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "-0.05"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.05"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6813318a6a2991a0d48c10a5"
+    },
+    "name": "turning_1",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "0.06"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "0.2"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.05"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "0.05"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6813318c6a2991a0d48c10a6"
+    },
+    "name": "turning_2",
+    "option": {
+      "head": [
+        {
+          "$numberDouble": "-0.06"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "-0.05"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.05"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "690d8158577d7a236060260a"
+    },
+    "name": "look_forward",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "body": [
+        {
+          "$numberInt": "0"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-1.3"
+        },
+        {
+          "$numberDouble": "0.3"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "694b7487f5390593d2681b2f"
+    },
+    "name": "apology_1",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberDouble": "0.7"
+        },
+        {
+          "$numberDouble": "-1.4"
+        },
+        {
+          "$numberDouble": "0.9"
+        },
+        {
+          "$numberDouble": "-1.5"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.7"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-0.9"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "694b7497f5390593d2681b31"
+    },
+    "name": "apology_2",
+    "option": {
+      "type": "simple",
+      "hold_time": {
+        "$numberInt": "2"
+      },
+      "head": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "0.25"
+        }
+      ],
+      "body": [
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "rightArm": [
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberInt": "0"
+        },
+        {
+          "$numberDouble": "1.3"
+        },
+        {
+          "$numberDouble": "-0.3"
+        }
+      ],
+      "leftArm": [
+        {
+          "$numberDouble": "-0.7"
+        },
+        {
+          "$numberDouble": "1.4"
+        },
+        {
+          "$numberDouble": "-0.9"
+        },
+        {
+          "$numberDouble": "1.5"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "694b74a8f5390593d2681b33"
+    },
+    "name": "apology_bow",
+    "option": {
+      "type": "compound",
+      "hold_time": {
+        "$numberInt": "0"
+      },
+      "simple_poses": [
+        "apology_1"
+      ]
+    }
+  }
+]

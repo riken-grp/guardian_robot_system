@@ -28,7 +28,12 @@ do
 done
 echo module_launch completed
 
-echo start hv_watch
-tmux has-session -t 00_hv_watch 2>/dev/null \
-    && echo "hv_watch already running. skipping." \
-    || tmux new-session -d -s 00_hv_watch "$GUARDIAN_ROBOT_PATH/modules/module_launch/rescue_mode/hv_watch.sh ${MONGO_URI} ${MONGO_PORT}"
+# レスキューモード監視(hv_watch)はロボット搭載マシン(ON_ROBOT=1)でのみ起動する
+if [ "$ON_ROBOT" = "1" ]; then
+    echo start hv_watch
+    tmux has-session -t 00_hv_watch 2>/dev/null \
+        && echo "hv_watch already running. skipping." \
+        || tmux new-session -d -s 00_hv_watch "$GUARDIAN_ROBOT_PATH/modules/module_launch/rescue_mode/hv_watch.sh ${MONGO_URI} ${MONGO_PORT}"
+else
+    echo "ON_ROBOT is not 1. skipping hv_watch."
+fi

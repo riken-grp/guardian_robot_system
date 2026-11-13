@@ -4,6 +4,7 @@ import logging
 import json
 import time
 import os
+import traceback
 import threading
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -184,11 +185,49 @@ class polling_gesture_modes_node(Node):
         #else:
         #    self.get_logger().info('No _id mode was registered to be playing')
     #
+    def validate_gesture(self, gesture) -> str | None:
+        # Actions文書の書き方を調べる。不正なら理由を、正しければNoneを返す
+        if not isinstance(gesture, dict):
+            return "document is not a dict"
+        option = gesture.get('option')
+        if not isinstance(option, dict):
+            return "option is not a dict"
+        gesture_type = option.get('type')
+        if not isinstance(gesture_type, str):
+            return "option.type is not a string"
+        key = 'command' if 'mode' in gesture_type else 'gesture'
+        value = option.get(key)
+        if not isinstance(value, str) or not value:
+            return "option." + key + " is not a non-empty string"
+        for key in ('offset', 'duration'):
+            if key in option and (isinstance(option[key], bool) or not isinstance(option[key], (int, float))):
+                return "option." + key + " is not a number"
+        return None
+    #
     def timer_callback(self):
+        # 例外でノードが落ちるとlaunch全体(on_exit=Shutdown)が終了するので、ここで全て捕まえる
+        self.gesture = False
+        try:
+            self.process_next_gesture()
+        except Exception:
+            self.get_logger().error("failed to process gesture:\n" + traceback.format_exc())
+            if isinstance(self.gesture, dict) and '_id' in self.gesture:
+                try:
+                    self.mng.set_status(self.gesture['_id'], 'stopped')
+                except Exception:
+                    self.get_logger().error("failed to set status 'stopped':\n" + traceback.format_exc())
+    #
+    def process_next_gesture(self):
         
         #get_next action from MongoDB
         self.gesture=self.mng.get_next()
         if self.gesture != False:
+            #不正な文書はstoppedにして読み飛ばす（waitingのままだとget_next()が毎周期同じ文書を返す）
+            error = self.validate_gesture(self.gesture)
+            if error is not None:
+                self.get_logger().error("invalid gesture document (" + error + "): _id=" + str(self.gesture.get('_id')) + " option=" + str(self.gesture.get('option')))
+                self.mng.set_status(self.gesture['_id'], 'stopped')
+                return
             #
             if 'mode' in self.gesture['option']['type']:
                 self.mng.set_status(self.gesture['_id'],'is_playing')   

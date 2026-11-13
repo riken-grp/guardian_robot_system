@@ -1,4 +1,19 @@
-"""MVDR beamformer for multi-channel microphone array audio."""
+"""MVDR / delay-and-sum beamformers for multi-channel microphone array audio.
+
+Sign convention (shared with sound_source_localizer.array_geometry):
+for a far-field source in unit direction d, microphone m at position p_m
+(relative to the array centroid) receives the wavefront with arrival delay
+
+    tau_m = -(p_m . d) / c       (mics closer to the source hear it earlier)
+
+so x_m(t) = s(t - tau_m)  <=>  X_m(f) = S(f) exp(-j 2 pi f tau_m)
+                                      = S(f) exp(+j 2 pi f (p_m . d) / c).
+
+The steering vector is therefore a_m(f) = exp(+j 2 pi f (p_m . d) / c), and
+the time alignment X_m(f) exp(+j 2 pi f tau_m) = X_m(f) conj(a_m(f)).
+"""
+
+from typing import Sequence
 
 import numpy as np
 from scipy.fft import rfft, irfft
@@ -34,6 +49,8 @@ class MVDRBeamformer:
         """
         self.mic_positions = np.asarray(mic_positions, dtype=np.float64)
         self.n_mics = self.mic_positions.shape[0]
+        # Positions relative to the array centroid (phase reference)
+        self._rel_positions = self.mic_positions - self.mic_positions.mean(axis=0)
         self.sample_rate = sample_rate
         self.fft_size = fft_size
         self.speed_of_sound = speed_of_sound
@@ -56,23 +73,16 @@ class MVDRBeamformer:
         Returns:
             Steering vector of shape (n_freqs, n_mics) as complex values.
         """
-        # Unit direction vector from the target (far-field assumption)
-        d = np.array([
-            np.cos(elevation) * np.cos(azimuth),
-            np.cos(elevation) * np.sin(azimuth),
-            np.sin(elevation),
-        ])
+        # Arrival-time *advance* of each mic relative to the array centroid:
+        # (p_m . d) / c = -tau_m  (see module docstring)
+        advance = self._rel_positions @ _unit_vector(azimuth, elevation) \
+            / self.speed_of_sound  # (n_mics,)
 
-        # Time delay for each microphone relative to the array center
-        # tau_m = (mic_pos . d) / c
-        delays = self.mic_positions @ d / self.speed_of_sound  # (n_mics,)
-
-        # Steering vector: exp(-j * 2 * pi * f * tau)
+        # Steering vector a_m(f) = exp(+j 2 pi f (p_m . d) / c),
+        # i.e. X_m = S * a_m for a plane wave from the target direction.
         # Shape: (n_freqs, n_mics)
-        phase = -2.0 * np.pi * self.freqs[:, np.newaxis] * delays[np.newaxis, :]
-        steering = np.exp(1j * phase)
-
-        return steering
+        phase = 2.0 * np.pi * self.freqs[:, np.newaxis] * advance[np.newaxis, :]
+        return np.exp(1j * phase)
 
     def _update_covariance(self, X: np.ndarray) -> np.ndarray:
         """Update the running spatial covariance matrix using EMA.
@@ -231,25 +241,146 @@ class MVDRBeamformer:
         output = np.concatenate(output_blocks)
         return output[:n_samples]
 
+    # ------------------------------------------------------------------
+    # Delay-and-sum
+    # ------------------------------------------------------------------
+
+    def _das_setup(self) -> None:
+        """Lazily compute constants for the streaming delay-and-sum."""
+        if getattr(self, '_das_ready', False):
+            return
+        # Largest possible |tau_m| (samples) over all directions
+        max_adv = float(np.max(np.linalg.norm(self._rel_positions, axis=1)))
+        self._das_max_delay = max_adv / self.speed_of_sound * self.sample_rate
+        # Constant output latency: max |tau| plus a look-ahead so that the
+        # (two-sided) fractional-delay sinc kernel never needs samples of
+        # the *next* block (avoids clicks at block ends).
+        lookahead = 16
+        self._das_latency = self._das_max_delay + lookahead
+        # Context (history) length: covers the largest net delay
+        # (2 * max + look-ahead) plus a margin for the kernel tails.
+        self._das_ctx = int(np.ceil(2.0 * self._das_max_delay)) + lookahead + 48
+        self._das_tail: np.ndarray | None = None
+        self._das_ready = True
+
+    @property
+    def das_latency_samples(self) -> float:
+        """Constant output latency (samples) of :meth:`apply_das_multi`."""
+        self._das_setup()
+        return self._das_latency
+
+    @property
+    def das_context_samples(self) -> int:
+        """Number of trailing samples kept as delay-and-sum history."""
+        self._das_setup()
+        return self._das_ctx
+
+    def reset_das(self) -> None:
+        """Forget the delay-and-sum history (e.g. after an audio gap)."""
+        self._das_setup()
+        self._das_tail = None
+
+    def push_context(self, multichannel_audio: np.ndarray) -> None:
+        """Update the delay-and-sum history without beamforming.
+
+        Call this for blocks that are not beamformed so that the next
+        block is filtered with the correct (contiguous) history.  Only the
+        last few samples are kept, so passing a view of just the block's
+        tail is enough.
+        """
+        self._das_setup()
+        ctx = self._das_ctx
+        a = np.asarray(multichannel_audio)
+        if a.shape[0] >= ctx:
+            self._das_tail = np.array(a[-ctx:], dtype=np.float32)
+        else:
+            prev = (self._das_tail if self._das_tail is not None
+                    else np.zeros((ctx, a.shape[1]), dtype=np.float32))
+            self._das_tail = np.concatenate([prev, a.astype(np.float32)])[-ctx:]
+
+    def apply_das_multi(
+        self,
+        multichannel_audio: np.ndarray,
+        azimuths: Sequence[float],
+        elevation: float = 0.0,
+    ) -> np.ndarray:
+        """Delay-and-sum beamforming toward several directions at once.
+
+        Streaming, frequency-domain fractional-delay DAS: the block is
+        prefixed with the last samples of the previous block (history) and
+        zero-padded, every channel is delayed by ``L - tau_m`` (``L`` = the
+        maximum possible |tau| plus a small look-ahead, so all delays are
+        causal) via a linear phase shift, and the channels are averaged.  The history prefix and the
+        zero padding absorb the circular wrap-around, so consecutive output
+        blocks join seamlessly.  The output has a constant latency of
+        :attr:`das_latency_samples` (~1.2 ms for a ~0.1 m array).
+
+        The FFT of the block is computed once and shared by all directions.
+
+        Args:
+            multichannel_audio: (n_samples, n_mics) time-domain audio.
+            azimuths: Target azimuths in radians (array frame).
+            elevation: Target elevation in radians.
+
+        Returns:
+            (len(azimuths), n_samples) float32 array of beamformed audio.
+        """
+        self._das_setup()
+        x = np.asarray(multichannel_audio, dtype=np.float32)
+        n_samples, n_mics = x.shape
+        ctx = self._das_ctx
+        n_dirs = len(azimuths)
+
+        tail = self._das_tail
+        if tail is None or tail.shape[1] != n_mics:
+            tail = np.zeros((ctx, n_mics), dtype=np.float32)
+        seg = np.concatenate([tail, x], axis=0)  # (ctx + n, n_mics)
+        self.push_context(x)
+
+        if n_dirs == 0:
+            return np.zeros((0, n_samples), dtype=np.float32)
+
+        n_fft = 1
+        while n_fft < seg.shape[0] + ctx:
+            n_fft <<= 1
+        X = rfft(seg, n=n_fft, axis=0)  # (n_freqs, n_mics)
+        freqs = np.arange(X.shape[0]) * (self.sample_rate / n_fft)
+
+        # Net (causal) delay per direction and mic, in seconds:
+        #   L - tau_m = L + (p_m . d) / c  in [L - D, L + D]
+        dirs = np.stack([_unit_vector(az, elevation) for az in azimuths])
+        advance = dirs @ self._rel_positions.T / self.speed_of_sound  # (K, M)
+        net_delay = self._das_latency / self.sample_rate + advance     # (K, M)
+
+        # Y_k(f) = 1/M sum_m X_m(f) exp(-j 2 pi f net_delay_km)
+        phase = np.exp(-2j * np.pi * freqs[np.newaxis, :, np.newaxis]
+                       * net_delay[:, np.newaxis, :])               # (K, F, M)
+        Y = np.einsum('kfm,fm->kf', phase, X) / n_mics
+        y = irfft(Y, n=n_fft, axis=1)
+        return y[:, ctx:ctx + n_samples].astype(np.float32)
+
     def apply_das(
         self,
         multichannel_audio: np.ndarray,
         azimuth: float,
         elevation: float = 0.0,
     ) -> np.ndarray:
-        """Apply Delay-and-Sum beamforming by simple channel averaging.
+        """Delay-and-sum toward a single direction (see apply_das_multi).
 
-        For small arrays (~0.1m) at moderate sample rates (16kHz), the
-        inter-microphone delay is well under 1 sample. Direct averaging
-        of all channels is equivalent to DAS and avoids any FFT boundary
-        artefacts.
-
-        Args:
-            multichannel_audio: (n_samples, n_mics) time-domain audio, float64.
-            azimuth: Target azimuth in radians (unused — kept for API compat).
-            elevation: Target elevation in radians (unused).
+        Note: this advances the streaming history, so for several
+        directions on the same block use :meth:`apply_das_multi`.
 
         Returns:
-            Beamformed single-channel audio of shape (n_samples,) as float64.
+            Beamformed single-channel audio of shape (n_samples,), float32.
         """
-        return multichannel_audio.mean(axis=1)
+        return self.apply_das_multi(multichannel_audio, [azimuth], elevation)[0]
+
+
+def _unit_vector(azimuth: float, elevation: float) -> np.ndarray:
+    """Unit vector toward (azimuth, elevation); x-forward, y-left, z-up."""
+    cos_el = np.cos(elevation)
+    return np.array([
+        cos_el * np.cos(azimuth),
+        cos_el * np.sin(azimuth),
+        np.sin(elevation),
+    ])

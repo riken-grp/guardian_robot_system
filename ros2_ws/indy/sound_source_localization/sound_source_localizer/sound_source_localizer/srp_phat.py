@@ -133,18 +133,42 @@ class SrpPhat:
         azimuth_range: Tuple[float, float] = (0.0, 360.0),
         elevation_range: Tuple[float, float] = (-30.0, 30.0),
         max_pairs: int = 60,
+        power_threshold: float = 0.05,
+        interp_factor: int = 4,
+        suppression_deg: float = 15.0,
     ):
+        """
+        Args:
+            power_threshold: Minimum *normalised* steered response power for
+                a peak to be reported.  The SRP is divided by its theoretical
+                maximum (all pairs perfectly coherent at the steered lag), so
+                the value is in [-1, 1] and independent of block / FFT size.
+                Peaks below this value are discarded, so silence or diffuse
+                noise yields no (or fewer than ``num_sources``) estimates.
+                Set to a value <= -1 to disable.
+            interp_factor: Oversampling factor of the GCC inverse FFT, used
+                for sub-sample (fractional) delay resolution.  1 disables.
+            suppression_deg: Neighbourhood (degrees) suppressed around each
+                detected peak (azimuth wraps around 0/360).
+        """
         self.mic_positions = mic_positions
         self.sample_rate = sample_rate
         self.num_sources = num_sources
         self.resolution_deg = resolution_deg
-        self.frequency_range = frequency_range
+        self.frequency_range = (float(frequency_range[0]),
+                                float(frequency_range[1]))
+        self.power_threshold = float(power_threshold)
+        self.interp_factor = max(1, int(interp_factor))
+        self.suppression_deg = float(suppression_deg)
 
         self.pairs = _select_pairs(len(mic_positions), max_pairs)
 
         self.azimuths, self.elevations = _build_candidate_directions(
             azimuth_range, elevation_range, resolution_deg
         )
+        # Azimuth grid wraps around when it spans a full circle
+        self._az_circular = abs(
+            (azimuth_range[1] - azimuth_range[0]) - 360.0) < 1e-6
 
         # Pre-compute sample-delay table: (A, E, P)
         self._precompute_delays()
@@ -155,6 +179,9 @@ class SrpPhat:
         Fully vectorized via einsum: builds all direction vectors at once,
         computes per-mic delays with a single matrix product, then derives
         pair TDOAs by index selection — no Python loops.
+
+        Also invalidates the per-n_fft caches (band mask, delay indices),
+        so call this again whenever ``sample_rate`` changes.
         """
         az = self.azimuths   # (n_az,)
         el = self.elevations  # (n_el,)
@@ -180,68 +207,125 @@ class SrpPhat:
         pj = self.pairs[:, 1]
         self.delay_samples = (delays[:, :, pi] - delays[:, :, pj]) * self.sample_rate  # (n_az, n_el, n_pairs)
 
-    def locate(self, channels: np.ndarray) -> List[Tuple[float, float, float]]:
-        """Run SRP-PHAT on a block of multi-channel audio.
+        # Per-n_fft caches (rebuilt lazily in _get_fft_cache)
+        self._fft_cache: dict = {}
 
-        Args:
-            channels: (C, N) float64 array, one row per channel.
+    def _get_fft_cache(self, n_fft: int):
+        """Return (band_mask, lag_indices, gather_columns, norm) for n_fft.
 
-        Returns:
-            List of (azimuth_rad, elevation_rad, power) tuples for each
-            detected source, sorted by descending power.
+        * band_mask: (n_freqs,) float mask, 1 inside ``frequency_range``.
+        * lag_indices: sorted unique (oversampled) circular lag indices that
+          the delay table actually needs (|lag| <= max TDOA).
+        * gather_columns: (n_az, n_el, n_pairs) index into ``lag_indices``.
+        * norm: GCC value of a perfectly coherent pair at the right lag
+          (used to normalise the SRP to [-1, 1]).
         """
+        cache = self._fft_cache.get(n_fft)
+        if cache is not None:
+            return cache
+
+        n_freqs = n_fft // 2 + 1
+        freqs = np.arange(n_freqs) * self.sample_rate / n_fft
+        f_lo, f_hi = self.frequency_range
+        band_mask = ((freqs >= f_lo) & (freqs <= f_hi)).astype(np.float64)
+        if not band_mask.any():
+            band_mask[:] = 1.0  # degenerate range: fall back to full band
+
+        r = self.interp_factor
+        n_ifft = n_fft * r
+        delay_idx = np.round(self.delay_samples * r).astype(np.int64) % n_ifft
+        lag_indices, inverse = np.unique(delay_idx, return_inverse=True)
+        gather_columns = inverse.reshape(delay_idx.shape)
+
+        # Perfectly coherent pair: unit-magnitude cross spectrum with zero
+        # phase -> value at lag 0 of the (masked, oversampled) inverse FFT.
+        norm = float(irfft(band_mask, n=n_ifft)[0]) * r
+        norm = max(norm, 1e-12)
+
+        cache = (band_mask, lag_indices, gather_columns, norm)
+        self._fft_cache[n_fft] = cache
+        return cache
+
+    def compute_power_map(self, channels: np.ndarray) -> np.ndarray:
+        """Normalised steered response power map, shape (n_az, n_el)."""
         n_samples = channels.shape[1]
         n_fft = 1
         while n_fft < 2 * n_samples - 1:
             n_fft <<= 1
 
-        # Compute GCC-PHAT for all pairs
-        gcc_matrix = gcc_phat_all_pairs(channels, self.pairs, n_fft=n_fft)
+        band_mask, lag_indices, gather_columns, norm = self._get_fft_cache(n_fft)
+        r = self.interp_factor
 
-        # Evaluate steered response power for each candidate direction (vectorized)
-        # delay_samples: (n_az, n_el, n_pairs) — convert to integer sample indices
-        delay_indices = np.round(self.delay_samples).astype(np.int64) % n_fft
-        # gcc_matrix: (n_pairs, n_fft)
-        # gathered[ai, ei, pi] = gcc_matrix[pi, delay_indices[ai, ei, pi]]
+        # Single batched FFT for all channels, PHAT weighting, band limit
+        X = rfft(channels, n=n_fft, axis=1)
+        cross = X[self.pairs[:, 0]] * np.conj(X[self.pairs[:, 1]])
+        cross = cross / np.maximum(np.abs(cross), 1e-12) * band_mask
+        # Oversampled inverse FFT (zero-padding in the frequency domain)
+        # gives fractional-lag resolution.  Scale by r so values match the
+        # non-oversampled GCC.
+        gcc = irfft(cross, n=n_fft * r, axis=1) * r  # (P, n_fft * r)
+        gcc_lags = gcc[:, lag_indices]                # (P, L)
+
         pair_idx = np.arange(len(self.pairs))
-        gathered = gcc_matrix[pair_idx[np.newaxis, np.newaxis, :], delay_indices]
+        gathered = gcc_lags[pair_idx[np.newaxis, np.newaxis, :], gather_columns]
         power_map = gathered.sum(axis=2)  # (n_az, n_el)
+        return power_map / (norm * len(self.pairs))
 
-        # Peak detection: find top-N peaks
-        results = self._find_peaks(power_map)
-        return results
+    def locate(self, channels: np.ndarray) -> List[Tuple[float, float, float]]:
+        """Run SRP-PHAT on a block of multi-channel audio.
+
+        Args:
+            channels: (C, N) float array, one row per channel.
+
+        Returns:
+            List of (azimuth_rad, elevation_rad, power) tuples for each
+            detected source, sorted by descending power.  ``power`` is the
+            normalised SRP (1.0 = all microphone pairs perfectly coherent).
+            At most ``num_sources`` entries; fewer (possibly none) when the
+            peaks are below ``power_threshold``.
+        """
+        power_map = self.compute_power_map(channels)
+        return self._find_peaks(power_map)
 
     def _find_peaks(
         self, power_map: np.ndarray
     ) -> List[Tuple[float, float, float]]:
-        """Find the top-N peaks in the power map with simple suppression.
+        """Find the top-N peaks in the power map with neighbourhood suppression.
+
+        Azimuth suppression wraps around 0/360 degrees (when the grid spans
+        the full circle) so that a source near 0 deg is not reported twice.
 
         Args:
-            power_map: (n_az, n_el) steered response power.
+            power_map: (n_az, n_el) normalised steered response power.
 
         Returns:
             List of (azimuth_rad, elevation_rad, power).
         """
-        pm = power_map.copy()
+        pm = power_map.astype(np.float64, copy=True)
+        n_az, n_el = pm.shape
         peaks: List[Tuple[float, float, float]] = []
-        suppression_radius = max(1, int(15.0 / self.resolution_deg))
+        radius = max(1, int(round(self.suppression_deg / self.resolution_deg)))
+        offsets = np.arange(-radius, radius + 1)
 
         for _ in range(self.num_sources):
-            idx_flat = np.argmax(pm)
+            idx_flat = int(np.argmax(pm))
             ai, ei = np.unravel_index(idx_flat, pm.shape)
             power_val = pm[ai, ei]
-            if power_val <= 0.0:
+            if not np.isfinite(power_val) or power_val < self.power_threshold:
                 break
 
-            az_rad = float(self.azimuths[ai])
-            el_rad = float(self.elevations[ei])
-            peaks.append((az_rad, el_rad, float(power_val)))
+            peaks.append((float(self.azimuths[ai]),
+                          float(self.elevations[ei]),
+                          float(power_val)))
 
-            # Suppress neighbourhood
-            az_lo = max(0, ai - suppression_radius)
-            az_hi = min(pm.shape[0], ai + suppression_radius + 1)
-            el_lo = max(0, ei - suppression_radius)
-            el_hi = min(pm.shape[1], ei + suppression_radius + 1)
-            pm[az_lo:az_hi, el_lo:el_hi] = 0.0
+            # Suppress neighbourhood (azimuth: modular, elevation: clipped).
+            # All elevations of the neighbouring azimuths are suppressed since
+            # the elevation resolution of a planar array is poor.
+            if self._az_circular:
+                az_idx = (ai + offsets) % n_az
+            else:
+                az_idx = ai + offsets
+                az_idx = az_idx[(az_idx >= 0) & (az_idx < n_az)]
+            pm[np.unique(az_idx), :] = -np.inf
 
         return peaks

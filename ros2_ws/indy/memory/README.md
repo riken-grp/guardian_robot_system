@@ -1,6 +1,6 @@
 # Memory System
 
-This is version `2.0.5` the implementation files for Indy's Memory System. 
+This is version `2.0.2` (as in `setup.py`) of the implementation files for Indy's Memory System. 
 
 ## Requirements
 
@@ -18,32 +18,27 @@ setuptools==65.5.0
 
 It also requires the following packages, which may in turn have requirements of their own:
 - [ROS 2 Humble](https://docs.ros.org/en/humble/index.html) library, required for its `rclpy` package.
-- [PyIndy](https://github.com/riken-grp/pyindy/tree/develop/pyindy) (Latest version)
-- Other Indy internal packages built with ROS: `std_msgs`, `recognition_msgs`. These contain message and parameter file definitions that are common among all of Indy's modules.
+- PyIndy, included in this repository at `modules/pyindy`.
+- Other Indy internal packages built with ROS: `recognition_msgs` and `common_msgs` (in addition to the standard `std_msgs`). These contain message definitions that are common among Indy's modules.
 
 ## Running the Memory System
 
-There is a Launch File to run the memory system. It supports the following topics:
+There is a Launch File to run the memory system. The node (`memory_node`) runs in the `/$ROBOT_NAME` namespace (the `ROBOT_NAME` environment variable must be set), and the topic names below are relative to that namespace. It subscribes to the following topics:
 
-- Object Recognition: `/recog/object/tracked`
-- Person Recognition: `/recog/person/pose/associated`
-- Environmental Sensor: `/out_topic` (Currently not implemented)
-- Automatic Speech Recognition: `/asr/meta_data`
-- Rover Location estimation: `/rover/pose` (Currently disabled)
-- Text-To-Speech information: `/robot/action_ctl` (Only TTS messages are processed)
-- Scene Graph data: `/recog/scenegraph`(Currently disabled)
+- Object Recognition: `recog/object/tracked`
+- Person Recognition: `recog/person/pose/associated`
+- Automatic Speech Recognition: `asr/meta_data`
+- Text-To-Speech information: `robot/action_ctl` (Only TTS messages are processed)
+- Episode control: `memory/episode_ctl` (see below)
+- Rover Location estimation: `rover/pose` (Currently disabled in the code)
 
-If a topic is absent, the memory system does not subscribe to it.
+To Launch the Memory System's Launch file, run the following command on an environment sourced on ROS2 Humble and after `colcon build`ing (in `$GUARDIAN_ROBOT_PATH/ros2_ws`) and sourcing the Indy project:
 
-To Launch the Memory System's Launch file, run the following command on an environment sourced on ROS2 Humble and after `colcon build`ing and sourcing the Indy project:
+`ros2 launch memory all_memory_launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT`
 
-`ros2 launch memory all_memory_launch.py`
-
-This will launch the Memory System with the default parameters.
-
-The launcher supports the following ROS2 parameters:
-- `mongodb`: The URI for the MongoDB in which the memory will be stored. The default is Indy's `localhost`.
-- `mongoport`: The Port for the MongoDB. The default is `6000`.
+The launcher supports the following launch arguments:
+- `mongo_uri`: The URI of the MongoDB server in which the memory will be stored. The launch default is an empty string, so it should always be given.
+- `mongo_port`: The Port of the MongoDB server. The launch default is `1`, so it should always be given.
 
 # Memory System Structure
 
@@ -55,17 +50,15 @@ Saves the information published by Indy's recognition systems into collections i
 
 | System | Collection | Description |
 |--------|------------|-------------|
-| ASR | `asr` | Automatic Speech Recognition |
-| Environment Sensor | `env` | Environmental Sensor (Temperature, Pressure, etc.) |
+| ASR | `dia` | Automatic Speech Recognition (stored together with TTS as dialogue) |
+| Text-To-Speech | `dia` | Text-to-Speech information |
 | Object Recognition | `obj` | Object Recognition |
 | Person Recognition | `per` | Person Recognition |
-| Location | `loc` | Self-localization Estimation |
-| Text-To-Speech | `tts` | Text-to-Speech information |
-| Scene Graph | `sce` | Scene Graph generation data. |
+| Location | `loc` | Self-localization Estimation (currently disabled in the code) |
 
 The data published by these systems is saved with minimal changes. At regular intervals, the records in Sensor Memory are compiled and saved into Short-Term Memory, at which point they are removed from Sensor Memory. As such, Sensor Memory is always compact.
 
-**NOTE**: For the Expo version, not all of these nodes will be gathered.
+**NOTE**: The modules that are actually loaded are listed in `get_sm_expo_modules()` (`memory/sensor_memory/__init__.py`).
 
 ## Short-Term Memory
 
@@ -111,26 +104,31 @@ Dialogue Memorization and Recall make use of an *Embeddings Database*. We use [C
 
 # Memory Settings
 
-All memory settings can be found in MongoDB, in the `memory_settings` database. It has three collections:
+The general memory settings are read from MongoDB, database `robot_config`, collection `system_parameters`, in the Document whose `name` is `memory` (its `config` field). The default data is in `setup/mongo_docker/default_data/robot_config.system_parameters.json`. Top-level keys missing from the Document are filled with the defaults in `memory/util/settings.py` (nested keys are not filled). The main settings are:
 
-- `robot_settings`: General Memory settings, such as 
-    - `robot_name`
-    - `llm`: settings for the LLM used in summarization, including its system prompt.
-    - `embed_api`: settings for the Embeddings database, including its location in the file system and the API used to generate the embeddings.
-    - `memory_level`: Configuration that determines whether a given type of memory runs, and forgets.
-        - `sm_lvl`: Sensor Memory Level. Default value is `2`. Possible values are:
-            - `1` for working sensor memory without forgetting; or 
-            - `2` for working sensor memory with forgetting every five minutes.
-        - `stm_lvl`: Short-Term Memory Level. Default value is `2`. Possible values are:
-            - `0` to disable short-term memory; 
-            - `1` for working short-term memory without forgetting; or 
-            - `2` for working short-term memory with forgetting based on each module's forgetting curve and heuristics.
-        - `ltm_lvl`: Long-Term Memory Level. Default value is `2`. Possible values are:
-            - `0` to disable long-term memory; 
-            - `1` for working long-term memory without forgetting; or 
-            - `2` for working long-term memory with forgetting based on each module's forgetting curve and heuristics.
-    - `mem_eval`: enable evaluation logging, which records various execution data to a separate database (`memory_eval`). Default value is `False`.
-    - `default_forgetting`: Default Forgetting parameters. Only used when first creating the database settings.
+- `robot_name`, `robot_alias`
+- `llm`: settings for the LLM used in summarization, including its system prompt.
+- `embed_api`: settings for the Embeddings database, including its location in the file system and the API used to generate the embeddings.
+- `memory_level`: Configuration that determines whether a given type of memory runs, and forgets.
+    - `sm_lvl`: Sensor Memory Level. Default value is `2`. Possible values are:
+        - `0` to disable sensor memory;
+        - `1` for working sensor memory without forgetting;
+        - `2` for working sensor memory with forgetting every five minutes; or
+        - `3` to disable sensor memory but still let short-term memory clear it.
+    - `stm_lvl`: Short-Term Memory Level. Default value is `2`. Possible values are:
+        - `0` to disable short-term memory; 
+        - `1` for working short-term memory without forgetting; or 
+        - `2` for working short-term memory with forgetting based on each module's forgetting curve and heuristics.
+    - `ltm_lvl`: Long-Term Memory Level. Default value is `2`. Possible values are:
+        - `0` to disable long-term memory; 
+        - `1` for working long-term memory without forgetting; or 
+        - `2` for working long-term memory with forgetting based on each module's forgetting curve and heuristics.
+- `mem_eval`: enable evaluation logging, which records various execution data to a separate database (`memory_eval`). Default value is `False`.
+- `debug_msgs`: enable debug log output. Default value is `False`.
+- `default_forgetting`: Not read by the current code. The default forgetting parameters are defined in `memory/util/settings.py`.
+
+The `memory_settings` database holds the following collections:
+
 - `llm_prompts`: Collection of Prompts used in dialogue summarization. Each promp comes in English and Japanese.
 - `module_settings`: Individual settings for each module. Mostly focused on forgetting parameters.
 
@@ -140,11 +138,11 @@ The following Databases are necessary to run the memory. All are created automat
 - `sensor_memory`
 - `short_term_memory`
 - `long_term_memory`
-- `memory_settings` -- Note: The system creates default values for most settings, except for the `llm_prompts` collection. You can find a backup of the prompts on the `prompts/memory_settings.llm_prompts.json` file in this repository.
+- `memory_settings` -- Note: The system creates default values for most settings, except for the `llm_prompts` collection. You can find the default prompts in `setup/mongo_docker/default_data/memory_settings.llm_prompts.json` in this repository.
 
 # Development
 
-## Version 2.0.5
+## Recent changes
 
 - Dialogue Short-Term Memory has been reworked to be triggered by the Scenario Manager.
 - Narrative Long-Term Memory has been reworked to compile Short-Term Memories at the end of the day. Similarly, default Dialogue STM parameters for memory decay have been adjusted to give memories longer tails, which makes them last much longer than a single day. This ensures they are caught by Long Term Memory.

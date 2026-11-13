@@ -1,0 +1,1103 @@
+[
+  {
+    "_id": {
+      "$oid": "6746e136c34ea2b7c3e2d323"
+    },
+    "name": "long looking at",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "status": "inactive",
+    "trigger": [
+      {
+        "long_looking": {
+          "target": {
+            "$numberInt": "1"
+          },
+          "duration": {
+            "$gt": {
+              "$numberInt": "20"
+            }
+          }
+        }
+      }
+    ],
+    "ignore_after_activated": {
+      "$numberInt": "100"
+    },
+    "save_trigger_contents_values": [],
+    "interaction_subscenario_ids": [],
+    "return": true,
+    "ignore_same_observations": true,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あれ，なんか視線を感じるなぁ・・・．"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "Look_around"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "なにか用事かな？"
+        },
+        "interruptable": true
+      },
+      {
+        "_id": {
+          "$oid": "678c6b86b97b652eb3c38f55"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "asr": null
+          }
+        ],
+        "timeout": {
+          "$numberInt": "10"
+        },
+        "default": {
+          "actor": "robot1",
+          "utterance": {
+            "type": "normal",
+            "sentence": "なんだろう，まぁ"
+          },
+          "interruptable": false,
+          "type": "action"
+        },
+        "type": "observation"
+      },
+      {
+        "actor": "robot1",
+        "interruptable": true,
+        "utterance": {
+          "type": "generate",
+          "sentence": "",
+          "generator": "LlmJPEventGenerator"
+        },
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "676ceaa41afc78b27302bc21"
+    },
+    "name": "nice bag",
+    "status": "active",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": true,
+    "trigger": [
+      {
+        "appear": {
+          "name": "handbag"
+        }
+      }
+    ],
+    "ignore_same_observations": true,
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "20"
+    },
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "お，そのバッグかっこいいね！"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "Look_around"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "どこで買ったの？！"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "Look_around"
+        },
+        "interruptable": false
+      },
+      {
+        "_id": {
+          "$oid": "678c6b86b97b652eb3c38f55"
+        },
+        "actor": "robot1",
+        "interruptable": false,
+        "trigger": [
+          {
+            "asr": null
+          }
+        ],
+        "timeout": {
+          "$numberInt": "10"
+        },
+        "default": {
+          "actor": "robot1",
+          "utterance": {
+            "type": "normal",
+            "sentence": "うんうん。いいなぁ。。"
+          },
+          "interruptable": false,
+          "type": "action"
+        },
+        "type": "observation"
+      },
+      {
+        "actor": "robot1",
+        "interruptable": true,
+        "utterance": {
+          "type": "normal",
+          "sentence": "あっ、話を戻さなきゃ"
+        },
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "67891752b97b652eb3c38f2b"
+    },
+    "name": "声が聞こえる",
+    "status": "inactive",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": true,
+    "trigger": [
+      {
+        "asr": null
+      }
+    ],
+    "save_trigger_contents_values": [
+      "words"
+    ],
+    "ignore_same_observations": true,
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "5"
+    },
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "blank",
+          "sentence": "えーっと, {triggered[words]}って声が聞こえた"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "それに"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "interruptable": true,
+        "utterance": {
+          "type": "generate",
+          "sentence": "",
+          "generator": "ObservationPromptGenerator"
+        },
+        "type": "action",
+        "subscenario_activate": true
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "678a5a9fb97b652eb3c38f35"
+    },
+    "name": "QR 呼びかけ ⇒移動",
+    "status": "active",
+    "priority": {
+      "$numberInt": "50"
+    },
+    "trigger": [
+      {
+        "event": {
+          "_id": "681dd0e30274fb2e742f882f"
+        }
+      }
+    ],
+    "ignore_after_activated": {
+      "$numberInt": "10"
+    },
+    "ignore_same_observations": true,
+    "return": false,
+    "next_scenarios": [
+      "68ddcf529cf123228db06034"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "指令が来ました。はーい。今から行くよ"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "raise_hand",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberInt": "6"
+            },
+            {
+              "$numberDouble": "1.15"
+            },
+            {
+              "$numberDouble": "-2.8"
+            }
+          ]
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "お話しをしに来たよ。"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "67b5aca6b97b652eb3c38faf"
+    },
+    "name": "インディー戻って",
+    "status": "active",
+    "priority": {
+      "$numberInt": "100"
+    },
+    "return": false,
+    "trigger": [
+      {
+        "asr": {
+          "text": "インディー戻って"
+        }
+      }
+    ],
+    "important": true,
+    "ignore_after_activated": {
+      "$numberInt": "5"
+    },
+    "ignore_same_observations": true,
+    "interaction_subscenario_ids": [],
+    "next_scenarios": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "はい，いったん帰りますね．じゃ！"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "Look_around"
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberDouble": "6.88"
+            },
+            {
+              "$numberDouble": "1.88"
+            },
+            {
+              "$numberDouble": "-2.75"
+            }
+          ]
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "67f92931b5603c990d0ead33"
+    },
+    "name": "タスク強制終了命令受信",
+    "status": "active",
+    "return": false,
+    "priority": {
+      "$numberInt": "1"
+    },
+    "important": true,
+    "trigger": [
+      {
+        "event": {
+          "_id": "67f92931b5603c990d0ead33"
+        }
+      }
+    ],
+    "interaction_subscenario_ids": [],
+    "next_scenarios": [
+      "68e4de7ad658daf1b9079675"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "utterance": {
+          "type": "normal",
+          "sentence": "強制終了命令を受信しました。"
+        },
+        "type": "action",
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "681dd10f0274fb2e742f8831"
+    },
+    "name": "ロボットの強制停止・危険回避",
+    "status": "active",
+    "return": false,
+    "priority": {
+      "$numberInt": "1"
+    },
+    "important": true,
+    "trigger": [
+      {
+        "event": {
+          "_id": "681dd10f0274fb2e742f8831"
+        }
+      }
+    ],
+    "interaction_subscenario_ids": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "data": "deactivate"
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "data": "stop"
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ロボットを強制停止しました。"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "681dd1240274fb2e742f8833"
+    },
+    "name": "ナビゲーション・アクティベート",
+    "status": "active",
+    "return": false,
+    "priority": {
+      "$numberInt": "1"
+    },
+    "important": true,
+    "trigger": [
+      {
+        "event": {
+          "_id": "681dd1240274fb2e742f8833"
+        }
+      }
+    ],
+    "interaction_subscenario_ids": [],
+    "events": [
+      {
+        "actor": "robot1",
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "data": "activate"
+        },
+        "type": "action",
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "ナビゲーションをアクティブにしました。"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "move": {
+            "$numberDouble": "0.2"
+          }
+        },
+        "interruptable": false,
+        "type": "action"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "6822d13e0274fb2e742f8841"
+    },
+    "name": "person_too_near_activation",
+    "status": "inactive",
+    "trigger": [
+      {
+        "person_too_near": null
+      }
+    ],
+    "ignore_after_activated": {
+      "$numberInt": "10"
+    },
+    "priority": {
+      "$numberInt": "10"
+    },
+    "important": true,
+    "return": true,
+    "ignore_same_observations": true,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "近いよ"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "6822d19a0274fb2e742f8843"
+    },
+    "name": "indy_ignored_activation",
+    "status": "active",
+    "trigger": [
+      {
+        "indy_ignored_in_chat": null
+      }
+    ],
+    "ignore_after_activated": {
+      "$numberInt": "10"
+    },
+    "priority": {
+      "$numberInt": "10"
+    },
+    "return": true,
+    "important": true,
+    "ignore_same_observations": true,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "無視しないでよ"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "6863897f869440079dee5f2c"
+    },
+    "name": "GRP-Demo_Raise_Hand_Trigger",
+    "status": "active",
+    "priority": {
+      "$numberInt": "50"
+    },
+    "trigger": [
+      {
+        "raising_hand": {
+          "distance": {
+            "$lt": {
+              "$numberDouble": "3.5"
+            }
+          },
+          "life": {
+            "$gt": {
+              "$numberInt": "20"
+            }
+          }
+        }
+      }
+    ],
+    "ignore_after_activated": {
+      "$numberInt": "10"
+    },
+    "ignore_same_observations": true,
+    "return": false,
+    "next_scenarios": [
+      "68ddcf529cf123228db06034"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "あっ、手を挙げてる。話しましょう！"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "raise_hand",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberInt": "6"
+            },
+            {
+              "$numberDouble": "1.15"
+            },
+            {
+              "$numberDouble": "-2.8"
+            }
+          ]
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68832a96cc37afa21f0d6546"
+    },
+    "name": "GRP-Demo_Keyphrase_Trigger",
+    "status": "active",
+    "priority": {
+      "$numberInt": "50"
+    },
+    "trigger": [
+      {
+        "keyword-wake": {
+          "activate": true
+        }
+      }
+    ],
+    "ignore_after_activated": {
+      "$numberInt": "10"
+    },
+    "ignore_same_observations": true,
+    "return": false,
+    "next_scenarios": [
+      "68ddcf529cf123228db06034"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "呼びかけが聞こえたよ。今から机に移動します。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "bowing_max",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "navigation": {
+          "type": "normal",
+          "navigation": [
+            {
+              "$numberInt": "6"
+            },
+            {
+              "$numberDouble": "1.15"
+            },
+            {
+              "$numberDouble": "-2.8"
+            }
+          ]
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "対話システムを初期化しています。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "raise_hand",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "thinking.jpg",
+          "duration": {
+            "$numberInt": "3"
+          }
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68947a81a8fa7a2b5a25de91"
+    },
+    "name": "バッテリ補充",
+    "status": "active",
+    "trigger": [
+      {
+        "low_battery": {
+          "current": {
+            "$gt": {
+              "$numberDouble": "0.01"
+            }
+          }
+        }
+      }
+    ],
+    "important": true,
+    "priority": {
+      "$numberInt": "1000"
+    },
+    "return": false,
+    "ignore_same_observations": false,
+    "next_scenarios": [
+      "68e4f22dd658daf1b9079679"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "topic_type": "std_msgs/msg/String",
+          "data": "activate nav"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "バッテリが減ってきました。充電の準備を行います。"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68947e7ea8fa7a2b5a25de97"
+    },
+    "name": "バッテリ復活",
+    "status": "inactive",
+    "trigger": [
+      {
+        "full_battery": null
+      }
+    ],
+    "important": true,
+    "priority": {
+      "$numberInt": "1000"
+    },
+    "return": false,
+    "ignore_same_observations": false,
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "元気百倍！"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "interruptable": false,
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "topic_type": "std_msgs/msg/String",
+          "data": "activate nav"
+        }
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "interruptable": false,
+        "utterance": {
+          "type": "normal",
+          "sentence": "ナビゲーション機能を再開します。"
+        }
+      },
+      {
+        "actor": "robot1",
+        "navigation": {
+          "move": {
+            "$numberDouble": "0.2"
+          }
+        },
+        "interruptable": false,
+        "type": "action"
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "interruptable": false,
+        "utterance": {
+          "type": "normal",
+          "sentence": "さて，動きますか。"
+        },
+        "navigation": {
+          "type": "normal",
+          "move": {
+            "$numberDouble": "0.3"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68c3cb98d658daf1b907965b"
+    },
+    "name": "バッテリ補充 emergency",
+    "status": "active",
+    "trigger": [
+      {
+        "request_battery_charge": null
+      }
+    ],
+    "important": true,
+    "priority": {
+      "$numberInt": "1000"
+    },
+    "return": false,
+    "ignore_same_observations": false,
+    "next_scenarios": [
+      "68e4f22dd658daf1b9079679"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "topic_type": "std_msgs/msg/String",
+          "data": "activate nav"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "バッテリ残量がありません。緊急に充電を開始します。"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "68e4f2b8d658daf1b907967b"
+    },
+    "name": "バッテリ補充 by QR ホームへ",
+    "status": "active",
+    "trigger": [
+      {
+        "event": {
+          "_id": "681ad4708a9db0e6cdaccac7"
+        }
+      }
+    ],
+    "important": true,
+    "priority": {
+      "$numberInt": "1000"
+    },
+    "return": false,
+    "ignore_same_observations": false,
+    "next_scenarios": [
+      "68e4f22dd658daf1b9079679"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "ros_command": {
+          "type": "normal",
+          "topic": "/__ROBOT_NAME__/robot/action_ctl",
+          "topic_type": "std_msgs/msg/String",
+          "data": "activate nav"
+        },
+        "interruptable": false
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "バッテリ充電コマンドが入力されました。"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "691bef755107efc376512ad8"
+    },
+    "name": "右を見る",
+    "status": "active",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": true,
+    "trigger": [
+      {
+        "look": {
+          "direction": "right"
+        }
+      }
+    ],
+    "ignore_same_observations": true,
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "5"
+    },
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "3"
+          },
+          "command": "look_right"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "eye": {
+          "type": "normal",
+          "image": "sad.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "691bf08e5107efc376512ada"
+    },
+    "name": "左を見る",
+    "status": "active",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": true,
+    "trigger": [
+      {
+        "look": {
+          "direction": "left"
+        }
+      }
+    ],
+    "ignore_same_observations": true,
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "5"
+    },
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "3"
+          },
+          "command": "look_left"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "eye": {
+          "type": "normal",
+          "image": "sad.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "691bf0b05107efc376512adc"
+    },
+    "name": "下を見る",
+    "status": "active",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": true,
+    "trigger": [
+      {
+        "look": {
+          "direction": "down"
+        }
+      }
+    ],
+    "ignore_same_observations": true,
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "5"
+    },
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "gesture": {
+          "type": "normal",
+          "duration": {
+            "$numberInt": "3"
+          },
+          "command": "look_down"
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "eye": {
+          "type": "normal",
+          "image": "sad.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "691bf0db5107efc376512ade"
+    },
+    "name": "まばたき",
+    "status": "active",
+    "priority": {
+      "$numberInt": "1"
+    },
+    "return": true,
+    "trigger": [
+      {
+        "blink": null
+      }
+    ],
+    "ignore_same_observations": true,
+    "interaction_subscenario_ids": [],
+    "ignore_after_activated": {
+      "$numberInt": "5"
+    },
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "eye": {
+          "type": "normal",
+          "image": "sad.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true
+      },
+      {
+        "actor": "robot1",
+        "type": "action",
+        "eye": {
+          "type": "normal",
+          "image": "default.jpg",
+          "duration": {
+            "$numberInt": "1"
+          }
+        },
+        "interruptable": true
+      }
+    ]
+  }
+]

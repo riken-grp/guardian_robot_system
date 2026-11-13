@@ -29,7 +29,7 @@
   ```
   ros2 launch rover_tools navigation_launch.py
   ```
-  - config/nav2_param.yamlで各種設定
+  - config/nav2_params.yamlで各種設定
 - 足元LiDAR x2 (ナビゲーション用)
   ```
   ros2 launch rover_tools lidar_launch.py

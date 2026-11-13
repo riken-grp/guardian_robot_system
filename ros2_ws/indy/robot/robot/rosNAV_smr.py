@@ -19,6 +19,10 @@ import time
 
 from pyindy.mongo import NavigationManager as NavMan
 from pyindy.mongo import StatusManager
+# max time [s] to wait for the rover to become idle before starting a navigation
+IDLE_WAIT_TIMEOUT = 3.0
+# interval [s] of rover/stop sent while the rover is in error (recovery)
+ERROR_RECOVERY_INTERVAL = 1.0
 ##
 # import quaternion
 ### Quaternion
@@ -74,8 +78,12 @@ class polling_nav_node(Node):
         self.spub=self.create_publisher(StringStamped, 'rover/status', 10)
         self.mpub = self.create_publisher(String, "robot/action_ctl", 10)
         self.mng_status=StatusManager(self.mongo_uri,self.mongo_port,self.robot_name,'rover')
-        self.ctd=-1.0
+        self.cdt=-1.0
         self.activate=True
+        # the navigation taken from the DB is held (not started) until the
+        # rover becomes idle; the time it started waiting (None: not waiting)
+        self.waiting_idle_since=None
+        self.last_recovery_stop=0.0
         self.rover_init = False
 
         self.mov_pub=self.create_publisher(Float32, 'rover/move_straight', 10)
@@ -111,15 +119,7 @@ class polling_nav_node(Node):
         self.mpub.publish(msg)
         if not self.activate:
             return False
-        if not self.rover_state['mode']=='idle' or self.rover_state['arrived']==False:
-            stop_msg = Empty()
-            self.stop_pub.publish(stop_msg)
-            time.sleep(0.3)
-            if not self.rover_state['mode']=='idle':
-                msg=String()
-                msg.data='rover: the system flag failed to reset the idle'
-                self.mpub.publish(msg)
-                return False
+        # the rover is idle here: it is checked in timer_callback
         # self.get_logger().warn("      " + self.rover_state['mode'])
         if 'navigation' in g:
             goal_msg=PoseAngle()
@@ -164,38 +164,58 @@ class polling_nav_node(Node):
                 self.init_pose_pub.publish(init_pose_msg)
 
         if self.p == False:
-            nav_recovering = self.rover_state['mode']=='error' and self.rover_state['error_source']=='nav'
-            if nav_recovering:
-                # nav2の失敗結果はrover_wrapperが約1秒でidleに戻すので、次の指示を取り出さずに待つ
-                # （ここでsleepしてもspin中のため状態が更新されず、次の指示がfailedになってしまう）
-                self.get_logger().warn("  waiting: recovery from " + self.rover_state['error_description'], throttle_duration_sec=1.0)
-            elif self.rover_state['mode']=='error':
-                self.get_logger().warn("  waiting: recovery from " + self.rover_state['error_description'])
-                msg=String()
-                msg.data="navigation: " + self.rover_state['error_description']
-                self.mpub.publish(msg)
-                stop_msg = Empty()
-                self.stop_pub.publish(stop_msg)
-                time.sleep(1.0)
-            self.nav=False if nav_recovering else self.mng.get_next()
-            if not self.nav == False:
+            # Never sleep in this callback: rover_state is updated by
+            # update_error, which runs only after this callback returns.
+            if self.waiting_idle_since is None:
+                if self.rover_state['mode']=='error' and self.rover_state['error_source']=='nav':
+                    # nav2の失敗結果はrover_wrapperが約1秒でidleに戻すので、次の指示を取り出さずに待つ
+                    self.get_logger().warn("  waiting: recovery from " + self.rover_state['error_description'], throttle_duration_sec=1.0)
+                    return self._publish_status()
+                if self.rover_state['mode']=='error':
+                    self._recover_from_error()
+                self.nav=self.mng.get_next()
+                if self.nav == False:
+                    return self._publish_status()
                 self.mng.set_status(self.nav['_id'],'is_playing')
-                self.p=self.start_navigation(self.nav['option'])
-                self.get_logger().info("  id == " + str(self.nav['_id']))
-                if self.p==False:
-                    msg=String()
-                    if self.activate == False:
-                        self.mng.set_status(self.nav['_id'],'ignored')
-                        msg.data='navigation: ignored'
-                        self.get_logger().warn("  ignored.")
-                    else:
-                        self.mng.set_status(self.nav['_id'],'failed')
-                        msg.data='navigation: failed'
-                        self.get_logger().warn("  failed.")
-                    # self.mpub.publish(msg)
+                if self.activate and self.rover_state['mode']!='idle':
+                    # stop once and check again in the next timer callbacks
+                    self.get_logger().info("  waiting for the rover to become idle (mode: "
+                                           + str(self.rover_state['mode']) + "), id == " + str(self.nav['_id']))
+                    self.stop_pub.publish(Empty())
+                    self.waiting_idle_since=time.time()
+                    return self._publish_status()
+            elif self.rover_state['mode']!='idle':
+                if time.time()-self.waiting_idle_since < IDLE_WAIT_TIMEOUT:
+                    return self._publish_status()  # still waiting
+                self.waiting_idle_since=None
+                self.mng.set_status(self.nav['_id'],'failed')
+                msg=String()
+                msg.data='rover: the system flag failed to reset the idle'
+                self.mpub.publish(msg)
+                self.get_logger().warn("  failed: the rover did not become idle (mode: "
+                                       + str(self.rover_state['mode']) + ")")
+                return self._publish_status()
+            else:
+                self.get_logger().info("  the rover became idle after "
+                                       + "{:.1f}".format(time.time()-self.waiting_idle_since) + " s")
+                self.waiting_idle_since=None
+            # idle (arrived is not checked: an idle rover can start at once)
+            self.p=self.start_navigation(self.nav['option'])
+            self.get_logger().info("  id == " + str(self.nav['_id']))
+            if self.p==False:
+                msg=String()
+                if self.activate == False:
+                    self.mng.set_status(self.nav['_id'],'ignored')
+                    msg.data='navigation: ignored'
+                    self.get_logger().warn("  ignored.")
                 else:
-                    self.rover_state['mode']='executing'
-                    self.cdt=3.0 # set timer
+                    self.mng.set_status(self.nav['_id'],'failed')
+                    msg.data='navigation: failed'
+                    self.get_logger().warn("  failed.")
+                # self.mpub.publish(msg)
+            else:
+                self.rover_state['mode']='executing'
+                self.cdt=3.0 # set timer
         else:
             if self.cdt > 0.0:
                 self.cdt = self.cdt-0.1
@@ -203,6 +223,21 @@ class polling_nav_node(Node):
                 self.p = False
                 # self.get_logger().info("finishied. id == " + str(self.nav['_id']))
                 # time.sleep(1.0)
+        self._publish_status()
+    #
+    def _recover_from_error(self):
+        """Send rover/stop to recover from an error (at most every ERROR_RECOVERY_INTERVAL s, no sleep)."""
+        now=time.time()
+        if now-self.last_recovery_stop < ERROR_RECOVERY_INTERVAL:
+            return
+        self.last_recovery_stop=now
+        self.get_logger().warn("  waiting: recovery from " + self.rover_state['error_description'])
+        msg=String()
+        msg.data="navigation: " + self.rover_state['error_description']
+        self.mpub.publish(msg)
+        self.stop_pub.publish(Empty())
+    #
+    def _publish_status(self):
         msg=StringStamped()
         msg.header.stamp=self.get_clock().now().to_msg()
         msg.header.frame_id='map'
@@ -212,21 +247,28 @@ class polling_nav_node(Node):
     # 
     def msg_callback(self, msg):
         if msg.data == 'stop':
-            if self.p != False:
+            if self.p != False or self.waiting_idle_since is not None:
+                # executing, or held until the rover becomes idle
                 self.get_logger().info("  stopped. id == " + str(self.nav['_id']))
                 stop_msg = Empty()
                 self.stop_pub.publish(stop_msg)
                 self.mng.set_status(self.nav['_id'],'stopped')
-                msg=StringStamped()
-                msg.data="navigation: stopped"
-                self.spub.publish(msg)
+                stopped=StringStamped()
+                stopped.data="navigation: stopped"
+                self.spub.publish(stopped)
 
                 self.p = False
+                self.waiting_idle_since = None
             else:
                 self.get_logger().warn(" not playing.")
         if msg.data == 'deactivate nav':
             self.get_logger().warn("== deactivated ==")
             self.activate = False
+            if self.waiting_idle_since is not None:
+                # the held navigation is not started
+                self.get_logger().warn("  ignored. id == " + str(self.nav['_id']))
+                self.mng.set_status(self.nav['_id'],'ignored')
+                self.waiting_idle_since = None
         elif msg.data == 'activate nav':
             self.get_logger().warn("== activated ==")
             self.activate = True

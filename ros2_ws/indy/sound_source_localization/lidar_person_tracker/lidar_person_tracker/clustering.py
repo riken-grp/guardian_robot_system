@@ -52,18 +52,12 @@ def cluster_points(points, distance_threshold, circular=False):
     if len(points) == 0:
         return []
 
-    clusters = []
-    current_cluster = [0]
-
-    for i in range(1, len(points)):
-        dist = np.linalg.norm(points[i] - points[i - 1])
-        if dist <= distance_threshold:
-            current_cluster.append(i)
-        else:
-            clusters.append(points[current_cluster])
-            current_cluster = [i]
-
-    clusters.append(points[current_cluster])
+    points = np.asarray(points)
+    # Vectorised: split wherever the gap between consecutive points exceeds
+    # the threshold.
+    gaps = np.linalg.norm(np.diff(points, axis=0), axis=1)
+    breaks = np.flatnonzero(gaps > distance_threshold) + 1
+    clusters = np.split(points, breaks)
 
     # For full 360° scans: check if last cluster and first cluster belong to
     # the same object split by the angular wrap-around boundary.

@@ -1,4 +1,8 @@
 # internet_speed_monitor
+各スクリプトは`script/`ディレクトリにあります。以下のコマンドは、このディレクトリに移動してから実行してください。
+```
+cd $GUARDIAN_ROBOT_PATH/modules/indy_modules/internet_speed_monitor/script
+```
 ## 通信速度監視ツール
 ### 概要
 - 設定した間隔で指定したIPアドレスに対してpingを送信して、通信速度を測定します。

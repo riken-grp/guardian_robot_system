@@ -1,0 +1,154 @@
+[
+  {
+    "_id": {
+      "$oid": "65e6c1c301c631f78204eede"
+    },
+    "db_config": {
+      "cyber_db": {
+        "host": "__MONGO_HOST__",
+        "port": {
+          "$numberInt": "__MONGO_PORT__"
+        },
+        "dbname": "tBlackBoard",
+        "col_name": "cyber_topic"
+      },
+      "physical_db": {
+        "host": "__MONGO_HOST__",
+        "port": {
+          "$numberInt": "__MONGO_PORT__"
+        },
+        "dbname": "tBlackBoard",
+        "col_name": "physical_topic"
+      },
+      "scenario_db": {
+        "host": "__MONGO_HOST__",
+        "port": {
+          "$numberInt": "__MONGO_PORT__"
+        },
+        "dbname": "rism_configs",
+        "col_name": "scenarios",
+        "interruption_col_name": "interruption_subscenarios",
+        "interaction_col_name": "interaction_subscenarios"
+      },
+      "internal_state_db": {
+        "host": "__MONGO_HOST__",
+        "port": {
+          "$numberInt": "__MONGO_PORT__"
+        },
+        "dbname": "tBlackBoard",
+        "col_name": "internal_state"
+      }
+    },
+    "robot_list": {
+      "__ROBOT_NAME__": {
+        "host": "__MONGO_HOST__",
+        "port": {
+          "$numberInt": "__MONGO_PORT__"
+        },
+        "config_name": "robot_config",
+        "action_dbname": "tBlackBoard",
+        "llm": {
+          "model": "indy-instruct",
+          "url": "http://__LLM_HOST__:8001/v1",
+          "system_prompt": "あなたは理化学研究所ガーディアンロボットプロジェクトによって開発されたロボット、インディーです。\nあなたは場の状況に応じて気が利く返しをするロボットとしてデザインされています。\n自分のことを指すときは「ワタシ」を使います。\nロボットは音声対話を行うため、返答は1文か2文で行うことが望ましいです。\n気が利いているとユーザに感じさせるために、時間や温度などの体感に関する表現については、比喩表現を多用してください。\n相手から質問をされていない場合に限り、あなたから質問をしてみてください。",
+          "defaults": {
+            "retries": {
+              "$numberInt": "5"
+            },
+            "temperature": {
+              "$numberDouble": "0.8"
+            },
+            "stop": [
+              "\n",
+              "###"
+            ],
+            "timeout": {
+              "$numberInt": "60"
+            },
+            "max_tokens": {
+              "$numberInt": "100"
+            }
+          },
+          "log_db": {
+            "host": "__MONGO_HOST__",
+            "port": {
+              "$numberInt": "__MONGO_PORT__"
+            },
+            "dbname": "memory_settings",
+            "coll": "llm_log"
+          }
+        }
+      }
+    },
+    "ignore_non_looking": false,
+    "interruption_probability": {
+      "$numberDouble": "0.5"
+    },
+    "back_to_main_scenario_probability": {
+      "$numberDouble": "0.7"
+    },
+    "finished_queue_length": {
+      "$numberInt": "10"
+    },
+    "latest_N": {
+      "$numberInt": "30"
+    },
+    "openweathermap_token": "__OPENWEATHERMAP_TOKEN__",
+    "language": "ja",
+    "city": "Kyoto,JP",
+    "recognition_available_regions": [
+      {
+        "type": "rectangle",
+        "region_id": {
+          "$numberInt": "0"
+        },
+        "locations": [
+          [
+            {
+              "$numberInt": "3"
+            },
+            {
+              "$numberDouble": "0.5"
+            }
+          ],
+          [
+            {
+              "$numberInt": "10"
+            },
+            {
+              "$numberInt": "5"
+            }
+          ]
+        ]
+      }
+    ],
+    "google_asr": {
+      "NumASR": {
+        "$numberInt": "1"
+      },
+      "ServerConf": {
+        "Server1": {
+          "GoogleASRServer": "__GOOGLE_ASR_SERVER__",
+          "GoogleASRPort": {
+            "$numberInt": "8888"
+          },
+          "ASRSepPort": {
+            "$numberInt": "5732"
+          }
+        }
+      },
+      "AliveMesgInterval": {
+        "$numberInt": "60"
+      }
+    },
+    "asr_target_angle": {
+      "$numberInt": "45"
+    },
+    "scenario_ignore_is_playing": {
+      "utterance": false,
+      "gesture": true,
+      "navigation": false,
+      "command": false
+    }
+  }
+]

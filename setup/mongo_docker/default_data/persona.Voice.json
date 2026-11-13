@@ -1,0 +1,24 @@
+[
+  {
+    "_id": {
+      "$oid": "67ee82ba4b2e3c522c12c84e"
+    },
+    "key": "voice_params",
+    "server": "http://__TTS_HOST__:15000/synthesize",
+    "type": "gtts",
+    "params": {
+      "pitch": {
+        "$numberDouble": "1.2"
+      },
+      "rate": {
+        "$numberDouble": "0.8"
+      }
+    },
+    "choice": [
+      "hoya",
+      "gtts"
+    ],
+    "parameters_for_hoya": "pitch 1.2 and rate 1.1 or something like those",
+    "parametars_for_gtts": "rate: 0.8"
+  }
+]

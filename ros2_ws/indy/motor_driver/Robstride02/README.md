@@ -6,9 +6,10 @@
 ## セットアップ方法
 下記コマンドを実行し、CAN I/Fをセットアップします。
 ```sh
-# /dev/ttyUSB0はUSBCANのポートを指定し、right_armの箇所にはCAN I/F名を決めます。
-$ sudo slcand -o -c -f -s8 /dev/ttyUSB0 right_arm
-$ ip link set right_arm up
+# /dev/ttyUSB0はUSBCANのポートを指定し、rightarmの箇所にはCAN I/F名を決めます。
+# arm_motor_controlを使う場合、CAN I/F名はarm_control/arm_motor_control/config/arm_motor_control.yamlのcan_interface（右腕: rightarm、左腕: leftarm）に合わせます。
+$ sudo slcand -o -c -f -s8 /dev/ttyUSB0 rightarm
+$ sudo ip link set rightarm up
 # 下記コマンドを実行し、上で決めたCAN I/F名が存在していればセットアップ完了です。
 $ ip addr
 ```
@@ -378,7 +379,7 @@ enum class RunMode
 
 ## パラメータリスト
 動作パラメータです。<br>
-Robstride02.hppのParameterListに定義されています。
+Robstride02.hppの名前空間`Parameterlist`に定義されています（例: `Parameterlist::RUN_MODE`）。
 
 | name | index | content | type | size(byte) | description | read/write |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -413,9 +414,12 @@ Robstride02.hppのParameterListに定義されています。
 ## Example
 ```c++
 
+Robstride02Driver motor;
+const std::string can_interface = "rightarm";
+
 void motorTest()
 {
-    const motor_can_id = 0x10;
+    const uint8_t motor_can_id = 0x10;
 
     if(motor.initSocket(can_interface) < 0)
     {

@@ -53,6 +53,7 @@ Mix  : [████████████                            ] -28.5 
 ### audio_playback_node
 
 `audio/multichannel` トピックをsubscribeし、指定チャンネルまたは全チャンネルのミックス音声をALSAスピーカーから再生する。出力はモノラル。
+再生デバイスは最初のメッセージ受信時に開く。開けなかった場合や、再生中に回復できないエラー（デバイス切断など）が起きた場合は、デバイスを閉じて `retry_interval_sec` 以上の間隔で開き直しを試みる。データ長が `channels × frames_per_block` に満たないメッセージは破棄する。
 
 #### パラメータ
 
@@ -60,6 +61,7 @@ Mix  : [████████████                            ] -28.5 
 |---|---|---|---|
 | `channel` | int | `-1` | 再生するチャンネル番号 (0-indexed)。`-1` で全チャンネルミックス |
 | `device` | string | `"default"` | ALSA再生デバイス名 (例: `"plughw:1,0"`) |
+| `retry_interval_sec` | double | `5.0` | 再生デバイスを開き直す試行の最小間隔 (秒) |
 
 #### Subscribeトピック
 
@@ -115,8 +117,11 @@ float64[] positions                 # マイク座標 [x0,y0,z0, x1,y1,z1, ...] 
 
 ## ビルド
 
+本パッケージは環境変数 `ON_ROBOT=1` のときのみビルドされる（それ以外ではCMakeLists.txtでスキップされる）。
+
 ```bash
-colcon build --packages-select microphone_array
+cd $GUARDIAN_ROBOT_PATH/ros2_ws
+ON_ROBOT=1 colcon build --packages-select microphone_array
 source install/setup.bash
 ```
 

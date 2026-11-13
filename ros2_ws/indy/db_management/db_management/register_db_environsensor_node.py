@@ -23,13 +23,16 @@ class RegisterDBEnvironNode(MongoDBNode):
             self,
             OmronEnvSensor,
             "in_environ_raw_topic",
-            qos_profile=qos.qos_profile_system_default,
+            # omron_environ_recognition/sensor.py は qos_profile_sensor_data (BEST_EFFORT)
+            # で publish しているため，RELIABLE だと接続されない
+            qos_profile=qos.qos_profile_sensor_data,
         )
         sub_labels = message_filters.Subscriber(
             self,
             Labels,
             "in_environ_labels_topic",
-            qos_profile=qos.qos_profile_system_default,
+            # BEST_EFFORT の subscriber は RELIABLE の publisher (env_recog.py) とも接続できる
+            qos_profile=qos.qos_profile_sensor_data,
         )
         self.sub_env_label = message_filters.ApproximateTimeSynchronizer(
             [sub_env, sub_labels], 100, 0.2

@@ -44,7 +44,7 @@ sleep 2
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting module_launch.sh..."
 ${GUARDIAN_ROBOT_PATH}/modules/module_launch/module_launch.sh
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for hv_play_audio session to start..."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for sessions to start..."
 sleep 3
 
 
@@ -53,9 +53,11 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for sessions to be ready..."
 RETRY_COUNT=0
 MAX_RETRIES=6
 while [ ${RETRY_COUNT} -lt ${MAX_RETRIES} ]; do
-    # hv_play_audio が起動しているか確認
-    if ! tmux list-sessions 2>/dev/null | grep -q '^hv_play_audio:'; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] hv_play_audio not running. Retrying module_launch.sh... (${RETRY_COUNT}/${MAX_RETRIES})"
+    # hv_play_audio が残っていると module_launch.sh が起動をスキップするため、停止してから起動し直す
+    if tmux list-sessions 2>/dev/null | grep -q '^hv_play_audio:'; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] hv_play_audio still running. Stopping it and retrying module_launch.sh... (${RETRY_COUNT}/${MAX_RETRIES})"
+        tmux send-keys -t hv_play_audio C-c 2>/dev/null || true
+        sleep 1
         ${GUARDIAN_ROBOT_PATH}/modules/module_launch/module_launch.sh
         sleep 5
         RETRY_COUNT=$((RETRY_COUNT+1))
@@ -74,9 +76,22 @@ while [ ${RETRY_COUNT} -lt ${MAX_RETRIES} ]; do
     RETRY_COUNT=$((RETRY_COUNT+1))
 done
 
+# 最後のやり直しの結果を確認する（ループは最後の module_launch.sh の後に確認せず抜けるため）
+not_running=$(bash "${CHECK_SESSIONS}" 2>/dev/null | grep '!!!NOT Running!!!' | sed 's/^!!!NOT Running!!!: //' | tr '\n' ' ')
+if tmux list-sessions 2>/dev/null | grep -q '^hv_play_audio:'; then
+    not_running="${not_running}(hv_play_audio が残っています) "
+fi
+if [ -z "${not_running}" ]; then
+    ALL_READY=1
+else
+    ALL_READY=0
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sessions not ready after ${MAX_RETRIES} retries: ${not_running}"
+fi
+
 # 暫定で充電ステーションの位置に初期位置をセットしている。必要に応じて変更すること。
+# ros2 topic pub -1 は購読者が現れるまで待つため、ローバが起動していない場合に止まらないよう timeout を付ける
 source ${GUARDIAN_ROBOT_PATH}/ros2_ws/install/setup.bash
-ros2 topic pub -1 /${ROBOT_NAME}/rover/set_initialpose common_msgs/msg/PoseAngle "header:
+timeout 30 ros2 topic pub -1 /${ROBOT_NAME}/rover/set_initialpose common_msgs/msg/PoseAngle "header:
   stamp:
     sec: 0
     nanosec: 0
@@ -86,5 +101,21 @@ position:
   y: -4.726
   z: 0.0
 angle: -1.57"
+PUB_STATUS=$?
+if [ "${PUB_STATUS}" -ne 0 ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Failed to publish initial pose (exit=${PUB_STATUS})."
+fi
 
-bash "${SCRIPT_DIR}/tools/send_slack_msg.sh" "[${ROBOT_NAME}] 通常モードに戻りました。"
+if [ "${ALL_READY}" -eq 1 ] && [ "${PUB_STATUS}" -eq 0 ]; then
+    bash "${SCRIPT_DIR}/tools/send_slack_msg.sh" "[${ROBOT_NAME}] 通常モードに戻りました。"
+else
+    problems=""
+    if [ "${ALL_READY}" -ne 1 ]; then
+        problems="${problems}起動していないセッションがあります: ${not_running}"
+    fi
+    if [ "${PUB_STATUS}" -ne 0 ]; then
+        problems="${problems}初期位置を設定できませんでした。"
+    fi
+    bash "${SCRIPT_DIR}/tools/send_slack_msg.sh" "[${ROBOT_NAME}] 通常モードへの復帰処理を終えましたが、問題があります。${problems} 確認をお願いします。"
+    exit 1
+fi

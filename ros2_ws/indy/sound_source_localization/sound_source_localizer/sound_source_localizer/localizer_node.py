@@ -39,6 +39,11 @@ class SoundSourceLocalizerNode(Node):
         self.declare_parameter('num_sources', 3)
         self.declare_parameter('search_resolution_deg', 5.0)
         self.declare_parameter('frequency_range', [300.0, 3500.0])
+        # Minimum normalised SRP (0..1, 1 = all mic pairs perfectly coherent)
+        # for a peak to be reported.  Silence -> no estimates.
+        self.declare_parameter('power_threshold', 0.05)
+        # Oversampling factor of the GCC inverse FFT (fractional-lag resolution)
+        self.declare_parameter('interp_factor', 4)
 
         self.srp = None
         self._array_frame_id = 'microphone_array_base'
@@ -93,6 +98,8 @@ class SoundSourceLocalizerNode(Node):
             num_sources=self.get_parameter('num_sources').get_parameter_value().integer_value,
             resolution_deg=self.get_parameter('search_resolution_deg').get_parameter_value().double_value,
             frequency_range=(freq_range_param[0], freq_range_param[1]),
+            power_threshold=self.get_parameter('power_threshold').value,
+            interp_factor=self.get_parameter('interp_factor').value,
         )
         self.get_logger().info('SRP-PHAT initialized.')
 
@@ -108,8 +115,8 @@ class SoundSourceLocalizerNode(Node):
         n_channels = msg.channels
         n_frames = msg.frames_per_block
 
-        # Deinterleave int16 data into (C, N) float64 array
-        raw = np.array(msg.data, dtype=np.int16)
+        # Deinterleave int16 data into (C, N) float array (zero-copy view)
+        raw = np.frombuffer(msg.data, dtype=np.int16)
         if len(raw) != n_channels * n_frames:
             self.get_logger().warn(
                 f'Unexpected data length: {len(raw)} '
@@ -117,9 +124,8 @@ class SoundSourceLocalizerNode(Node):
             )
             return
 
-        channels = raw.reshape(n_frames, n_channels).T.astype(np.float64)
         # Normalise to [-1, 1]
-        channels /= 32768.0
+        channels = raw.reshape(n_frames, n_channels).T * (1.0 / 32768.0)
 
         # Update sample rate if changed
         if msg.sample_rate != self.srp.sample_rate:

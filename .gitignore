@@ -11,3 +11,24 @@ __pycache__
 # マシンごとの設定ファイル
 modules/module_launch/enable/*
 !modules/module_launch/enable/.gitkeep
+
+# mic2sock(Rust)のビルド結果
+modules/indy_modules/mic2sock/mic2sock_shim.rs/target/
+
+# 認識モデル(サーバ手順書「8. recognitionノードの設定」で配置、または自動でダウンロード)
+ros2_ws/*.pth
+ros2_ws/*.pkl
+ros2_ws/*.joblib
+ros2_ws/*.dat
+
+# シナリオ管理のログ
+modules/scenario_manager/rism/main_routine_log.txt
+
+# 一般的なもの
+*.log
+nohup.out
+.pytest_cache/
+.vscode/
+.idea/
+*.swp
+*~

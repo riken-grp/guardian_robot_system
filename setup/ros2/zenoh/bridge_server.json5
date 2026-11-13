@@ -1,7 +1,8 @@
-// zenoh-bridge-ros2dds 設定（サーバ側）
+// zenoh-bridge-ros2dds 設定（接続側：サーバ側、rviz用マシンなど）
 //
 // このファイルは編集せずにそのまま使う。マシンごとの値は起動時に引数で渡す
-// （modules/module_launch/available/000_zenoh_bridge.sh が ON_ROBOT=1 以外のとき読み込む）:
+// （modules/module_launch/available/000_zenoh_bridge.sh が ZENOH_MODE=connect のとき読み込む。
+//   ZENOH_MODE 未設定の場合は ON_ROBOT が 1 以外のとき）:
 //   domain  : 環境変数 ROS_DOMAIN_ID
 //   connect : 環境変数 ZENOH_ROBOT_ADDR（接続先ロボットの IP アドレス）
 //   port    : 環境変数 ZENOH_PORT（未設定なら 7447。ロボット側と同じ値にする）

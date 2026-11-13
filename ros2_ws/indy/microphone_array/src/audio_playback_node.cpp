@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <chrono>
 #include <limits>
 #include <vector>
 
@@ -17,9 +19,14 @@ public:
     // channel: -1 = mix all channels, 0..N-1 = single channel
     declare_parameter<int>("channel", -1);
     declare_parameter<std::string>("device", "default");
+    // Minimum interval between attempts to (re)open the playback device
+    declare_parameter<double>("retry_interval_sec", 5.0);
 
     channel_ = get_parameter("channel").as_int();
     device_  = get_parameter("device").as_string();
+    retry_interval_ = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+      std::chrono::duration<double>(
+        std::max(0.0, get_parameter("retry_interval_sec").as_double())));
 
     if (channel_ < 0) {
       RCLCPP_INFO(get_logger(), "Audio playback: all channels mixed -> mono [device: %s]",
@@ -39,16 +46,36 @@ public:
   {
     if (pcm_handle_) {
       snd_pcm_drain(pcm_handle_);
+    }
+    close_playback();
+  }
+
+private:
+  void close_playback()
+  {
+    if (pcm_handle_) {
       snd_pcm_close(pcm_handle_);
       pcm_handle_ = nullptr;
     }
   }
 
-private:
+  // Opens and configures the device; on any failure the handle is closed
+  // (no leak when retrying).
   bool init_playback(uint32_t sample_rate)
   {
+    if (!configure_playback(sample_rate)) {
+      close_playback();
+      return false;
+    }
+    return true;
+  }
+
+  bool configure_playback(uint32_t sample_rate)
+  {
+    close_playback();
     int err = snd_pcm_open(&pcm_handle_, device_.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
     if (err < 0) {
+      pcm_handle_ = nullptr;
       RCLCPP_ERROR(get_logger(), "Cannot open playback device '%s': %s",
         device_.c_str(), snd_strerror(err));
       return false;
@@ -114,6 +141,14 @@ private:
   {
     const int num_channels = static_cast<int>(msg->channels);
     const int num_frames   = static_cast<int>(msg->frames_per_block);
+    if (num_channels <= 0 ||
+      msg->data.size() < static_cast<size_t>(num_frames) * static_cast<size_t>(num_channels))
+    {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+        "Malformed audio message (%zu samples, %d ch x %d frames)",
+        msg->data.size(), num_channels, num_frames);
+      return;
+    }
 
     // Lazy initialization: ALSA setup requires sample rate from the first message
     if (!initialized_) {
@@ -123,7 +158,16 @@ private:
           channel_, num_channels - 1);
         channel_ = -1;
       }
+      // Rate-limit (re)open attempts after a failure
+      const auto now_tp = std::chrono::steady_clock::now();
+      if (has_attempted_ && now_tp - last_init_attempt_ < retry_interval_) {
+        return;
+      }
+      has_attempted_ = true;
+      last_init_attempt_ = now_tp;
       if (!init_playback(msg->sample_rate)) {
+        RCLCPP_WARN(get_logger(), "Playback init failed; retrying in %.1f s",
+          std::chrono::duration<double>(retry_interval_).count());
         return;
       }
       initialized_ = true;
@@ -159,7 +203,10 @@ private:
       int err = snd_pcm_recover(pcm_handle_, static_cast<int>(written), /*silent=*/1);
       if (err < 0) {
         RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 2000,
-          "ALSA playback error: %s", snd_strerror(err));
+          "ALSA playback error: %s; closing device (will retry)", snd_strerror(err));
+        // Unrecoverable (e.g. device gone): close and re-open later
+        close_playback();
+        initialized_ = false;
       }
     }
   }
@@ -168,6 +215,9 @@ private:
   std::string device_;
   snd_pcm_t * pcm_handle_;
   bool initialized_;
+  bool has_attempted_ = false;
+  std::chrono::steady_clock::time_point last_init_attempt_;
+  std::chrono::steady_clock::duration retry_interval_;
   std::vector<int16_t> mono_buf_;
 
   rclcpp::Subscription<AudioDataMultiChannel>::SharedPtr subscription_;

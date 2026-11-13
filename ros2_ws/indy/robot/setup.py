@@ -36,7 +36,8 @@ setup(
             'rosCommand = robot.rosCommand:main',
             'rosGesture = robot.rosGesture:main',
             'rosGesture_modes = robot.rosGesture_modes:main',
-            'rosWatchdog = robot.rosWatchdog:main'
+            'rosWatchdog = robot.rosWatchdog:main',
+            'rosVolume = robot.rosVolume:main'
         ],
     },
 )

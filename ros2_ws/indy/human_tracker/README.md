@@ -3,27 +3,31 @@
 
 ## 起動方法
 ```
-ros2 launch human_tracker human_tracker.launch.py
+ros2 launch human_tracker human_tracker.launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT
 ```
+- `/$ROBOT_NAME`名前空間で`human_tracker_node`、`facepose_publisher_node`、`ros_audio_tracker_node`の3ノードを起動する。
+- 外部カメラ用の`ros_audio_tracker_outer_camera_node`は`at_for_outside_camera.launch.py`で起動する。
 
 ## 操作方法
-### 主なrosパラメータ
+### 主なROSトピック
+`person_all_info`と`human_pose_marker`の接頭辞は、ノード名から末尾の`_node`を除いたもの（human_tracker.launch.pyでは`human_tracker`、`human_tracker_integration.launch.py`では`right_human_tracker`／`left_human_tracker`）。
+
 **publish**
 |トピック名|トピックタイプ|概要|
 |---|---|---|
-|human_tracker/person_all_info|human_tracker_msgs/PersonAllInfoList|すべての人間の追跡情報（ID、位置、姿勢、顔の角度）|
-|human_tracker/audio_info|human_tracker_msgs/AudioInfoList|音声情報（位置、時間情報、人間の識別情報）|
-|human_tracker/facepose_on_world|human_tracker_msgs/FacePoses|顔の位置と方向（ワールド座標系）|
-|human_tracker/recognition_result|human_tracker_msgs/TrackedPersons|追跡された人間のリスト（ID、位置、分離ID）|
+|human_tracker/person_all_info|human_tracker_msgs/PersonAllInfoList|すべての人間の追跡情報（ID、位置、姿勢、顔の角度）。`multi_lidar`がtrueのときのみ（human_tracker.launch.pyでは配信されない）|
+|human_tracker/audio_info|human_tracker_msgs/AudioInfoList|音声情報（位置、時間情報、人間の識別情報）。ros_audio_tracker_nodeが配信|
+|human_tracker/facepose_on_world|human_tracker_msgs/FacePoses|顔の位置と方向（ワールド座標系）。facepose_publisher_nodeが配信|
+|human_tracker/recognition_result|human_tracker_msgs/TrackedPersons|追跡された人間のリスト（ID、位置、分離ID）。`multi_lidar`がfalseのときのみ|
 |human_tracker/human_pose_marker|visualization_msgs/MarkerArray|追跡された人間の位置と方向（ワールド座標系）|
 
 **subscribe**
 |トピック名|トピックタイプ|概要|
 |---|---|---|
-|human_tracker/audio_info|human_tracker_msgs/AudioInfoList|音声情報（位置、時間情報、人間の識別情報）|
-|human_tracker/recognition_result|human_tracker_msgs/TrackedPersons|追跡された人間のリスト（ID、位置、分離ID）|
+|human_tracker/audio_info|human_tracker_msgs/AudioInfoList|音声情報（位置、時間情報、人間の識別情報）。human_tracker_node（`multi_lidar`がfalseのとき）が購読|
+|human_tracker/recognition_result|human_tracker_msgs/TrackedPersons|追跡された人間のリスト（ID、位置、分離ID）。facepose_publisher_nodeが購読|
 |scan|sensor_msgs/LaserScan|LiDARスキャンデータ|
-|recog/person/pose/associated|recognition_msgs/Persons|カメラ認識結果（人物のポーズ）|
+|recog/person/pose/associated|recognition_msgs/Persons|カメラ認識結果（人物のポーズ）。`camera_integration`がtrueのときのみ|
 
 ## 設定方法
 ### rosパラメータ
@@ -37,8 +41,8 @@ ros2 launch human_tracker human_tracker.launch.py
   |robot_link|'base_link'|ロボットリンク名|
   |lidar_link|'lidar_link'|LiDARリンク名|
   |max_recog_range|4.0|最大認識距離 [m]|
-  |upper_recog_angle|45.0|認識角度上限値 [deg]|
-  |lower_recog_angle|-45.0|認識角度下限値 [deg]|
+  |upper_recog_angle|100.0|認識角度上限値 [deg]|
+  |lower_recog_angle|-100.0|認識角度下限値 [deg]|
   |camera_integration|false|カメラ統合の有無|
   |camera_associated_topic|'recog/person/pose/associated'|カメラ関連トピック名|
   |camera_topic_hold_time|5.0|カメラトピック保持時間 [s]|
@@ -80,6 +84,7 @@ ros2 launch human_tracker human_tracker.launch.py
   |max_rightangle_limit|95.0|直角上限値 [deg]|
   |check_dent|false|凹凸チェックフラグ|
   |dent_limit|0.3|凹凸制限 [m]|
+  |multi_lidar|false（yamlに記載なし、コード既定値）|trueの場合`person_all_info`を配信し、falseの場合`recognition_result`配信・`audio_info`購読・追跡結果配信用TCPサーバを有効にする|
   
 
 - 以下は、config/facepose_publisher.yamlにて設定されている。
@@ -90,20 +95,27 @@ ros2 launch human_tracker human_tracker.launch.py
   
 
 - 以下は、config/ros_audio_tracker.yamlにて設定されている。
-  |parameter名|デフォルト値|概要|
-  |:--|:--|:--|
-  |client_number|10|クライアント数|
-  |msg_size|4096|メッセージサイズ|
-  |socket_length|13|ソケット長|
-  |need_transform|false|座標変換フラグ|
-  |audio_ip|"192.168.1.85"|音声IPアドレス|
-  |audio_port|7890|音声サーバのポート番号|
-  |client_number|10|クライアント数|
-  |msg_size|4096|メッセージサイズ|
-  |socket_length|13|ソケット長|
-  |need_transform|true|座標変換フラグ|
-  |robot_link|`<ROBOT_NAME>_base_link`（launchで設定）|ロボットリンク名|
-  |camera_link|at_camera_link|カメラリンク名|
+  - ros_audio_tracker_node（human_tracker.launch.pyで起動）
+    |parameter名|デフォルト値|概要|
+    |:--|:--|:--|
+    |client_number|10|クライアント数|
+    |msg_size|4096|メッセージサイズ|
+    |socket_length|13|ソケット長|
+    |need_transform|false|座標変換フラグ|
+
+    audio_ip / audio_portはyamlに記載されていないため、MongoDBの`ros_audio_tracker`の値が使われる（後述）。
+
+  - ros_audio_tracker_outer_camera_node（at_for_outside_camera.launch.pyで起動）
+    |parameter名|デフォルト値|概要|
+    |:--|:--|:--|
+    |audio_ip|"example.local"（環境に合わせて変更する）|音声サーバのホスト名またはIPアドレス|
+    |audio_port|3000|音声サーバのポート番号|
+    |client_number|10|クライアント数|
+    |msg_size|4096|メッセージサイズ|
+    |socket_length|13|ソケット長|
+    |need_transform|true|座標変換フラグ|
+    |robot_link|`<ROBOT_NAME>_base_link`（launchで設定）|ロボットリンク名|
+    |camera_link|at_camera_link|カメラリンク名|
 
 ### MongoDBパラメータ
 - 以下は、MongoDBで設定されている。  
@@ -117,5 +129,6 @@ ros2 launch human_tracker human_tracker.launch.py
   |ros_audio_tracker|audio_port|音声サーバのポート番号|
 
   ※human_tracker/audio_portとros_audio_tracker/audio_portはそれぞれ別のポートを指します。  
-  ※config/ros_audio_tracker.yamlのaudio_portとros_audio_tracker/audio_portは同じポートを指します。  
-  　どちらも設定されている場合は、MongoDB側の値が優先されます。
+  ※config/ros_audio_tracker.yamlのaudio_ip/audio_portとros_audio_tracker/audio_ip/audio_portは同じ接続先を指します。  
+  　ROSパラメータ側が優先されます。ROSパラメータの`audio_ip`が未設定（`""`）かつ`audio_port`が未設定（`1`）の場合のみ、MongoDBの値が使われます。  
+  　そのため、yamlにaudio_ip/audio_portが記載されているros_audio_tracker_outer_camera_nodeではMongoDBの値は使われません。

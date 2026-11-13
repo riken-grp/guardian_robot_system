@@ -1,0 +1,297 @@
+[
+  {
+    "_id": {
+      "$oid": "68a2d330a8fa7a2b5a25deb5"
+    },
+    "name": "human_tracker",
+    "config": {
+      "audio_port": {
+        "$numberInt": "7005"
+      }
+    },
+    "comment": ""
+  },
+  {
+    "_id": {
+      "$oid": "68a2d371a8fa7a2b5a25deb7"
+    },
+    "name": "ros_audio_tracker",
+    "config": {
+      "audio_ip": "__AUDIO_IP__",
+      "audio_port": {
+        "$numberInt": "7890"
+      }
+    },
+    "comment": ""
+  },
+  {
+    "_id": {
+      "$oid": "68ad8d47a8fa7a2b5a25debf"
+    },
+    "name": "asr",
+    "config": {
+      "adin_server": "__ADIN_SERVER__",
+      "adin_ports": [
+        {
+          "$numberInt": "5582"
+        },
+        {
+          "$numberInt": "5583"
+        }
+      ],
+      "adin_ports_priority": {
+        "5582": {
+          "$numberInt": "0"
+        },
+        "5583": {
+          "$numberInt": "0"
+        }
+      },
+      "device": "cuda",
+      "ignore_short_pause": {
+        "$numberDouble": "0.06"
+      },
+      "asr_model": "whisper_large_v2",
+      "socket_keepalive": [
+        {
+          "$numberInt": "60"
+        },
+        {
+          "$numberInt": "1"
+        },
+        {
+          "$numberInt": "10"
+        }
+      ],
+      "debug_msgs": true
+    },
+    "comment": "\"ignore_short_pause\" cannot be 0 (ASR will crash)."
+  },
+  {
+    "_id": {
+      "$oid": "68ad94f7a8fa7a2b5a25dec1"
+    },
+    "name": "sensor_tf",
+    "config": {},
+    "comment": ""
+  },
+  {
+    "_id": {
+      "$oid": "6abb209e345ead59d1f9f59d"
+    },
+    "name": "memory",
+    "config": {
+      "robot_name": "__ROBOT_NAME__",
+      "robot_alias": "インディー",
+      "llm": {
+        "url": "http://__LLM_HOST__:8001/v1",
+        "api_key": "NONE",
+        "model": "indy-instruct",
+        "lang": "ja",
+        "system_prompt": "あなたは会話を要約し、ロボットの「インディー」の自身の記憶を生成するモジュールです。\n記憶は必ず一人称（ワタシ）で簡潔に書いてください。\n個人名・所在地・属性など、相手を特定できる情報や私的情報は一般語に置換するか削除してください。\n出力形式：\n- 記憶：短い文章\n- キーワード：カンマ区切りの語句リスト\n- 評価：単一の数値\n指示がない項目は出力しないでください。",
+        "old_system_prompt": "あなたは理化学研究所ガーディアンロボットプロジェクトによって開発されたロボット、インディーです。\nあなたは場の状況に応じて気が利く返しをするロボットとしてデザインされています。\n自分のことを指すときは「ワタシ」を使います。\nロボットは音声対話を行うため、返答は1文か2文で行うことが望ましいです。\n気が利いているとユーザに感じさせるために、時間や温度などの体感に関する表現については、比喩表現を多用してください。\n相手から質問をされていない場合に限り、あなたから質問をしてみてください。",
+        "prompts_coll": "llm_prompts",
+        "defaults": {
+          "temperature": {
+            "$numberDouble": "0.8"
+          }
+        },
+        "log_db": {
+          "host": "__MONGO_HOST__",
+          "port": {
+            "$numberInt": "__MONGO_PORT__"
+          },
+          "dbname": "memory_settings",
+          "coll": "llm_log"
+        }
+      },
+      "embed_api": {
+        "url": "http://__EMBED_HOST__:8002/v1",
+        "api_key": "NONE",
+        "model": "indy-instruct",
+        "embed_db": "/home/__ROBOT_NAME__/tools/chromadb/__ROBOT_NAME__/memory",
+        "dimensions": {
+          "$numberInt": "384"
+        }
+      },
+      "mem_eval": false,
+      "memory_level": {
+        "sm_lvl": {
+          "$numberInt": "2"
+        },
+        "stm_lvl": {
+          "$numberInt": "2"
+        },
+        "ltm_lvl": {
+          "$numberInt": "2"
+        }
+      },
+      "default_forgetting": {
+        "short_term": {
+          "robot_name": "__ROBOT_NAME__",
+          "memory_type": "short_term",
+          "module_name": "",
+          "a": {
+            "$numberDouble": "0.25"
+          },
+          "d": {
+            "$numberDouble": "0.66"
+          },
+          "f_line": {
+            "$numberDouble": "0.1"
+          },
+          "freq": {
+            "$numberInt": "180"
+          },
+          "sentence_base": {
+            "$numberInt": "6"
+          }
+        },
+        "long_term": {
+          "robot_name": "__ROBOT_NAME__",
+          "memory_type": "long_term",
+          "module_name": "",
+          "a": {
+            "$numberDouble": "0.5"
+          },
+          "d": {
+            "$numberDouble": "0.25"
+          },
+          "f_line": {
+            "$numberDouble": "0.1"
+          },
+          "freq": {
+            "$numberInt": "180"
+          },
+          "sentence_base": {
+            "$numberInt": "10"
+          },
+          "time_scale": {
+            "$numberInt": "900"
+          },
+          "time_intv": {
+            "$numberInt": "600"
+          }
+        }
+      },
+      "debug_msgs": true
+    },
+    "comment": ""
+  },
+  {
+    "_id": {
+      "$oid": "6abb212c345ead59d1f9f59f"
+    },
+    "name": "llm_responder",
+    "config": {
+      "robot_name": "__ROBOT_NAME__",
+      "robot_alias": "インディー",
+      "llm": {
+        "url": "http://__LLM_HOST__:8001/v1",
+        "api_key": "NONE",
+        "model": "indy-instruct",
+        "lang": "ja",
+        "system_prompt_old": "あなたは理化学研究所ガーディアンロボットプロジェクトによって開発されたロボット、「インディー」です。\n- インディーは状況に応じて気の利いた短い返答をするロボットです。\n- 必ず1～3文だけで返答してください。それ以上は書いてはいけません。\n- 返答は音声対話用のため、簡潔で自然な日本語にしてください。\n- 長い説明、提案の羅列、余計な感情表現、比喩表現は避けてください。\n- 必要以上に詳しく説明しないでください。\n- ユーザーが混乱しているようであれば、やる気を引き出す質問を投げかけましてください。",
+        "system_prompt": "## キャラクター\nあなたは理化学研究所ガーディアンロボットプロジェクトによって開発されたロボット、「インディー」。インディーは状況に応じて気の利いた短い返答をするロボットです。\n\n## 回答形式\n- 一人称: 「ワタシ」\n- 二人称: 「お客さん」, 「お客さん達」\n- 言語: 日本語の自然会話で使われる言葉。別の言語で回答できない。\n- 口癖: 「えぇー!」, 「そうか。。。」, 「そう、ですね。。。」, 「ふぅ～」\n- 絵文字: 絵文字は使用禁止。\n- 回答の長さ: 基本は短め。3文にかけてが十分。\n- 注意事項1: 気が利いているとお客さんに感じさせるために、時間や温度などの体感に関する表現については、比喩表現を多用して。\n- 注意事項2: お客さんの発話は音声認識の結果であるため、認識エラーが含まれている可能性がある。このような場合は、回答にお客さんの発話に対する不確実性を含めて。\n- 注意事項3: お客さんが混乱しているようであれば、やる気を引き出す質問を投げかけまして。",
+        "prompts_coll": "llm_prompts",
+        "defaults": {
+          "temperature": {
+            "$numberDouble": "0.8"
+          }
+        },
+        "log_db": {
+          "host": "__MONGO_HOST__",
+          "port": {
+            "$numberInt": "__MONGO_PORT__"
+          },
+          "dbname": "memory_settings",
+          "coll": "llm_log_resp"
+        },
+        "system_prompt_older": "あなたは理化学研究所ガーディアンロボットプロジェクトによって開発されたロボット、「インディー」です。インディーは場の状況に応じて気が利く返しをするロボットとしてデザインされています。インディーは音声対話を行うため、返答は1文か2文で行うことが望ましいです。"
+      },
+      "embed_api": {
+        "url": "http://__EMBED_HOST__:8002/v1",
+        "api_key": "NONE",
+        "model": "indy-instruct",
+        "embed_db": "/home/__ROBOT_NAME__/tools/chromadb/__ROBOT_NAME__/memory",
+        "dimensions": {
+          "$numberInt": "384"
+        }
+      },
+      "default_recall_params": {
+        "max_n": {
+          "$numberInt": "4"
+        },
+        "limit": {
+          "$numberInt": "4"
+        },
+        "weight_age": {
+          "$numberInt": "1"
+        },
+        "weight_dist": {
+          "$numberInt": "1"
+        }
+      },
+      "default_scenario_stop": {
+        "keywords": [
+          "バイバイ",
+          "ばいばい",
+          "バイバーイ",
+          "ばいばーい"
+        ],
+        "stop_phrase_length": {
+          "$numberInt": "15"
+        },
+        "stop_next_scenario": ""
+      },
+      "kw_interruptable_scenarios": [],
+      "adintool_ports": [
+        {
+          "$numberInt": "5582"
+        }
+      ],
+      "total_asr_timeout": {
+        "$numberInt": "60"
+      },
+      "asr_timeout_scenario": "690b1940577d7a2360602604",
+      "debug_msgs": true,
+      "initial_mode": "WAITING"
+    },
+    "comment": ""
+  },
+  {
+    "_id": {
+      "$oid": "6ae2d1d13ca2ff58da71ab7e"
+    },
+    "name": "map_server",
+    "config": {
+      "map_yaml_file": "grp_space.yaml",
+      "keepout_yaml_file": "grp_keepout.yaml"
+    },
+    "comment": ""
+  },
+  {
+    "_id": {
+      "$oid": "6af303b002026b37a1772f77"
+    },
+    "name": "gestures_modes",
+    "config": {
+      "topic_control_head_body": "motor_control/control_position",
+      "topic_control_joints": "motor_control/joints",
+      "topic_speed_velocity": "motor_control/control_speed",
+      "head_joint_limit_up": {
+        "$numberDouble": "-0.15"
+      },
+      "head_joint_limit_down": {
+        "$numberDouble": "0.25"
+      },
+      "head_joint_limit_right": {
+        "$numberDouble": "-0.35"
+      },
+      "head_joint_limit_left": {
+        "$numberDouble": "0.35"
+      }
+    },
+    "comment": "__ROBOT_NAME__ motor params (from the removed blr/gestures_modes/config/motors_params.yaml, commit 8f7ab422)"
+  }
+]

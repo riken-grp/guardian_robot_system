@@ -2,7 +2,7 @@
 ローバを起動・制御するためのパッケージ群
 
 ## 概要
-本パッケージ群は、以下の6つのパッケージで構成されている。
+本パッケージ群は、以下の6つのパッケージで構成されている。ただし、amr_ros_driverは本リポジトリに含まれていない。
 
 |パッケージ名|概要|
 |---|---|
@@ -12,6 +12,9 @@
 |rover_tools|ローバ起動の補助機能|
 |rover_wrapper|ローバ制御の補助機能|
 |vel_filter|障害物回避機能|
+
+- **amr_ros_driverについて**：amr_ros_driverは本リポジトリにソースコードが含まれておらず、ビルド済みのパッケージを使用する。ノード名、トピック、パラメータは[docs/仕様書/amr_ros_driver仕様書.md](../../../docs/仕様書/amr_ros_driver仕様書.md)を参照。amr_ros_driverが無い場合、`rover_bringup.launch.py`、`rover_base.launch.py`、`slam_bringup.launch.py`（いずれもrover_tools）は起動できない。
+- **ON_ROBOTについて**：vel_filterとrover_wrapperは、環境変数`ON_ROBOT=1`のときのみビルドされる。
 
 ## 起動方法
 - ナビゲーションを含むローバ全体は以下のコマンドで起動する。

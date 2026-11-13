@@ -8,7 +8,17 @@
 - ディスク使用量
 - メモリ空き容量
 
+## ビルド方法
+このパッケージは`ros2_ws`の外（`modules/indy_modules/machine_status`）にあるため、手順書の`colcon build`ではビルドされません。  
+使用する場合は、以下のコマンドで`ros2_ws`にビルド・インストールしてください。
+```
+cd $GUARDIAN_ROBOT_PATH/ros2_ws
+colcon build --base-paths $GUARDIAN_ROBOT_PATH/modules/indy_modules/machine_status
+source install/setup.bash
+```
+
 ## 起動方法
+環境変数`ROBOT_NAME`が必須です（未設定の場合は起動しません）。ノードは`ROBOT_NAME`の名前空間で起動します。
 ```
 ros2 launch machine_status machine_status_launch.py mongo_uri:=<アドレス> mongo_port:=<ポート番号>
 ```

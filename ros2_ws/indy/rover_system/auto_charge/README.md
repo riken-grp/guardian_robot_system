@@ -12,18 +12,19 @@
 ```bash
 ros2 launch auto_charge auto_charge.launch.py
 ```
+- 3つのノードはすべて`/$ROBOT_NAME`名前空間で起動する（環境変数`ROBOT_NAME`が必要）。以下のトピック名・Action名は名前空間からの相対名で、実際の名前は`/$ROBOT_NAME/...`となる。
 
 ## 操作方法
 
 ### 1. Action インターフェース (推奨)
 nav2_msgs/action/NavigateToPose型のactionを使用します。
 
-**Action名**: `navigate_to_charge`
+**Action名**: `navigate_to_charge`（実際の名前は`/$ROBOT_NAME/navigate_to_charge`）
 
 **使用例**:
 ```bash
 # コマンドラインから実行
-ros2 action send_goal /navigate_to_charge nav2_msgs/action/NavigateToPose "{}"
+ros2 action send_goal /$ROBOT_NAME/navigate_to_charge nav2_msgs/action/NavigateToPose "{}"
 ```
 
 **特徴**:
@@ -69,7 +70,7 @@ ros2 action send_goal /navigate_to_charge nav2_msgs/action/NavigateToPose "{}"
 
 **使用例**:
 ```bash
-ros2 topic pub --once /auto_charge/dock_start std_msgs/msg/Empty
+ros2 topic pub --once /$ROBOT_NAME/auto_charge/dock_start std_msgs/msg/Empty
 ```
 
 ## ノード構成

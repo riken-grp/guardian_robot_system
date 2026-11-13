@@ -16,6 +16,7 @@ ROBOT_NAME = os.getenv("ROBOT_NAME")
 
 def generate_launch_description():
     scene_understanding_path = get_package_share_directory("scene_understanding")
+    action_recognition_path = get_package_share_directory("action_recognition")
     config = os.path.join(
         scene_understanding_path, "config", "scene_understanding.yaml"
     )
@@ -24,6 +25,17 @@ def generate_launch_description():
     declare_mongo_uri = DeclareLaunchArgument("mongo_uri", default_value="")
     mongo_port = LaunchConfiguration("mongo_port")
     declare_mongo_port = DeclareLaunchArgument("mongo_port", default_value="1")
+
+    # GPU assignment: group A = detection / scene graph, group B = pose / face /
+    # attributes.  Spread them over the available GPUs (GPU 0 is often used by
+    # other processes / the display, so it is avoided when there are >= 3).
+    n_gpus = torch.cuda.device_count()
+    if n_gpus >= 3:
+        gpu_a, gpu_b = "1", "2"
+    elif n_gpus == 2:
+        gpu_a, gpu_b = "0", "1"
+    else:
+        gpu_a = gpu_b = "0"
 
     commands = []
     commands.extend(
@@ -53,7 +65,10 @@ def generate_launch_description():
                 ],
                 on_exit=Shutdown(),
             ),
-            SetEnvironmentVariable(name="CUDA_VISIBLE_DEVICES", value="1"),
+            # GPU番号を nvidia-smi の表示順(PCIバス順)に合わせる
+            SetEnvironmentVariable(name="CUDA_DEVICE_ORDER", value="PCI_BUS_ID"),
+            # GPU A: 最も重い物体検出(RT-DETR R101)
+            SetEnvironmentVariable(name="CUDA_VISIBLE_DEVICES", value=gpu_a),
             Node(
                 package="scene_understanding",
                 executable="detection_and_tracking_node",
@@ -75,6 +90,12 @@ def generate_launch_description():
                 ],
                 on_exit=Shutdown(),
             ),
+        ]
+    )
+    # GPU B: 姿勢推定(RTMPose)・頭部姿勢推定(dlib+Hopenet)・属性認識(Swin-V2-S)
+    commands.append(SetEnvironmentVariable(name="CUDA_VISIBLE_DEVICES", value=gpu_b))
+    commands.extend(
+        [
             Node(
                 package="scene_understanding",
                 executable="body_pose_estimation_node",
@@ -91,12 +112,6 @@ def generate_launch_description():
                 ],
                 on_exit=Shutdown(),
             ),
-        ]
-    )
-    if torch.cuda.device_count() > 1:
-        commands.append(SetEnvironmentVariable(name="CUDA_VISIBLE_DEVICES", value="2"))
-    commands.extend(
-        [
             Node(
                 package="scene_understanding",
                 executable="head_pose_estimation_node",
@@ -154,6 +169,9 @@ def generate_launch_description():
             Node(
                 package="scene_understanding",
                 executable="aruco_reader_node",
+                # the code's default node name is "aruco_tf_broadcaster";
+                # without this the /**/aruco_reader_node params are not applied
+                name="aruco_reader_node",
                 namespace=ROBOT_NAME,
                 parameters=[config, {"mongo_uri": mongo_uri, "mongo_port": mongo_port}],
                 remappings=[
@@ -174,6 +192,20 @@ def generate_launch_description():
                     ("vis_topic", "local_recog/qr_code/visualized/compressed"),
                 ],
                 on_exit=Shutdown(),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(
+                        action_recognition_path,
+                        "launch",
+                        "action_recognition.launch.py",
+                    )
+                ),
+                launch_arguments={
+                    "mongo_uri": mongo_uri,
+                    "mongo_port": mongo_port,
+                    "robot_name": ROBOT_NAME,
+                }.items(),
             ),
             Node(
                 package="robot_looking",

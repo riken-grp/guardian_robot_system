@@ -1,0 +1,82 @@
+[
+  {
+    "_id": {
+      "$oid": "678a8761b97b652eb3c38f49"
+    },
+    "name": "ノベルティ 右",
+    "status": "active",
+    "priority": {
+      "$numberInt": "10"
+    },
+    "return": false,
+    "reset_all_triggers": true,
+    "trigger": [
+      {
+        "asr": {
+          "words": "右"
+        }
+      }
+    ],
+    "save_trigger_contents_values": [
+      "text"
+    ],
+    "next_scenarios": [
+      "678a68c3b97b652eb3c38f39"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "やっぱり、右ですよね。人気のものです。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "Look_around"
+        },
+        "interruptable": false
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "678a87f1b97b652eb3c38f4b"
+    },
+    "name": "ノベルティ 左",
+    "status": "active",
+    "priority": {
+      "$numberInt": "10"
+    },
+    "return": false,
+    "reset_all_triggers": true,
+    "trigger": [
+      {
+        "asr": {
+          "words": "左"
+        }
+      }
+    ],
+    "save_trigger_contents_values": [
+      "text"
+    ],
+    "next_scenarios": [
+      "678a68c3b97b652eb3c38f39"
+    ],
+    "events": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "utterance": {
+          "type": "normal",
+          "sentence": "左なんですね。お目が高いです。"
+        },
+        "gesture": {
+          "type": "normal",
+          "command": "look_up"
+        },
+        "interruptable": false
+      }
+    ]
+  }
+]

@@ -13,6 +13,7 @@ from tf2_ros.transform_listener import TransformListener
 
 from . import configs as cfg
 from .dlib_face_detector import FaceDetector
+from .gpu_check import log_dlib_device, log_torch_device
 from .head_pose_estimator import HeadPoseEstimator
 from .image_processing_node import ImageProcessingNode
 from .mapper import Sensor3DMapper
@@ -36,19 +37,28 @@ class HeadPoseEstimationNode(ImageProcessingNode):  # Inherit from ImageProcessi
         self.declare_parameter("model", "hopenet_alpha1.pkl")
         self.declare_parameter("device", "cuda")
         self.declare_parameter("world_frame_id", "map")
+        # dlib CNN face detector upsampling (0: fastest; 1: finds ~2x smaller
+        # faces at ~4x the cost)
+        self.declare_parameter("face_detector_upsample", 0)
 
     def _initialize_components(self):
         model = self.get_parameter("model").value
         device = self.get_parameter("device").value
         world_frame_id = self.get_parameter("world_frame_id").value
 
-        self.face_detector = FaceDetector()
+        self.face_detector = FaceDetector(
+            upsample=self.get_parameter("face_detector_upsample").value
+        )
         self.estimator = HeadPoseEstimator(model, device)
+        log_dlib_device(self.get_logger(), "dlib face detector")
+        log_torch_device(self.get_logger(), "Hopenet", self.estimator.model)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.mapper = Sensor3DMapper(self.tf_buffer, world_frame_id)
+        self.mapper = Sensor3DMapper(
+            self.tf_buffer, world_frame_id, logger=self.get_logger()
+        )
 
         self.person_message_builder = PersonMessageBuilder()
         self.tracking_targets = {}
@@ -80,29 +90,31 @@ class HeadPoseEstimationNode(ImageProcessingNode):  # Inherit from ImageProcessi
         """
         if self.pub is None:
             return
-        if self.pub.get_subscription_count() == 0:
-            if self.pub_vis is None:
-                return
-            if self.pub_vis.get_subscription_count() == 0:
-                return
+        if self.pub.get_subscription_count() == 0 and not self.has_subscribers(
+            self.pub_vis
+        ):
+            return
 
         cinfo = self.camera_info
         if cinfo is None:
-            self.get_logger().warn("CameraInfo not available yet; skipping.")
+            self.get_logger().warn(
+                "CameraInfo not available yet; skipping.", throttle_duration_sec=5.0
+            )
             return
-        # Update TF
+        # Update TF (non-blocking; falls back to the last known transform)
         self.mapper.update_tf(cinfo.header.frame_id, header.stamp)
-        # Decode depth
-        mdimg = cv2.medianBlur(cv_depth, ksize=5)
+        is_visualize = self.has_subscribers(self.pub_vis)
         # Face detection
         faces = self.face_detector(cv_image)
         face_bbs = self._extract_face_bounding_boxes(faces)
         if len(face_bbs) == 0:
-            self._publish_empty_results(header, cv_image)
+            self._publish_empty_results(header, cv_image, is_visualize)
             return
-        # 3D faces
-        faces3d = self.mapper.get_3d_value(face_bbs, mdimg, cinfo)
-        persons, vimg = self._process_faces(header, cv_image, face_bbs, faces3d)
+        # 3D faces (the mapper computes a robust median depth; no blur needed)
+        faces3d = self.mapper.get_3d_value(face_bbs, cv_depth, cinfo)
+        persons, vimg = self._process_faces(
+            header, cv_image, face_bbs, faces3d, is_visualize
+        )
         self._publish_results(header, persons, vimg)
 
     def _extract_face_bounding_boxes(self, faces):
@@ -121,40 +133,43 @@ class HeadPoseEstimationNode(ImageProcessingNode):  # Inherit from ImageProcessi
             ]
         )
 
-    def _publish_empty_results(self, header, img):
+    def _publish_empty_results(self, header, img, is_visualize):
         persons = Persons()
         persons.header = header
         self.pub.publish(persons)
 
-        if self.pub_vis:
+        if is_visualize:
             self.publish_compressed_image(self.pub_vis, header, img)
 
-    def _process_faces(self, header, img, face_bbs, faces3d):
+    def _process_faces(self, header, img, face_bbs, faces3d, is_visualize):
         persons = Persons()
         persons.header = header
-        vimg = np.copy(img)
+        vimg = np.copy(img) if is_visualize else None
 
-        for face, face3d in zip(face_bbs, faces3d):
-            person, vimg = self._process_single_face(img, face, face3d, vimg)
+        ltrbs = [
+            [int(x), int(y), int(x + w), int(y + h)] for x, y, w, h in face_bbs[:, :4]
+        ]
+        # all faces in one batched forward pass
+        head_poses = self.estimator.estimate_batch(img, ltrbs)
+
+        for face, face3d, ltrb, head_pose in zip(face_bbs, faces3d, ltrbs, head_poses):
+            if head_pose is None:  # empty crop
+                continue
+            x, y, w, h = face[:4]
+            person = Person()
+            person.face_location = list(map(float, [x, y, w, h]))
+            person.face_location_sensor = face3d[cfg.LOCATION_SENSOR_COLUMN].tolist()
+            person.face_location_global = face3d[cfg.LOCATION_GLOBAL_COLUMN].tolist()
+            person.face_orientation = head_pose
             persons.persons.append(person)
+            if vimg is not None:
+                vimg = self.estimator.visualize(vimg, ltrb, head_pose)
 
         return persons, vimg
 
-    def _process_single_face(self, img, face, face3d, vimg):
-        x, y, w, h = face[:4]
-        r, b = x + w, y + h
-        person = Person()
-        head_pose = self.estimator.estimate(img, [x, y, r, b])
-        person.face_location = list(map(float, [x, y, w, h]))
-        person.face_location_sensor = face3d[cfg.LOCATION_SENSOR_COLUMN].tolist()
-        person.face_location_global = face3d[cfg.LOCATION_GLOBAL_COLUMN].tolist()
-        person.face_orientation = head_pose
-        vimg = self.estimator.visualize(vimg, [x, y, r, b], head_pose)
-        return person, vimg
-
     def _publish_results(self, header, persons, vimg):
         self.pub.publish(persons)
-        if self.pub_vis:
+        if vimg is not None:
             self.publish_compressed_image(self.pub_vis, header, vimg)
 
     # Removed _publish_visualization as base class provides publish_compressed_image

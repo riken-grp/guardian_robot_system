@@ -3,7 +3,7 @@
     update_rate: 10.0 # [s]
     timeout_time: 3.0 # [s]
     comp_ratio: 3.0
-    avearge_size: 10
+    queue_size: 10 # 周期計算に使う直近の受信時刻の件数
 
     topic_list: [
       # topic_name, package_name, msg_type_name, normal_freq[Hz]

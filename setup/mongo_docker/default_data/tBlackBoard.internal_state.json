@@ -1,0 +1,85 @@
+[
+  {
+    "_id": {
+      "$oid": "6842827fbc457b016957376f"
+    },
+    "_name": "output",
+    "last_update": {
+      "$date": {
+        "$numberLong": "1793636041281"
+      }
+    },
+    "option": {
+      "command": null
+    },
+    "command": ""
+  },
+  {
+    "_id": {
+      "$oid": "6842827fbc457b0169573773"
+    },
+    "_name": "interruption",
+    "last_update": {
+      "$date": {
+        "$numberLong": "1793635980627"
+      }
+    },
+    "option": {
+      "observations": null,
+      "subscenario": null,
+      "temp_queue": null
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6842827fbc457b0169573774"
+    },
+    "_name": "run",
+    "last_update": {
+      "$date": {
+        "$numberLong": "1793636041346"
+      }
+    },
+    "option": {
+      "command": null
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68428280bc457b0169573812"
+    },
+    "_name": "status",
+    "last_update": {
+      "$date": {
+        "$numberLong": "1793636030533"
+      }
+    },
+    "option": {
+      "status": "running",
+      "scenario": null
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68428280bc457b0169573835"
+    },
+    "_name": "recent_scenarios",
+    "option": {
+      "recent": []
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68428280bc457b016957383f"
+    },
+    "_name": "proc variable: interruptable",
+    "last_update": {
+      "$date": {
+        "$numberLong": "1793636041414"
+      }
+    },
+    "option": {
+      "value": true
+    }
+  }
+]

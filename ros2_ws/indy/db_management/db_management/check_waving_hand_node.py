@@ -17,9 +17,7 @@ class CheckWavingHandNode(MongoDBNode):
         mongo_uri, mongo_port, dbname = self._init_mongo_params("")
 
         self.previous = {}
-        self.recognition_available_checker = RecognitionAvailableRegionChecker(
-            mongo_uri, mongo_port
-        )
+        self.recognition_available_checker = RecognitionAvailableRegionChecker()
 
         self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname)
         self.physical_db_waving_hand = PhysicalDBWriter(

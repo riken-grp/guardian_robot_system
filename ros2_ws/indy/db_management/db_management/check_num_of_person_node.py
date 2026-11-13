@@ -20,10 +20,10 @@ class CheckNumOfPerson(MongoDBNode):
 
         self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname)
         self.physical_db_no_people = PhysicalDBWriter(
-            mongo_uri, mongo_port, dbname, "no people"
+            mongo_uri, mongo_port, dbname, "no_people"
         )
         self.physical_db_many_people = PhysicalDBWriter(
-            mongo_uri, mongo_port, dbname, "many people"
+            mongo_uri, mongo_port, dbname, "many_people"
         )
 
         self.timer = self.create_timer(0.5, self.timer_callback)
@@ -38,12 +38,12 @@ class CheckNumOfPerson(MongoDBNode):
             ):
                 self.update(
                     self.physical_db_many_people,
-                    "many people",
+                    "many_people",
                     {"num_people": num_person},
                 )
             elif num_person == 0:
                 self.update(
-                    self.physical_db_no_people, "no people", {"num_people": num_person}
+                    self.physical_db_no_people, "no_people", {"num_people": num_person}
                 )
             self.prev_num_person = num_person
 

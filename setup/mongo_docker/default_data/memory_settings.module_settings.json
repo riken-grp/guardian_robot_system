@@ -1,0 +1,100 @@
+[
+  {
+    "_id": {
+      "$oid": "68bfda73f2cf4c9e5cc0ae01"
+    },
+    "robot_name": "__ROBOT_NAME__",
+    "memory_type": "short_term",
+    "module_name": "dia",
+    "a": {
+      "$numberDouble": "0.25"
+    },
+    "d": {
+      "$numberDouble": "0.66"
+    },
+    "f_line": {
+      "$numberDouble": "0.1"
+    },
+    "freq": {
+      "$numberInt": "180"
+    },
+    "sentence_base": {
+      "$numberInt": "6"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68bfda74f2cf4c9e5cc0ae03"
+    },
+    "robot_name": "__ROBOT_NAME__",
+    "memory_type": "short_term",
+    "module_name": "obj",
+    "a": {
+      "$numberDouble": "0.25"
+    },
+    "d": {
+      "$numberDouble": "0.66"
+    },
+    "f_line": {
+      "$numberDouble": "0.1"
+    },
+    "freq": {
+      "$numberInt": "180"
+    },
+    "sentence_base": {
+      "$numberInt": "6"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68bfda74f2cf4c9e5cc0ae04"
+    },
+    "robot_name": "__ROBOT_NAME__",
+    "memory_type": "short_term",
+    "module_name": "per",
+    "a": {
+      "$numberDouble": "0.25"
+    },
+    "d": {
+      "$numberDouble": "0.66"
+    },
+    "f_line": {
+      "$numberDouble": "0.1"
+    },
+    "freq": {
+      "$numberInt": "180"
+    },
+    "sentence_base": {
+      "$numberInt": "6"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68bfda74f2cf4c9e5cc0ae05"
+    },
+    "robot_name": "__ROBOT_NAME__",
+    "memory_type": "long_term",
+    "module_name": "narrative",
+    "a": {
+      "$numberDouble": "0.5"
+    },
+    "d": {
+      "$numberDouble": "0.25"
+    },
+    "f_line": {
+      "$numberDouble": "0.1"
+    },
+    "freq": {
+      "$numberInt": "180"
+    },
+    "sentence_base": {
+      "$numberInt": "10"
+    },
+    "time_scale": {
+      "$numberDouble": "900.0"
+    },
+    "time_intv": {
+      "$numberDouble": "600.0"
+    }
+  }
+]

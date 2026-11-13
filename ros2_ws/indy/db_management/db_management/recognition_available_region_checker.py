@@ -1,13 +1,14 @@
 import numpy as np
-from pymongo import MongoClient
+
+from .mongo_utils import load_config
 
 
 class RecognitionAvailableRegionChecker:
-    def __init__(self, mongo_uri, mongo_port):
-        client = MongoClient(mongo_uri, mongo_port)
-        config = client["rism_configs"]["rism_config"].find_one()
-        client.close()
-        if "recognition_available_regions" not in config:
+    def __init__(self):
+        # 設定 DB (9100) から読む
+        config = load_config()
+        # 未登録の場合は全領域を認識可能とみなす
+        if not config or config.get("recognition_available_regions") is None:
             self.regions = None
         else:
             self.regions = config["recognition_available_regions"]

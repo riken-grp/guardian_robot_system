@@ -13,4 +13,4 @@ config/node_monitor.yamlにて設定されている。
 |parameter名|デフォルト値|概要|
 |:--|:--|:--|
 |report_rate|10.0|監視周期 [s]|
-|node_list|- ArmStateNode<br>- Association3DNode<br>- ...|監視対象ノードリスト|
+|node_list|- joint_state_publisher<br>- robot_state_publisher<br>- AttributeRecognitionNode<br>- ...|監視対象ノードリスト（`/<ROBOT_NAME>/`からの相対名）|
