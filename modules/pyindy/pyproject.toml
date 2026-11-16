@@ -29,6 +29,7 @@ dependencies = [
     "requests",
     "openai",
     "chromadb",
+    "onnxruntime<1.24; python_version < '3.11'",
 
     # functions
     "numpy==1.24.4",

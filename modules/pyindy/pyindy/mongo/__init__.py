@@ -11,6 +11,7 @@ from .log_text import LogText
 from .memory_func import MemoryFunction
 from .memory_query import IndyMemoryRecall
 from .persona_manager import ActionPrimitives, PersonaDBManager
+from .robot_settings import load_robot_settings
 from .scenario_manager import manipulate_scenario
 from .tBlackBoard_status import StatusManager
 from .tmp_commu import tmpGestureManager
