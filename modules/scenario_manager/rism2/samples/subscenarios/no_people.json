@@ -1,0 +1,24 @@
+{
+  "name": "no people",
+  "status": "active",
+  "version": "2.0",
+  "priority": 100,
+  "condition": {
+    "no people": null
+  },
+  "resume_after": "resume",
+  "ignore_after_activated": 100,
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": true,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "誰かいないかな〜"
+        }
+      }
+    }
+  ]
+}

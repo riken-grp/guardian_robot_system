@@ -2,7 +2,7 @@
 
 > **注意**  
 > robodjは、サーバマシン上のMongoDBに接続して動作する。  
-> 本手順の「6. MongoDBの準備」で、サーバマシン上にrobodj用のMongoDBを構築すること(「3. 環境変数設定」の`MONGO_URI`、`MONGO_PORT`には、そのMongoDBの値を使用する)。
+> 本手順の「6. MongoDBの準備」で、サーバマシン上にrobodj用のMongoDB(ロボットDB)を構築すること(「3. 環境変数設定」の`MONGO_URI`、`MONGO_PORT`には、そのMongoDBの値を使用する)。
 
 robodjは、本リポジトリの機能を使った、Indy(自律対話ロボット)とは別のロボットシステムで、2台のロボット(dj_ri、dj_ken)による会話システムである。  
 Indyを動かすだけであれば、本手順は不要である。  
@@ -55,14 +55,18 @@ robodjマシンは、2台のロボットの音声合成・状態監視と、Real
    |GUARDIAN_ROBOT_PATH|guardian_robot_systemリポジトリのパス|
    |ROBOT_NAME|`robodj`|
    |SCENARIO_ROBOTS|`"dj_ri dj_ken"`<br>※シナリオ管理の対象ロボット。シナリオのactorの`robot1`がdj_ri、`robot2`がdj_kenに対応する。|
-   |MONGO_URI|robodj用MongoDBのホスト名またはIPアドレス<br>※サーバマシンのmongo.envの`MONGO_PUBLIC_HOST`と同じ値にする。|
-   |MONGO_PORT|robodj用MongoDBのポート番号<br>※サーバマシンのmongo.envの`MONGO_PORT`と同じ値にする。|
+   |MONGO_URI|robodj用MongoDB(ロボットDB)のホスト名またはIPアドレス<br>※「6. MongoDBの準備」で、サーバマシンのsetup_mongo.shの最後に表示される`MONGO_URI`の値にする。|
+   |MONGO_PORT|robodj用MongoDB(ロボットDB)のポート番号<br>※「6. MongoDBの準備」で、サーバマシンのsetup_mongo.shの最後に表示される`MONGO_PORT`の値にする。|
+   |RISM_CONFIG_HOST|設定DB(rism_configs)のホスト名(setup_mongo.shの最後に表示された場合のみ。未設定の場合は`MONGO_URI`)|
+   |RISM_CONFIG_PORT|設定DBのポート番号(setup_mongo.shの最後に表示された場合のみ。未設定の場合は9100)|
+   |SCENARIO_DEMO|シナリオのデモID(設定DBの`demo_list`のキー。未設定の場合は`SCENARIO_ROBOTS`の先頭のロボット名 + `_demo`、すなわち`dj_ri_demo`)<br>※「6. MongoDBの準備」でデモのIDを`dj_ri_demo`以外にした場合のみ設定する。|
    |ROS_DOMAIN_ID|ROS_DOMAIN_ID|
    |ZENOH_MODE|`listen`(zenohを使用する場合のみ)<br>※robodjは待ち受け側として起動する。`ZENOH_ROBOT_ADDR`は設定不要。|
    |DEEPL_API_KEY|DeepLのAPIキー(chat_monitorで自動翻訳を使う場合のみ)|
 
    ※`RMW_IMPLEMENTATION`、`CYCLONEDDS_URI`はサンプルの値から変更しないこと。  
-   　サンプルの`CYCLONEDDS_URI`は、ROSの通信をマシン内に限定する設定である。
+   　サンプルの`CYCLONEDDS_URI`は、ROSの通信をマシン内に限定する設定である。  
+   ※setup_mongo.shの最後には`export ROBOT_NAME=dj_ri`が表示されるが、robodjの`ROBOT_NAME`は`robodj`のままにすること(dj_riはシナリオ管理の対象ロボットとして`SCENARIO_ROBOTS`に指定する)。
 
 3. .bashrcを開き、以下の設定を追加する。
    ```
@@ -122,7 +126,7 @@ robodjマシンは、2台のロボットの音声合成・状態監視と、Real
 
 ## 6. MongoDBの準備
 
-robodj用のMongoDBを、サーバマシン上に構築する。  
+robodj用のMongoDB(ロボットDB)を、サーバマシン上に構築する。  
 以下の作業は**サーバマシン**で実施する。
 
 ### 6.1. MongoDBの起動
@@ -135,57 +139,67 @@ robodjのためにサーバマシンを新しく構築する場合、[サーバ�
 |1. 時刻同期設定(NTPサーバ)|すべて実施する。|
 |2. Avahi設定|`MONGO_URI`などに`<ホスト名>.local`を使用する場合のみ実施する。|
 |3. ソフトウェアの準備|すべて実施する。|
-|4. 環境変数設定|~/indy.envは`GUARDIAN_ROBOT_PATH`、`MONGO_URI`、`MONGO_PORT`のみ設定すればよい。<br>`MONGO_URI`、`MONGO_PORT`には、robodj用MongoDBの値(mongo.envの`MONGO_PUBLIC_HOST`、`MONGO_PORT`と同じ値)を設定する。<br>※サンプルの値(`xxxx`など)のまま残すと、MongoDBの構築でmongo.envの値より優先されてしまうため、必ず設定すること。|
-|5. MongoDBの構築|以下の手順1〜2に従って実施する。|
+|4. 環境変数設定|~/indy.envは`GUARDIAN_ROBOT_PATH`のみ設定すればよい。|
+|5. MongoDBの構築|以下の手順1〜4に従って実施する。|
 
-1. [サーバマシン構築.md](サーバマシン構築.md)の「5. MongoDBの構築」の手順1〜7を実施し、robodj用のMongoDBを起動する。  
-   ※同じサーバマシンで他のロボット用のMongoDBも動かす場合は、ロボットごとにenvファイルとプロジェクト名を分ける。  
-   　この場合、mongo.envの代わりにmongo_robodj.envを作成し、手順5の`. ./mongo.env`は`. ./mongo_robodj.env`に読み替える。  
-   　`docker compose`のコマンドは、以下のように先頭に`env -u MONGO_PORT`、オプションに`-p robodj --env-file mongo_robodj.env`を付ける。
-   ```
-   env -u MONGO_PORT docker compose -p robodj --env-file mongo_robodj.env up -d
-   ```
-   　※~/indy.envを読み込んだシェルでは`MONGO_PORT`が設定されており、envファイルの値より優先されるため、`env -u MONGO_PORT`で外す必要がある。  
-   　ポート番号・データの置き場所は他のロボットと重ならないようにすること([setup/mongo_docker/README.md](../../setup/mongo_docker/README.md)の「複数台分を起動する」参照)。
+1. [サーバマシン構築.md](サーバマシン構築.md)の「5. MongoDBの構築」の手順1〜3を実施し、Docker、uvをインストールする(インストール済みの場合は不要)。
 
-2. データを用意する。  
+2. [サーバマシン構築.md](サーバマシン構築.md)の「5. MongoDBの構築」の手順4〜5に従い、setup_mongo.shを実行する。  
+   ただし、ロボットのIDなどの既定値が`dj_ri`になるよう、以下のように`ROBOT_NAME=dj_ri`を付けて実行する。
+   ```
+   ROBOT_NAME=dj_ri $GUARDIAN_ROBOT_PATH/setup/mongo_docker/setup_mongo.sh
+   ```
+
+   以下の質問は、次のように答える。
+
+   |質問|設定値|
+   |---|---|
+   |設定DB も新しく作りますか|サーバマシンに設定DBが無い場合は`Y`。<br>既にIndy用にサーバマシンを構築済みで、設定DBがある場合は`n`(robodj用のロボットDBだけを作り、今ある設定DBにrobodjのロボットを追加する)。|
+   |今ある設定DB のホスト名|(上で`n`と答えた場合のみ)設定DBのホスト名|
+   |ロボットの番号 / ロボットDB のポート|同じサーバの他のロボットとポートが重ならない番号(e.g. Indy用に1を使っている場合は2。ポートの既定値が9120になる)|
+   |docker compose ファイルを置くフォルダ|既定値(`setup/mongo_docker/deploy/dj_ri`)のままでよい|
+   |ロボットの ID|既定値(`dj_ri`)のままでよい|
+   |表示名|dj_riの呼び名|
+   |デモの ID|既定値(`dj_ri_demo`)のままでよい(robodjのデモは1つ)|
+
+3. [サーバマシン構築.md](サーバマシン構築.md)の「5. MongoDBの構築」の手順6〜7に従い、データディレクトリを作成してMongoDBを起動する(`<ロボットID>`は`dj_ri`)。  
+   ※設定DBを新しく作っていない場合、`docker compose ps`に表示されるのはmongo-robotのみである。
+
+4. データを用意する。  
    既存のrobodj用データベースを移行する場合は「6.2.」、標準データから新しく作る場合は「6.3.」を実施する。
 
 ### 6.2. 既存のデータベースを移行する場合
 
-1. [setup/mongo_docker/README.md](../../setup/mongo_docker/README.md)の「既存データの持ち込み」に従い、データを移行する。
+1. [setup/mongo_docker/README.md](../../setup/mongo_docker/README.md)の「既存データの持ち込み」に従い、データを移行し、`setup_mongo.sh --answers`で設定DBの設定を投入する。
 
 2. 既存のデータでは、ロボット名が`dj_ri1`、`dj_ken1`となっている。  
-   本手順のロボット名(`dj_ri`、`dj_ken`)に合わせ、MongoDB管理画面(Mongo Express)で以下を書き換える。
-   - rism_configs.rism_config の`robot_list`のキー
-   - rism_configs.robot_config の`robot_id`
-   - 上記以外にロボット名を含むデータ(シナリオ中のトピック名など)
+   本手順のロボット名(`dj_ri`、`dj_ken`)に合わせ、MongoDB管理画面で、ロボット名を含むデータ(トピック名など)を書き換える。  
+   ※旧構成の`rism_configs.rism_config`の`robot_list`のキーと、`rism_configs.robot_config`の`robot_id`は、現在のシナリオマネージャ(rism2)では使用しない。ロボットの設定は、設定DBの`rism_configs.robot_list`に、ロボットごとに1つの文書として登録する(「6.3.」の手順3参照)。  
+   ※旧構成の`rism_configs.rism_config`に書いていたロボット側の設定(Google音声認識中継サーバ、OpenWeatherMapのAPIキーなど)は、設定DBの`robot_list`、`common`に移す([setup/mongo_docker/README.md](../../setup/mongo_docker/README.md)の「稼働中の旧構成から移行するときの注意」参照)。
+
+3. 旧構成のシナリオ(`rism_configs.scenarios`など)は、rism2では読まない。  
+   rism2のシナリオは、ロボットDBの`demo_configs`(`scenarios`、`interruption_subscenarios`、`knowledge`)に置く。書き方は[rism2/docs/SCENARIO_SCHEMA.md](../../modules/scenario_manager/rism2/docs/SCENARIO_SCHEMA.md)を参照。
+
+4. 「6.3.」の手順3に従い、dj_kenを設定DBの`robot_list`に追加する。
 
 ### 6.3. 標準データから作る場合
 
-1. 以下のコマンドを実行し、dj_ri用として標準データを投入する。
-   ```
-   cd $GUARDIAN_ROBOT_PATH/setup/mongo_docker
-   ./import_default_data.sh dj_ri
-
-   # 複数台分を起動している場合
-   ./import_default_data.sh -p robodj --env-file mongo_robodj.env dj_ri
-   ```
+1. [サーバマシン構築.md](サーバマシン構築.md)の「5. MongoDBの構築」の手順8に従い、設定と標準データを投入する(`<ロボットID>`は`dj_ri`)。
 
 2. サーバマシン構築.mdの「5. MongoDBの構築」の手順9に従い、プレースホルダを書き換える。
 
 3. dj_kenを追加する。  
-   標準データは1台分のため、2台目(dj_ken)の設定をMongoDB管理画面(Mongo Express)で追加する。
-   1. Databases「rism_configs」→ Collections「rism_config」のDocumentを開く。
-   2. `robot_list`の中の`dj_ri`の項目を複製し、キーを`dj_ken`に変更して保存する。
-   3. Collections「robot_config」の`robot_id: 'dj_ri'`のDocumentを開き、内容(`_id`を除く)をコピーする。
-   4. 「New Document」で新しいDocumentを作成し、コピーした内容を貼り付けて、`robot_id`を`'dj_ken'`、`name_alias`をdj_kenの呼び名に変更して保存する。
+   setup_mongo.shが設定DBの`robot_list`に登録するのは1台分(dj_ri)のため、2台目(dj_ken)の文書をMongoDB管理画面で追加する。  
+   dj_kenは、dj_riと同じロボットDB(robodjの`MONGO_URI`、`MONGO_PORT`)を使う。
+   1. 設定DBの管理画面(`http://<設定DBのホスト名>:<設定DBのポート+1>/`)で、Databases「rism_configs」→ Collections「robot_list」の`robot_id: 'dj_ri'`のDocumentを開き、内容(`_id`を除く)をコピーする。
+   2. 「New Document」で新しいDocumentを作成し、コピーした内容を貼り付けて、`robot_id`を`'dj_ken'`、`name_alias`をdj_kenの呼び名に変更して保存する。
 
-   ※`SCENARIO_ROBOTS`に指定したロボットは、`rism_config`の`robot_list`と、`robot_config`の`robot_id`の両方に登録されている必要がある。  
-   　どちらかが欠けていると、シナリオ起動時にエラーとなる。
+   ※`SCENARIO_ROBOTS`に指定したロボットは、すべて設定DBの`robot_list`に登録されている必要がある。欠けていると、シナリオ起動時にエラーとなる。  
+   ※デモ(設定DBの`demo_list`)は、2台で1つ(`dj_ri_demo`)を使う。dj_ken用のデモは作らない。  
+   ※rism2で複数のロボット(dj_ri、dj_ken)を動かす構成は、まだ動作を確認していない。
 
-4. 標準データのシナリオは、すべて1台目(`actor: 'robot1'`、dj_ri)用である。  
-   dj_ken(`robot2`)を動かすシナリオは、[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「5.2. 新規シナリオの追加」に従い、`actor: 'robot2'`のイベントを持つシナリオを別途作成する。
+4. サンプルのシナリオは、すべて1台目(`actor: 'robot1'`、dj_ri)用である。  
+   dj_ken(`robot2`)を動かすシナリオは、[rism2/docs/SCENARIO_SCHEMA.md](../../modules/scenario_manager/rism2/docs/SCENARIO_SCHEMA.md)に従い、`actor: 'robot2'`のイベントを持つシナリオを、ロボットDBの`demo_configs.scenarios`に別途作成する。
 
 ## 7. 起動スクリプトの準備
 
@@ -225,7 +239,13 @@ robodjのためにサーバマシンを新しく構築する場合、[サーバ�
    ```
 
 3. 以下のコマンドを実行し、シナリオを起動する。  
-   `SCENARIO_ROBOTS`に設定したdj_ri、dj_kenの2台がシナリオの対象となる。
+   `SCENARIO_ROBOTS`に設定したdj_ri、dj_kenの2台がシナリオの対象となる(シナリオの`robot1`がdj_ri、`robot2`がdj_ken)。デモは`SCENARIO_DEMO`(未設定の場合は`dj_ri_demo`)を使う。  
+   シナリオマネージャ(`modules/scenario_manager/rism2`)は、設定DB(`RISM_CONFIG_HOST`、`RISM_CONFIG_PORT`。未設定の場合は`MONGO_URI`と9100)に接続する。  
+   ※シナリオマネージャの起動にはuvが必要である。robodjにuvが無い場合は、先に以下のコマンドでインストールし、新しいターミナルから実行する。初回の起動時に、依存パッケージが自動でインストールされる。
+   ```
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
    ```
    ~/module_launch/scenario_launch.sh
    ```

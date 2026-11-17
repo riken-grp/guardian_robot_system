@@ -1,0 +1,20 @@
+{
+    "robot_name": "my_robot",
+    "web_host": "0.0.0.0",
+    "web_port": 8000,
+    "server_name": "localhost",
+    "server_port": 27017,
+    "db_name": "tBlackBoard",
+    "ros_domain_id": null,
+    "battery_qos": "system_default",
+    "map_region": null,
+    "scenario_db": {
+        "host": "localhost",
+        "port": 27017,
+        "db_name": "demo_configs"
+    },
+    "destinations_collection": "room_checker_destinations",
+    "template": "index.html",
+    "action_count": 5,
+    "log_level": "warning"
+}

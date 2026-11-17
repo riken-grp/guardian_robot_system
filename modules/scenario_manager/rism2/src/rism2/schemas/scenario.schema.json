@@ -1,0 +1,1035 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rism2/scenario.schema.json",
+  "title": "RISM シナリオ（demo_configs.scenarios / interruption_subscenarios）",
+  "description": "シナリオDBの文書の形。メインシナリオは #/$defs/scenario、サブシナリオは #/$defs/subscenario で検証する。合わないフィールドは読み込み時に警告する（実行は止めない）。",
+  "$defs": {
+    "objectId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{24}$"
+    },
+    "idList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/objectId"
+      }
+    },
+    "condition": {
+      "description": "観測イベント名 → 条件。null はイベントがあればよい。値や {フィールド: 値|{演算子: 値}} で contents を比べる",
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/$defs/fieldCondition"
+            }
+          }
+        ]
+      }
+    },
+    "fieldCondition": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "$gt",
+              "$lt",
+              "$gte",
+              "$lte",
+              "$eq",
+              "$ne",
+              "$in",
+              "$nin",
+              "$regex",
+              "$and",
+              "$or"
+            ]
+          }
+        }
+      ]
+    },
+    "speak": {
+      "type": "object",
+      "required": [
+        "type",
+        "option"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "normal",
+            "blank",
+            "generate",
+            "file"
+          ],
+          "description": "normal: text をそのまま / blank: text の {変数} を埋める / generate: LLMで作る / file: 音声ファイル"
+        },
+        "option": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "except": {
+              "type": "string",
+              "description": "blank で変数が埋められないときの文"
+            },
+            "file": {
+              "type": "string"
+            },
+            "english": {
+              "type": "string"
+            },
+            "generator": {
+              "type": "string"
+            },
+            "prompt": {
+              "type": "string",
+              "description": "{greeting} {now} を時刻で埋める"
+            },
+            "hitorigoto": {
+              "type": "boolean",
+              "description": "独り言として作る（履歴を指示の中に入れる）"
+            },
+            "hist_len": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "LLMに渡す直近の履歴の数。0 は渡さない"
+            },
+            "llm_max_tokens": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "llm_timeout": {
+              "type": "number"
+            },
+            "temperature": {
+              "type": "number"
+            },
+            "use_db_hist": {
+              "type": "boolean"
+            },
+            "hist_count": {
+              "type": "integer"
+            },
+            "use_memories": {
+              "type": "integer"
+            },
+            "fallback_text": {
+              "type": "string",
+              "description": "生成に失敗したときの文"
+            },
+            "retry": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retry_delay": {
+              "type": "number"
+            },
+            "timeout": {
+              "type": "number"
+            },
+            "on_timeout": {
+              "type": "string"
+            },
+            "timeout_fallback_text": {
+              "type": "string"
+            },
+            "default_text": {
+              "type": "string",
+              "description": "EchoBack: 聞いた発話が無いときの文"
+            },
+            "use_observations": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              ],
+              "description": "LlmJP: 最近の観測をプロンプトに入れる。イベント名のリスト、または {イベント名: 表示する contents のフィールド名}"
+            },
+            "observation_window": {
+              "type": "number",
+              "description": "use_observations で使う観測の秒数（既定 60）"
+            },
+            "templates": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Template: 定型文のリスト"
+            },
+            "responses": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "keywords",
+                  "text"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "keywords": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "match": {
+                    "enum": [
+                      "any",
+                      "all"
+                    ]
+                  },
+                  "text": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "description": "KeywordResponse: キーワードと答えのリスト"
+            },
+            "fallback_generator": {
+              "type": "string",
+              "description": "KeywordResponse: 当てはまらないときに任せる Generator（既定 LlmJPEventGenerator）"
+            },
+            "knowledge": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "Knowledge: イベントに直接書く知識"
+            },
+            "use_db": {
+              "type": "boolean",
+              "description": "Knowledge: シナリオDBの knowledge コレクションも使う（既定 true）"
+            },
+            "top_k": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Knowledge: 使う知識の数（既定 3）"
+            },
+            "no_match_text": {
+              "type": "string",
+              "description": "Knowledge: 当てはまる知識が無いときの文"
+            },
+            "recall": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Memory: 思い出す件数（既定 3）"
+            },
+            "save": {
+              "type": "boolean",
+              "description": "Memory: 話した後に会話を要約して覚える"
+            },
+            "person_field": {
+              "type": "string",
+              "description": "Memory: 人を表す観測のフィールド名"
+            },
+            "summary_hist_len": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Memory: 要約に使う会話の数（既定 10）"
+            },
+            "generators": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "MultiGenAndSelect: 候補を作る Generator のリスト"
+            },
+            "selection_strategy": {
+              "enum": [
+                "random",
+                "first",
+                "weighted"
+              ],
+              "description": "MultiGenAndSelect: 候補の選び方"
+            },
+            "no_match_generator": {
+              "type": "string",
+              "description": "Knowledge: 当てはまる知識が無いときに任せる Generator"
+            }
+          }
+        }
+      }
+    },
+    "gesture": {
+      "type": "object",
+      "required": [
+        "option"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "normal"
+        },
+        "option": {
+          "type": "object",
+          "required": [
+            "command"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "number"
+            },
+            "offset": {
+              "type": "number"
+            },
+            "timeout": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "eye": {
+      "type": "object",
+      "required": [
+        "image"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "normal"
+        },
+        "image": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number"
+        }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "required": [
+        "option"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "normal"
+        },
+        "option": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "navigation": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "description": "[x, y, 向き(rad)]"
+            },
+            "destination": {
+              "type": "string",
+              "description": "地点名"
+            },
+            "rotate": {
+              "type": "number"
+            },
+            "move": {
+              "type": "number",
+              "description": "前後に進む距離(m)"
+            },
+            "dock": {
+              "const": true,
+              "description": "充電ステーションに入る。充電が始まったら done、入れなければ failed"
+            },
+            "timeout": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "rosCommand": {
+      "type": "object",
+      "required": [
+        "topic",
+        "data"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "normal"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "topic_type": {
+          "type": "string"
+        },
+        "data": {
+          "type": [
+            "string",
+            "integer"
+          ],
+          "description": "std_msgs/msg/String なら文字列、std_msgs/msg/Int32 なら整数（例: 音量 30）"
+        },
+        "option": {
+          "type": "object"
+        }
+      }
+    },
+    "eventList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    },
+    "eventCommon": {
+      "actor": {
+        "type": "string"
+      },
+      "type": {
+        "enum": [
+          "action",
+          "wait_for",
+          "if",
+          "until",
+          "repeat",
+          "random",
+          "shuffle",
+          "scenario_exit",
+          "suspend_navigation",
+          "include",
+          "face_person"
+        ]
+      },
+      "interruptable": {
+        "type": "boolean",
+        "description": "false なら、この間に検知した割り込みは後で実行する"
+      },
+      "ignore_interruptions": {
+        "$ref": "#/$defs/idList",
+        "description": "このイベントの間は発動させないサブシナリオ"
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/eventCommon/type"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "action"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "actor"
+            ],
+            "additionalProperties": false,
+            "minProperties": 3,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "speak": {
+                "$ref": "#/$defs/speak"
+              },
+              "gesture": {
+                "$ref": "#/$defs/gesture"
+              },
+              "eye": {
+                "$ref": "#/$defs/eye"
+              },
+              "navigation": {
+                "$ref": "#/$defs/navigation"
+              },
+              "ros_command": {
+                "$ref": "#/$defs/rosCommand"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "wait_for"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "condition",
+              "timeout"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "condition": {
+                "$ref": "#/$defs/condition"
+              },
+              "timeout": {
+                "type": "number"
+              },
+              "success": {
+                "$ref": "#/$defs/eventList"
+              },
+              "failure": {
+                "$ref": "#/$defs/eventList"
+              },
+              "gesture": {
+                "$ref": "#/$defs/gesture"
+              },
+              "navigation": {
+                "$ref": "#/$defs/navigation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "if"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "condition",
+              "timeout"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "condition": {
+                "$ref": "#/$defs/condition"
+              },
+              "timeout": {
+                "type": "number"
+              },
+              "true": {
+                "$ref": "#/$defs/eventList"
+              },
+              "false": {
+                "$ref": "#/$defs/eventList"
+              },
+              "failure": {
+                "$ref": "#/$defs/eventList"
+              },
+              "gesture": {
+                "$ref": "#/$defs/gesture"
+              },
+              "navigation": {
+                "$ref": "#/$defs/navigation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "until"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "condition",
+              "loop_timeout",
+              "loop"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "condition": {
+                "$ref": "#/$defs/condition"
+              },
+              "loop_timeout": {
+                "type": "number"
+              },
+              "loop": {
+                "$ref": "#/$defs/eventList"
+              },
+              "failure": {
+                "$ref": "#/$defs/eventList"
+              },
+              "gesture": {
+                "$ref": "#/$defs/gesture"
+              },
+              "navigation": {
+                "$ref": "#/$defs/navigation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "repeat"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "times",
+              "subevents"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "times": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "variable": {
+                "type": "string",
+                "description": "{変数名} に何回目かが入る（既定 rep）"
+              },
+              "subevents": {
+                "$ref": "#/$defs/eventList"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "random"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "choices"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "choices": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/eventList"
+                }
+              },
+              "weights": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "shuffle"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "choices"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "choices": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/eventList"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "scenario_exit"
+              }
+            }
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "exit_code": {
+                "enum": [
+                  "success",
+                  "failure",
+                  "cancelled",
+                  "timeout",
+                  "return",
+                  "exit_main",
+                  "redirect"
+                ]
+              },
+              "exit_data": {
+                "type": "object"
+              },
+              "next_scenario": {
+                "$ref": "#/$defs/objectId"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "include"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "scenario"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "scenario": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{24}$",
+                "description": "イベントを使うシナリオかサブシナリオの ID（status は問わない）"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "face_person"
+              }
+            }
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "actor": true,
+              "type": true,
+              "interruptable": true,
+              "ignore_interruptions": true,
+              "instance_id": {
+                "type": [
+                  "string",
+                  "integer"
+                ],
+                "description": "向く人の instance_id（例: {triggered[instance_id]}）。その人の観測の位置だけを使う。省略可"
+              },
+              "min_angle_deg": {
+                "type": "number",
+                "minimum": 0,
+                "description": "これより小さい角度なら回らない（既定 15）"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "scenario": {
+      "title": "メインシナリオ（scenarios）",
+      "type": "object",
+      "required": [
+        "name",
+        "status",
+        "events"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "_id": true,
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "inactive"
+          ]
+        },
+        "version": {
+          "const": "2.0"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "優先度。0〜1000 の整数で大きいほど優先（既定 1）。0 はほかに候補がないときだけ選ぶ。サブシナリオ: 割り込みを実行する順番と、同時に条件が合ったときに選ぶ重み。メインシナリオ: 次に選ばれる重み"
+        },
+        "condition": {
+          "$ref": "#/$defs/condition"
+        },
+        "events": {
+          "$ref": "#/$defs/eventList"
+        },
+        "next_scenarios": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/objectId"
+              },
+              {
+                "$ref": "#/$defs/idList"
+              }
+            ]
+          }
+        },
+        "ignore_interruptions": {
+          "$ref": "#/$defs/idList",
+          "description": "このシナリオの間は発動させないサブシナリオ"
+        },
+        "exit_condition": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/condition"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            }
+          ],
+          "description": "開始後にこの観測が来たら打ち切る。配列ならどれか1つが合えば打ち切る"
+        },
+        "exit_events": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/eventList"
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/eventList"
+              }
+            }
+          ],
+          "description": "exit_condition で打ち切ったときに実行する。{イベント名: イベントの配列} なら、打ち切ったきっかけのイベント名のものを実行する"
+        },
+        "ignore_same_observations": {
+          "type": "boolean",
+          "description": "サブシナリオ: 発動したとき、まとめて届いた同じイベントの残りの観測も使用済みにする（同じまとまりで何度も発動しない）。既定 false"
+        }
+      }
+    },
+    "subscenario": {
+      "title": "割り込みサブシナリオ（interruption_subscenarios）",
+      "type": "object",
+      "required": [
+        "name",
+        "status",
+        "condition",
+        "events"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "_id": true,
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "inactive"
+          ]
+        },
+        "version": {
+          "const": "2.0"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "優先度。0〜1000 の整数で大きいほど優先（既定 1）。0 はほかに候補がないときだけ選ぶ。サブシナリオ: 割り込みを実行する順番と、同時に条件が合ったときに選ぶ重み。メインシナリオ: 次に選ばれる重み"
+        },
+        "condition": {
+          "$ref": "#/$defs/condition"
+        },
+        "events": {
+          "$ref": "#/$defs/eventList"
+        },
+        "next_scenarios": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/objectId"
+              },
+              {
+                "$ref": "#/$defs/idList"
+              }
+            ]
+          }
+        },
+        "ignore_interruptions": {
+          "$ref": "#/$defs/idList",
+          "description": "このシナリオの間は発動させないサブシナリオ"
+        },
+        "exit_condition": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/condition"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            }
+          ],
+          "description": "開始後にこの観測が来たら打ち切る。配列ならどれか1つが合えば打ち切る"
+        },
+        "exit_events": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/eventList"
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/eventList"
+              }
+            }
+          ],
+          "description": "exit_condition で打ち切ったときに実行する。{イベント名: イベントの配列} なら、打ち切ったきっかけのイベント名のものを実行する"
+        },
+        "ignore_same_observations": {
+          "type": "boolean",
+          "description": "サブシナリオ: 発動したとき、まとめて届いた同じイベントの残りの観測も使用済みにする（同じまとまりで何度も発動しない）。既定 false"
+        },
+        "resume_after": {
+          "enum": [
+            "resume",
+            "terminate",
+            "next_event",
+            "restart"
+          ],
+          "description": "終わった後の戻り方。resume: 元のシナリオの続きから（既定）/ terminate: 元のシナリオを終えて next_scenarios へ / next_event: 元のシナリオの次のイベントから / restart: 中断したイベントをやり直す"
+        },
+        "important": {
+          "type": "boolean",
+          "description": "移動中でもナビを止めて実行する。interruption_probability にかかわらず必ず発動する"
+        },
+        "force_interrupt": {
+          "type": "boolean",
+          "description": "旧形式。important と同じ意味として読む。新しく書くときは important を使う"
+        },
+        "navigation_interrupt_mode": {
+          "enum": [
+            "parallel",
+            "suspend_and_resume",
+            "wait_completion"
+          ]
+        },
+        "navigation_wait_timeout": {
+          "type": "number"
+        },
+        "ignore_after_activated": {
+          "type": "number",
+          "minimum": 0,
+          "description": "発動後この秒数は発動しない"
+        },
+        "interruption_probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "発動させる確率（0〜1）。なければ rism_config の interruption_probability"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

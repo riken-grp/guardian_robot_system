@@ -21,8 +21,10 @@ ros2_ws/*.pkl
 ros2_ws/*.joblib
 ros2_ws/*.dat
 
-# シナリオ管理のログ
-modules/scenario_manager/rism/main_routine_log.txt
+# setup_mongo.sh（rism2 の install.py）が作る compose・答え（ホスト名やデータの置き場所を含む）
+setup/mongo_docker/deploy/
+modules/scenario_manager/rism2/deploy/
+modules/scenario_manager/rism2/.venv/
 
 # 一般的なもの
 *.log

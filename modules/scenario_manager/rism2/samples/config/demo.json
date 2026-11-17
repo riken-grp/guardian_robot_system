@@ -1,0 +1,7 @@
+{
+  "demo_id": "{demo_id}",
+  "host": "{db_host}",
+  "port": "{db_port}",
+  "db_name": "{scenario_db}",
+  "version": "2.0"
+}

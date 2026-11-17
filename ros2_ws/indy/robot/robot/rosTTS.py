@@ -98,7 +98,11 @@ class polling_tts_node(Node):
         if len(utext['text']) > 300:
             utext['text']='入力音声が長すぎます。'
         self.dhm_inserted=False
-        p, stat = self.tts.say(utext)
+        try:
+            p, stat = self.tts.say(utext)
+        except Exception as e:          # gTTSError, requests.ConnectionError など
+            self.get_logger().error(f"TTS failed: {e}")
+            return False, {'duration': 0.0}
         self.get_logger().info("    start. id == " +str(utter['_id']) + json.dumps(stat))
         data={}
         data['speak']=utext['text']

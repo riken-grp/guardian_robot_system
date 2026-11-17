@@ -12,6 +12,9 @@
     v                                  |  + MicrophoneArrayInfo (audio/array_info)
 [tracker_node]                  [localizer_node]
     | recog/ssl/tracked_persons        | recog/ssl/doa_estimates
+    v                                  |
+[camera_person_adapter_node]  <-- recog/person/pose/associated (camera)
+    | recog/ssl/tracked_persons_fused  |
     |                                  |
     +---------------+    +-------------+
                     v    v
@@ -29,8 +32,12 @@
               v
         recog/ssl/identified_speech_segments (SpeechSegment)
               |
-              v
-        [asr_node]  (Whisper, server-side GPU)
+              +--------------------------------+
+              v                                v
+        [asr_node]  (Whisper, server-side GPU) [speaker_face_node] <-- recog/person/face/associated
+              |                                |                       + <robot>_camera/color/image_raw/compressed
+              |                                v
+              |                          recog/ssl/speaker_face_segments (SpeakerFaceSegment)
               |
               v
         recog/ssl/asr/raw_text (StringStamped JSON)
@@ -70,6 +77,7 @@ remappings=[
 | `TrackedPerson` | 追跡された人物 (ID, 位置, 速度, 方位角, 距離) |
 | `TrackedPersonArray` | 追跡人物の配列 |
 | `SpeechSegment` | 分離済み発話セグメント (人物ID, 音声データ, 時刻情報) |
+| `SpeakerFaceSegment` | 発話セグメント＋その話者の顔画像 (JPEG の切り抜き, 元画像上の位置, 顔の向き, 時刻) |
 
 ## ノード詳細
 
@@ -134,7 +142,7 @@ DOA推定と人物追跡を統合し、DASビームフォーミングで音源�
   - `audio/array_info` (`microphone_array/MicrophoneArrayInfo`, QoS: transient_local) — マイク位置の取得
   - `audio/multichannel` (`microphone_array/AudioDataMultiChannel`, QoS: `qos_profile_sensor_data`)
   - `in_doa_estimates` → `recog/ssl/doa_estimates` (`ssl_msgs/DOAEstimateArray`)
-  - `in_tracked_persons` → `recog/ssl/tracked_persons` (`ssl_msgs/TrackedPersonArray`)
+  - `in_tracked_persons` → `recog/ssl/tracked_persons_fused` (`ssl_msgs/TrackedPersonArray`; 実機。sim では `recog/ssl/tracked_persons`)
 - **Publish**: `out_speech_segments` → `recog/ssl/speech_segments` (`ssl_msgs/SpeechSegment`)。`header.frame_id` はマイクアレイ座標系（azimuth/distance はこの座標系での値）
 - **アルゴリズム**:
   - **座標変換**: LiDAR人物位置（`TrackedPersonArray`、スキャン座標系）を tf2 でマイクアレイ座標系に変換してから DOA と比較する（`use_tf`）。変換先は `array_frame`、未指定時は DOA メッセージ／`audio/array_info` の `frame_id`。変換元は `persons_frame`、未指定時は `TrackedPersonArray` の `header.frame_id`。TFが取得できない場合は警告を出し、変換せずにLiDARの方位角をそのまま使う。
@@ -142,6 +150,20 @@ DOA推定と人物追跡を統合し、DASビームフォーミングで音源�
   - ハンガリアン法による人物-DOA最適1対1対応付け
   - **DASビームフォーミング**: `apply_das_multi()` による周波数領域の小数遅延Delay-and-Sum。前ブロック末尾の履歴を付けて処理するためブロック境界が連続し、出力には一定の遅延（~0.1mのアレイで約1.2ms）が乗る。ブロックのFFTは1回で、方向ごとに1本のビームを作り複数人物で共有する。既に別の人物が使っている方向で発話を継続する人物には無音を入力する（同じ音声の二重出力防止）。MVDRは自己相殺問題があったため置き換え済み（`beamformer.py`にMVDRコードは残存）。
   - エネルギーベースVAD（ハングオーバー機構付き）→ セグメント化。発話開始前の `vad_preroll_frames` ブロックをセグメント先頭に付加する。`max_speech_duration` に達した場合はセグメントを分割して出力し、発話状態は継続する。
+    - **適応VAD**（`vad_adaptive: true`）: しきい値 = max(`vad_threshold_db`, 雑音フロア + `vad_margin_db`)。
+      雑音フロアは人物（ビーム）ごとに毎ブロック（32 ms）更新する（下がるときは EMA α=0.5 ですばやく、上がるときは
+      1ブロックあたり最大 `vad_noise_rise_db`）。話し始めではほとんど動かず、雑音が大きくなった場合は数秒で追いつく。
+      新しい人物は直前に学習した雑音フロア（未学習なら `vad_noise_init_db`）から始める。`false` なら固定しきい値
+  - **全人物の常時処理**（`process_all_persons: true`）: 追跡中の人物ごとに毎ブロック、その人物の方位へビームを向けて
+    VAD に通す（DOA と対応付いたブロックでは DOA の方位）。pre-roll と雑音フロアが途切れないので、発話の冒頭が欠けない。
+    `require_doa_confirmation: true` なら、発話中または発話開始前 `doa_confirm_frames` ブロック以内に DOA と一度も
+    対応付かなかった区間は捨てる。`false`（既定）なら従来どおり DOA と対応付いたブロックだけ処理する
+  - **S/N による区間の破棄**（`min_segment_snr_db` > 0、適応VADのときだけ）: 区間の話している部分の音量が
+    雑音フロア + `min_segment_snr_db` に満たなければ publish しない（ログ `Dropped speech segment: ... SNR=...`）
+  - **出力の音量正規化**（`normalize_output: true`）: 発話区間ごとに、20 ms フレームのうち大きい上位30%の RMS を
+    `normalize_target_db` にそろえる（ゲイン上限 `normalize_max_gain_db`、ピークは `normalize_peak_db` 以下）。
+    VAD の後で行うので検出には影響せず、publish される `audio_data`（speaker_id / ASR / 録音）の音量だけが変わる。
+    ログ `Published speech segment: ...` にゲインが出る
   - ROS時刻を使用（staleタイムアウト）
 
 主要パラメータ（`separator_params.yaml`の値。値がコード既定値と異なるものは併記）:
@@ -151,16 +173,81 @@ DOA推定と人物追跡を統合し、DASビームフォーミングで音源�
 - `forget_factor` (yaml: 0.3 / コード既定値: 0.9): EMA共分散更新の忘却係数（MVDR用）
 - `max_sync_age` (yaml: 1.0 / コード既定値: 0.5): DOA/人物データの最大許容経過時間 (秒)
 - `association_angle_threshold` (0.35): 人物-DOA対応付け角度閾値 (rad, 約20度)
-- `vad_threshold_db` (yaml: -48.0 / コード既定値: -40.0): VADエネルギー閾値 (dB)
+- `vad_threshold_db` (-66.0): VADエネルギー閾値 (dB)。適応VADでは絶対下限（コードの既定は -40.0）
+- `vad_adaptive` (true): 適応VAD（コードの既定は false）
+- `vad_margin_db` (6.0): 雑音フロアからのマージン (dB)。誤検出なら 8〜10、取りこぼしなら 4〜5
+- `vad_noise_init_db` (-60.0): 雑音フロアの初期値 (dB)
+- `vad_noise_rise_db` (0.05): 雑音フロアの1ブロックあたりの最大上昇 (dB)
+- `vad_preroll_frames` (yaml: 10 / コード既定値: 5): 発話開始前に残して区間の先頭に付けるブロック数（320 ms）
+- `process_all_persons` (true): 全人物の常時処理（コードの既定は false）
+- `require_doa_confirmation` (true) / `doa_confirm_frames` (10): DOA による区間の確認
+- `min_segment_snr_db` (6.0): 区間の最小 S/N (dB)。取りこぼすなら 4〜5、雑音で区間が出るなら 8〜10（コードの既定は 0 = 無効）
+- `vad_debug` (true): 人物ごとの energy / noise / threshold / speech を1秒に1回 INFO で出す（調整後は false）
 - `vad_hangover_frames` (10): VADハングオーバーフレーム数
 - `vad_min_speech_frames` (3): VAD発話開始判定の最小連続フレーム数
-- `vad_preroll_frames` (5): 発話開始前に保持してセグメント先頭に付加するブロック数
 - `min_speech_duration` (0.3): 最小発話長 (秒)
 - `max_speech_duration` (10.0): 最大発話長 (秒)
 - `stale_association_timeout` (3.0): stale人物判定タイムアウト (秒)
 - `array_frame` (''): DOA方位角の座標系。空の場合は DOA／`audio/array_info` の `frame_id`
 - `persons_frame` (''): 人物位置の座標系。空の場合は `TrackedPersonArray` の `header.frame_id`
 - `use_tf` (true): tf2 による人物位置の座標変換の有効/無効
+- `normalize_output` (true): 出力音声の正規化（コードの既定は false）
+- `normalize_target_db` (-20.0): 発話部分の RMS の目標 (dBFS)
+- `normalize_max_gain_db` (25.0): 正規化ゲインの上限 (dB)（コードの既定は 40.0）
+- `normalize_peak_db` (-1.0): 正規化後のピーク上限 (dBFS)
+
+### audio_source_separator / camera_person_adapter_node
+
+カメラの人物（association_node の `recog/person/pose/associated`）を `ssl_msgs/TrackedPersonArray` に変換し、
+separator_node の人物入力にする（実機のみ）。LiDAR の tracker_node は約1.8 mより近い人を見失い、静止物を人物として
+追い続けることがあるため、カメラの人物を優先する。
+
+- **Subscribe**:
+  - `in_persons` → `recog/person/pose/associated` (`recognition_msgs/Persons`) — `body_location_sensor`（カメラ光学座標）を
+    tf2 で `output_frame` に変換。`instance_id` が -1 のもの（`recog/person/pose`）は使わない
+  - `in_lidar_persons` → `recog/ssl/tracked_persons` (`ssl_msgs/TrackedPersonArray`, merge モードのみ)
+- **Publish**: `out_tracked_persons` → `recog/ssl/tracked_persons_fused` (`ssl_msgs/TrackedPersonArray`, frame: `output_frame`)
+- **モード**（`camera_person_adapter_params.yaml` の `mode`）:
+  - `camera`（yaml の設定）: カメラの人物だけ。カメラのメッセージごとに publish（約7.5 Hz）。
+    merge では走行中や充電場所の LiDAR の誤検出人物が発話区間の対応相手になり、誤検出の区間が 40 秒で 19 件出ていた
+    （camera では 0 件）。lidar_person_tracker を改善するまでは camera にしておく
+  - `merge`（コードの既定）: カメラの人物＋LiDAR の人物のうち、カメラの視野外（`camera_hfov_deg`/2 − `fov_margin_deg`）にいて、
+    どのカメラ人物からも `lidar_match_distance` 以上離れ、`lidar_min_distance` より遠いもの（ID は +`lidar_id_offset`）。
+    LiDAR のメッセージごとに publish（10 Hz）。カメラが `camera_timeout` 秒以上届かないときは、視野内の LiDAR 人物も使う
+- `output_frame` の既定は `${ROBOT_NAME}_body_link`
+- カメラは recognition PC から届くので約0.4秒遅れる（`max_sync_age` 1.0秒以内）。recognition PC が止まると merge モードでも LiDAR だけになる
+
+### audio_source_separator / speaker_face_node
+
+分離した発話区間に、そのときの話者の顔画像を付けて出す（実機のみ）。
+
+- **Subscribe**:
+  - `in_speech_segments` → `recog/ssl/identified_speech_segments` (`ssl_msgs/SpeechSegment`)
+  - `in_faces` → `recog/person/face/associated` (`recognition_msgs/Persons`; association_node が `instance_id` を付けた顔。
+    `face_location` は画像上の [x, y, w, h]、header はその画像のもの)
+  - `in_image` → `<robot>_camera/color/image_raw/compressed` (`sensor_msgs/CompressedImage`)
+- **Publish**: `out_speaker_faces` → `recog/ssl/speaker_face_segments` (`ssl_msgs/SpeakerFaceSegment`)
+  - `segment`: 元の SpeechSegment（音声を含む）
+  - `face_found`: 発話中に `person_id` の顔が見つかったか。見つからなくても発話ごとに必ず出す
+  - `face_image`: 顔の切り抜き（JPEG、上下左右に顔の大きさの `crop_margin` 倍の余白）。header は元のカメラ画像のもの
+  - `face_location`（元画像上の [x, y, w, h]）、`face_orientation`（[yaw, pitch, roll] 度）、`face_stamp_ns`（使ったフレームの時刻）
+- **アルゴリズム**:
+  - `person_id` とカメラの `instance_id` が同じ顔を、[`speech_start_ns` − `pre_margin`, `speech_end_ns` + `post_margin`] の中から
+    1枚選ぶ（顔の面積 × 正面度（1 − (|yaw| + |pitch|)/90°）が最大のもの）
+  - 顔は recognition PC から約0.4秒遅れて届くので、カメラ画像を `image_buffer_sec` 秒だけ残し、顔が届いた時点で
+    同じ時刻の画像から切り抜いて JPEG で保持する（`face_buffer_sec` 秒）。全画像を長く溜めない
+  - 区間の終わりより新しい顔が届いたら publish する。顔が届かなければ `max_wait` 秒後に `face_found: false` で出す
+  - `person_id` がカメラの `instance_id` であることが前提。camera_person_adapter_node が camera モードなら成り立つ。
+    merge モードで LiDAR だけの人物（ID +`lidar_id_offset`）は `face_found: false` になる
+
+パラメータ（`speaker_face_params.yaml`）: `image_buffer_sec` (3.0)、`face_buffer_sec` (15.0)、`image_stamp_tolerance` (0.005 s)、
+`pre_margin` (0.3 s)、`post_margin` (0.2 s)、`max_wait` (2.0 s)、`crop_margin` (0.4)、`min_face_size` (16 px)、`jpeg_quality` (90)
+
+確認:
+```bash
+ros2 topic echo /$ROBOT_NAME/recog/ssl/speaker_face_segments --field face_found
+ros2 topic echo /$ROBOT_NAME/recog/ssl/speaker_face_segments --field face_location
+```
 
 ### audio_source_separator / speaker_id_node
 
@@ -198,6 +285,17 @@ Whisper（faster-whisper）による音声認識ノード。サーバ側GPUで�
 - `beam_size` (1): ビームサーチ幅
 - `condition_on_previous_text` (false): 直前の認識結果を条件に使うか
 - `without_timestamps` (true): タイムスタンプなしでデコードするか
+
+Whisper の幻聴（無音や雑音で「ご視聴ありがとうございました」などを出す）の抑制:
+- `vad_filter` (true) / `vad_min_silence_ms` (500): faster-whisper の Silero VAD で無音部分を除く（onnxruntime が必要。
+  エラーになる場合は false）
+- `no_speech_threshold` (0.6) / `log_prob_threshold` (-1.0): Whisper のセグメントごとに `no_speech_prob` > 0.6 かつ
+  `avg_logprob` < -1.0 なら捨てる。正しい認識まで捨てられる場合は -1.2 や 0.7 に緩める
+- `compression_ratio_threshold` (2.4): 繰り返しの多いセグメントを捨てる
+- `min_duration` (0.3): これより短い区間は認識しない (秒)
+- `hallucination_phrases`: 認識結果がこれらのフレーズ（とその繰り返し）だけなら捨てる。空白・句読点は無視して比較。
+  ほかの内容を含む結果は捨てない。省略するとコードの既定リスト。実際に出た幻聴はここに追加する
+- 捨てた結果は `dropped hallucination: ...` / `dropped low-confidence: ...` として INFO ログに出る
 
 ### audio_source_separator / monitor_node
 
@@ -262,7 +360,9 @@ source install/setup.bash
 
 ### ロボット側（ssl_system.launch.py）
 
-tracker_node, localizer_node, separator_node, speaker_id_node を起動する。
+tracker_node, localizer_node, camera_person_adapter_node（実機のみ）, separator_node, speaker_id_node を起動する。
+separator_node の人物入力を LiDAR だけに戻すときは、`ssl_system.launch.py` の separator_node_real の remap を
+`recog/ssl/tracked_persons` にする。
 
 ```bash
 ros2 launch ssl_bringup ssl_system.launch.py

@@ -1,11 +1,12 @@
 import os
 import math
 import time
+import threading
 
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy import qos
 
 from std_msgs.msg import Empty, Bool, String
@@ -22,6 +23,7 @@ class AutoCharge(Node):
             return
 
         self.now_docking = False    #docking処理中か否か
+        self.docking_busy = False   #ドッキングの開始から終了処理（ローバ停止）までTrue
         self.now_sequence = 0       #現在のシーケンスを示す
         self.last_traget_time = 0.0     #充電ステーションが最後に見えた時間
         self.target_finding_time = 3.0      #充電ステーションが最後に見えてからのタイムアウト時間
@@ -59,7 +61,14 @@ class AutoCharge(Node):
                                         #（リトライ上限で止まらない経路の保険。
                                         #  最大リトライ5回分の所要時間に余裕を見た値）
 
-        docking_cb_group = MutuallyExclusiveCallbackGroup()
+        # dock_start_cb runs the whole docking loop. With a mutually exclusive
+        # group, a dock_start received during a docking was queued and started a
+        # new docking right after the current one ended (e.g. after dock_cancel),
+        # so the rover kept moving. A reentrant group lets dock_start_cb run at
+        # once and reject it ("Running docking process"); docking_lock makes the
+        # check-and-start atomic.
+        docking_cb_group = ReentrantCallbackGroup()
+        self.docking_lock = threading.Lock()
         get_pose_cb_group = MutuallyExclusiveCallbackGroup()
         timer_cb_group = MutuallyExclusiveCallbackGroup()
 
@@ -143,23 +152,49 @@ class AutoCharge(Node):
             self.battery_charge_state = True
 
     def dock_start_cb(self, msg):
-        # ドッキング処理中の場合は終了
-        if self.now_docking:
-            self.get_logger().warn("Running docking process")
-            return
+        with self.docking_lock:
+            # ドッキング処理中の場合は終了（キューに溜めず、ここで捨てる）
+            if self.docking_busy:
+                self.get_logger().warn("Running docking process: dock_start ignored")
+                return
 
-        # ドッキング処理中の場合は終了
-        if self.battery_charge_state:
-            self.get_logger().warn("Charging now")
-            return
+            # 充電中の場合は終了
+            if self.battery_charge_state:
+                self.get_logger().warn("Charging now")
+                return
 
-        # ドッキング開始
-        # 待機中に届いていた中止要求は、今回のドッキングには持ち越さない
-        self.cancel_requested = False
-        self.docking_start_time = self.get_clock().now().nanoseconds * 1e-9
-        self.now_docking = True
-        self.now_sequence = 1
+            # ドッキング開始
+            # 待機中に届いていた中止要求は、今回のドッキングには持ち越さない
+            self.cancel_requested = False
+            self.docking_start_time = self.get_clock().now().nanoseconds * 1e-9
+            self.now_docking = True
+            self.docking_busy = True
+            self.now_sequence = 1
+        self.get_logger().info(f"Docking started (docking_timeout {self.docking_timeout:.0f}s)")
 
+        try:
+            self._docking_loop()
+        except Exception as e:
+            # 例外で抜けても、下の終了処理（ローバ停止）は必ず通す
+            self.get_logger().error(f"Docking failed: {type(e).__name__}: {e}")
+            self.now_docking = False
+        finally:
+            # 成否によらず、必ずローバを停止させてから内部状態を初期化する。
+            # ここを通さずに抜けると最後の速度指令が残り続けるため、終了処理は
+            # ループ内ではなくこの1箇所に集約している。
+            self.stop_move()
+            self.precision_runnning = False
+            self.coarse_close_backup_done = False
+            self.coarse_backing_up = False
+            self.delta_y_history = []
+            self.cancel_requested = False
+            self.retry_count = 0
+            self.now_sequence = 0
+            with self.docking_lock:
+                self.docking_busy = False
+            self.get_logger().info("Docking process ended: rover stopped")
+
+    def _docking_loop(self):
         while self.now_docking:
             # 充電状態であれば終了
             if self.battery_charge_state:
@@ -213,18 +248,6 @@ class AutoCharge(Node):
                 self.get_logger().error(
                     f"Docking failed: retry limit ({self.max_retry_count}) exceeded")
                 self.now_docking = False
-
-        # 成否によらず、必ずローバを停止させてから内部状態を初期化する。
-        # ここを通さずに抜けると最後の速度指令が残り続けるため、終了処理は
-        # ループ内ではなくこの1箇所に集約している。
-        self.stop_move()
-        self.precision_runnning = False
-        self.coarse_close_backup_done = False
-        self.coarse_backing_up = False
-        self.delta_y_history = []
-        self.cancel_requested = False
-        self.retry_count = 0
-        self.now_sequence = 0
 
     def start_up_docking(self):
         self.stop_move()
@@ -403,7 +426,8 @@ class AutoCharge(Node):
 
     def timer_callback(self):
         pub_msg = Bool()
-        pub_msg.data = self.now_docking
+        # False only after the rover has been stopped at the end of the docking
+        pub_msg.data = self.docking_busy
         self.dock_status_pub.publish(pub_msg)
 
 def main():

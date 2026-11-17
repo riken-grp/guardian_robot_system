@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IndyXe 確認ページ{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+</head>
+<body data-low-battery="{{ low_battery }}">
+    <header class="site-header">
+        <div class="site-header__inner">
+            <h1>{% block heading %}IndyXe 確認ページ{% endblock %}</h1>
+            <p class="battery" style="margin: 0;">
+                <span>バッテリー残量</span>
+                <span id="battery-value" class="battery__value">{{ "%.0f"|format(battery) }}%</span>
+                <span id="battery-charging" class="tag tag--success" {% if not is_charging %}hidden{% endif %}>充電中</span>
+                <span id="battery-low" class="tag tag--warning" {% if is_charging or battery >= low_battery %}hidden{% endif %}>残量わずか</span>
+            </p>
+        </div>
+    </header>
+
+    <main class="main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
+
+    <script src="/static/app.js?v={{ asset_version }}" defer></script>
+</body>
+</html>

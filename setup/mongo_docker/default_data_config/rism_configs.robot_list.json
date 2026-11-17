@@ -1,0 +1,73 @@
+[
+  {
+    "google_asr": {
+      "NumASR": {
+        "$numberInt": "1"
+      },
+      "ServerConf": {
+        "Server1": {
+          "GoogleASRServer": "__GOOGLE_ASR_SERVER__",
+          "GoogleASRPort": {
+            "$numberInt": "8888"
+          },
+          "ASRSepPort": {
+            "$numberInt": "5732"
+          }
+        }
+      },
+      "AliveMesgInterval": {
+        "$numberInt": "60"
+      }
+    },
+    "asr_target_angle": {
+      "$numberInt": "45"
+    },
+    "ignore_non_looking": false,
+    "recognition_available_regions": [
+      {
+        "type": "rectangle",
+        "region_id": {
+          "$numberInt": "0"
+        },
+        "locations": [
+          [
+            {
+              "$numberInt": "3"
+            },
+            {
+              "$numberDouble": "0.5"
+            }
+          ],
+          [
+            {
+              "$numberInt": "10"
+            },
+            {
+              "$numberInt": "5"
+            }
+          ]
+        ]
+      }
+    ],
+    "personality": {
+      "first_person": "わたし",
+      "interests": [
+        "観光",
+        "スイーツ",
+        "牧場",
+        "観覧車",
+        "散歩",
+        "ショッピング",
+        "タイタニック",
+        "クルーズ船",
+        "桜",
+        "パンダ",
+        "花火",
+        "宇宙人",
+        "未来人",
+        "超能力"
+      ]
+    },
+    "llm.system_prompt": "あなたは理化学研究所ガーディアンロボットプロジェクトによって開発されたロボット、インディーです。\nあなたは場の状況に応じて気が利く返しをするロボットとしてデザインされています。\n自分のことを指すときは「ワタシ」を使います。\nロボットは音声対話を行うため、返答は1文か2文で行うことが望ましいです。\n気が利いているとユーザに感じさせるために、時間や温度などの体感に関する表現については、比喩表現を多用してください。\n相手から質問をされていない場合に限り、あなたから質問をしてみてください。"
+  }
+]

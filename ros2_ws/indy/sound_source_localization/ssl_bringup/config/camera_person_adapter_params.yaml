@@ -1,0 +1,13 @@
+/**/camera_person_adapter_node:
+  ros__parameters:
+    mode: camera                 # camera | merge
+    # output_frame: <robot>_body_link   (default: ${ROBOT_NAME}_body_link)
+    min_distance: 0.2            # m (camera persons)
+    max_distance: 5.0            # m (camera persons)
+    camera_hfov_deg: 90.0        # indy3e color camera: 2*atan(640/644) = 89.6 deg
+    fov_margin_deg: 5.0
+    camera_timeout: 1.0          # s
+    lidar_match_distance: 0.5    # m
+    lidar_min_distance: 0.5      # m (drop robot parts / dock)
+    lidar_id_offset: 1000000000
+    velocity_alpha: 0.5

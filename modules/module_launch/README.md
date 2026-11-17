@@ -50,8 +50,11 @@
    export GUARDIAN_ROBOT_PATH=<guardian_robot_systemディレクトリのPATH>
    export ROBOT_NAME=<ロボット名>     # scenario_launch.sh、各launchファイル等で使用
    export SCENARIO_ROBOTS="<ロボット名> ..."  # 任意。scenario_launch.sh の対象ロボット(空白区切り)。未設定時は ROBOT_NAME
-   export MONGO_URI=<MongoDBのホスト名 or IPアドレス>
+   export SCENARIO_DEMO=<デモID>              # 任意。scenario_launch.sh のデモ(設定DB の demo_list のキー)。未設定時は <SCENARIO_ROBOTS の先頭>_demo
+   export MONGO_URI=<MongoDBのホスト名 or IPアドレス>   # このロボットの DB(ロボットDB)
    export MONGO_PORT=<MongoDBのポート番号>
+   export RISM_CONFIG_HOST=<設定DBのホスト名>  # 任意。scenario_launch.sh、pyindy が使う設定DB(rism_configs)。未設定時は MONGO_URI
+   export RISM_CONFIG_PORT=<設定DBのポート番号> # 任意。未設定時は 9100
    export ROS_DOMAIN_ID=<ROS_DOMAIN_ID>       # 000_zenoh_bridge.sh で必須
    export ZENOH_MODE=<listen or connect>     # 任意。000_zenoh_bridge.sh の役割。未設定時は ON_ROBOT=1 なら listen(待ち受け側)、それ以外は connect(接続側)。robodj は listen
    export ZENOH_ROBOT_ADDR=<ロボットのIPアドレス>  # 000_zenoh_bridge.sh を接続側(connect)で使う場合に必須
@@ -66,10 +69,28 @@
   $GUARDIAN_ROBOT_PATH/modules/module_launch/module_launch.sh
   ```
 ### シナリオの起動方法
-- シナリオ起動マシンにて、以下のシェルスクリプトを実行してください。
+- シナリオ起動マシン（通常はロボット搭載マシン。robodj の場合は robodj）にて、以下のシェルスクリプトを実行してください。
   ```
   $GUARDIAN_ROBOT_PATH/modules/module_launch/scenario_launch.sh
   ```
+- tmuxセッション`scenario_manager`で、シナリオマネージャ（[rism2](../scenario_manager/rism2/README.md)）を以下のように起動します。
+  ```
+  cd $GUARDIAN_ROBOT_PATH/modules/scenario_manager/rism2
+  uv run main.py --robots $SCENARIO_ROBOTS --demo $SCENARIO_DEMO --host $RISM_CONFIG_HOST --port $RISM_CONFIG_PORT
+  ```
+- 使用する環境変数は以下のとおりです。
+
+  |環境変数|内容|未設定時|
+  |---|---|---|
+  |SCENARIO_ROBOTS|シナリオの対象ロボット（設定DB の`robot_list`の`robot_id`。空白区切りで複数指定可。先頭からシナリオの`robot1`、`robot2`、…に対応）|`ROBOT_NAME`|
+  |SCENARIO_DEMO|デモID（設定DB の`demo_list`のキー）|`<SCENARIO_ROBOTS の先頭>_demo`|
+  |RISM_CONFIG_HOST|設定DB（`rism_configs`）のホスト名|`MONGO_URI`|
+  |RISM_CONFIG_PORT|設定DB のポート番号|`9100`|
+
+  ※接続先は設定DB です。各ロボットの DB（ロボットDB）の場所は、設定DB の`robot_list`・`demo_list`に書かれています。  
+  ※`RISM_CONFIG_HOST`、`RISM_CONFIG_PORT`は、設定DB をロボットDB と別のサーバ・ポートに置いた場合のみ設定してください。pyindy の`load_robot_settings`（db_management などが使用）も同じ変数を参照します。  
+  ※uv が必要です（無い場合はエラー終了します）。導入方法は`docs/手順書/サーバマシン構築.md`の「5. MongoDBの構築」を参照してください。初回の起動時に、rism2 の依存パッケージが自動でインストールされます。  
+  ※MongoDB（設定DB・ロボットDB）の構築は[setup/mongo_docker/README.md](../../setup/mongo_docker/README.md)を参照してください。
 ### 機能の一括停止方法
 - 以下のシェルスクリプトを実行してください。
   ```
@@ -150,6 +171,7 @@ fi
 |20_grs_action_tts.sh|tts_launch.py|MongoDBに登録された発話指示を取得し、音声合成して再生する機能を起動する。|
 |20_grs_action_watchdog.sh|ros_watchdog_launch.py|ROS上の発話・音声認識・バッテリー情報を監視し、その内容のMongoDBへの記録や、バッテリー状態に応じたイベント発行を行う機能を実行する。|
 |30_chat_monitor.sh|getData.js|MongoDBに保存された発話データをWebブラウザへ配信するためのWebサーバを起動する。<br>MongoDBの接続先は引数、無ければ環境変数（MONGO_URI、MONGO_PORT）から取得する。|
+|30_indyxe_viewer.sh|main.py（indyxe_viewer）|ロボットの状態表示・操作画面(Webページ)を起動する。標準では登録しない。<br>ロボット名は環境変数ROBOT_NAME、MongoDBの接続先は引数、無ければ環境変数（MONGO_URI、MONGO_PORT）から取得する。ポートは環境変数INDYXE_VIEWER_PORT（未設定時は8000）。uvが必要。|
 |50_grsrv_asr.sh|all_asr_launch.py|音声認識機能を起動する。<br>・asr_launch.py（音声認識(文字起こし)機能）<br>・asr_metadata_launch.py（音声認識補助(話し手情報、位置情報)機能）|
 |50_grsrv_db_management.sh|db_management.launch.py|認識結果やセンサ情報のMongoDBへの保存、監視・集計を行う機能を起動する。|
 |50_grsrv_human_tracker.sh|human_tracker.launch.py|LiDARとカメラのセンサー情報を統合し、人間を検出・追跡・識別し、その位置と方向をROS 2上で可視化・配信する機能を起動する。|

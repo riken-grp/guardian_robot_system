@@ -236,8 +236,9 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
    |ON_ROBOT|`1`(ロボット搭載マシンでは必須)<br>※`1`以外の場合、ロボット専用パッケージ(arm_motor_control、rover_wrapper、microphone_arrayなど)がビルドされない。<br>また、zenoh-bridge-ros2ddsがサーバ側として起動してしまう。|
    |GUARDIAN_ROBOT_PATH|guardian_robot_systemリポジトリのパス|
    |ROBOT_NAME|ロボット名|
-   |MONGO_URI|MongoDBのホスト名またはIPアドレス(MongoDBを動かすサーバマシン)<br>※サーバマシンのmongo.envの`MONGO_PUBLIC_HOST`と同じ値にする。|
-   |MONGO_PORT|MongoDBのポート番号<br>※サーバマシンのmongo.envの`MONGO_PORT`と同じ値にする。|
+   |MONGO_URI|このロボットのMongoDB(ロボットDB)のホスト名またはIPアドレス(MongoDBを動かすサーバマシン)<br>※サーバマシンで`setup/mongo_docker/setup_mongo.sh`を実行したときの最後に表示される値にする。|
+   |MONGO_PORT|ロボットDBのポート番号(e.g. 9110)<br>※同上。|
+   |RISM_CONFIG_HOST / RISM_CONFIG_PORT|設定DB(rism_configs)の接続先(任意。未設定の場合は`MONGO_URI`と`9100`)<br>※設定DBをロボットDBと別のサーバ・ポートに置いたときだけ設定する。|
    |ROS_DOMAIN_ID|ROS_DOMAIN_ID(サーバマシンと同じ値を設定)|
    |ZENOH_LISTEN|zenohの待ち受けIPアドレス(任意。空の場合は全インタフェースで待ち受け)|
    |ZENOH_PORT|zenohのポート番号(任意。サーバマシンと同じ値を設定。空の場合は7447)|
@@ -369,3 +370,33 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
 5. ブラウザで`http://<ロボット搭載マシンのホスト名>:3000/`を開き、会話ログ(chat_monitor)が表示されることを確認する。  
    ※chat_monitorは、MongoDBの接続先として~/indy.envの`MONGO_URI`、`MONGO_PORT`を使用する。  
    ※ポート番号はchat_monitorの`config_server.js`の`display_port`で変更できる。
+
+6. 以下のコマンドを実行し、シナリオマネージャ(rism2)を動かすためのuvと依存パッケージをインストールする。  
+   ※シナリオマネージャは、ロボット搭載マシンで`~/module_launch/scenario_launch.sh`により起動し、ホスト上でuvを使って動作する(起動方法は[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「2.5. シナリオの起動」を参照)。  
+   ※rism2はPython 3.10で動作確認している(pyindyが`numpy==1.24.4`固定のため、Python 3.12ではビルドできない)。`.python-version`で3.10を指定しているため、Ubuntu 22.04のpython3(3.10)が使われる。python3が3.10以外の場合は、uvがPython 3.10を自動でダウンロードする。  
+   ※依存パッケージ(pyindy経由のchromadb、onnxruntime、scipyなど)をダウンロードするため、インターネット接続と時間が必要。未実行の場合も、初回の`scenario_launch.sh`で自動でインストールされる。
+   ```
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+   新しいターミナルを開き、以下を実行する。
+   ```
+   uv --version
+   cd $GUARDIAN_ROBOT_PATH/modules/scenario_manager/rism2
+   uv sync
+   ```
+
+   ※シナリオマネージャは、サーバマシンの設定DB(既定のポート9100)とロボットDB(e.g. 9110)に接続する。ロボット搭載マシンから両方のポートに到達できること。
+
+7. (任意)ロボットの状態表示・操作画面(indyxe_viewer)を使う場合は、以下のコマンドを実行し、依存パッケージのインストールと起動スクリプトの登録を行う。  
+   ※indyxe_viewerは、カメラ、バッテリー、シナリオの状態、地図、聞き取った言葉、ロボットの行動を表示し、移動・発話を操作するWebページである。詳細は[README](../../modules/indy_modules/indyxe_viewer/Readme.md)を参照。  
+   ※ロボット名・MongoDBの接続先は~/indy.envの`ROBOT_NAME`、`MONGO_URI`、`MONGO_PORT`を使用する。ポート番号は`INDYXE_VIEWER_PORT`(未設定の場合は8000)で変更できる。
+   ```
+   cd $GUARDIAN_ROBOT_PATH/modules/indy_modules/indyxe_viewer
+   uv sync
+   cd ~/module_launch/enable
+   ln -s ../available/30_indyxe_viewer.sh .
+   ```
+
+   module_launch.shで起動後、ブラウザで`http://<ロボット搭載マシンのホスト名>:8000/`を開き、画面が表示されることを確認する。  
+   ※認証が無く、ロボットの移動・発話を操作できるため、信頼できるネットワーク内でのみ使用すること。

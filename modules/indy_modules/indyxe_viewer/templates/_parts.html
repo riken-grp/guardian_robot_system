@@ -1,0 +1,156 @@
+{# 各ページ共通の部品 #}
+
+{% macro camera() %}
+<section class="camera" aria-label="ロボットのカメラ映像">
+    <img src="/camera" alt="ロボットのカメラ映像">
+</section>
+{% endmacro %}
+
+{% macro speech_form() %}
+<section class="panel">
+    <form action="/submit" method="post">
+        <h2><label for="user_input">ロボットに話させる</label></h2>
+        <div class="form-row">
+            <input id="user_input" class="input-text" type="text" name="user_input"
+                   placeholder="話させたい内容を入力してください" required>
+            <button type="submit" class="button button--primary">話す</button>
+        </div>
+    </form>
+</section>
+{% endmacro %}
+
+{% macro dpad() %}
+<section class="panel" aria-labelledby="dpad-heading">
+    <h2 id="dpad-heading">ロボット操作</h2>
+    <div class="dpad">
+        <button type="button" class="button button--secondary dpad__front" data-command="front" aria-label="前進">↑</button>
+        <button type="button" class="button button--secondary dpad__left" data-command="left" aria-label="左回転">←</button>
+        <button type="button" class="button dpad__stop" data-command="stop">停止</button>
+        <button type="button" class="button button--secondary dpad__right" data-command="right" aria-label="右回転">→</button>
+        <button type="button" class="button button--secondary dpad__back" data-command="back" aria-label="後退">↓</button>
+    </div>
+</section>
+{% endmacro %}
+
+{% macro room_buttons() %}
+{# 行き先は DB (destinations.py) から読み込んで app.js が並べる. 1 件も無ければパネルごと隠す #}
+<section id="rooms" class="panel" aria-labelledby="rooms-heading" hidden>
+    <h2 id="rooms-heading">部屋を見に行く</h2>
+    <div id="rooms-list" class="button-list"></div>
+</section>
+{% endmacro %}
+
+{% macro speech_player(enabled, asr_enabled) %}
+<section class="panel" aria-labelledby="speech-heading">
+    <h2 id="speech-heading">ロボットが聞いた音声</h2>
+    <div class="speech-player">
+        <button type="button" id="speech-toggle" class="switch" role="switch" aria-checked="false"
+                {% if not enabled %}disabled aria-describedby="speech-status"{% endif %}>
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span>音声再生</span>
+            <span class="switch__state" aria-hidden="true">OFF</span>
+        </button>
+        {% if enabled %}
+        <p id="speech-status" class="speech-player__status" aria-live="polite">停止中</p>
+        {% else %}
+        <p id="speech-status" class="speech-player__status">
+            利用できません：ssl_msgs が読み込めませんでした。
+            <code>source $GUARDIAN_ROBOT_PATH/ros2_ws/install/setup.bash</code> をしてから起動してください。
+        </p>
+        {% endif %}
+    </div>
+    <h3 class="subheading">聞き取った言葉</h3>
+    {% if asr_enabled %}
+    <p id="heard-empty" class="muted">まだありません</p>
+    <ol id="heard-list" class="actions__list"></ol>
+    <dialog id="face-dialog" class="face-dialog" aria-label="発話者の顔">
+        <div class="face-dialog__body">
+            <img alt="発話者の顔（拡大）">
+            <p class="face-dialog__caption"></p>
+            <button type="button" class="button button--secondary face-dialog__close">閉じる</button>
+        </div>
+    </dialog>
+    {% else %}
+    <p class="muted">
+        利用できません：common_msgs が読み込めませんでした。
+        <code>source $GUARDIAN_ROBOT_PATH/ros2_ws/install/setup.bash</code> をしてから起動してください。
+    </p>
+    {% endif %}
+</section>
+{% endmacro %}
+
+{% macro robot_actions() %}
+<section class="panel" aria-labelledby="actions-heading">
+    <h2 id="actions-heading">ロボットの行動</h2>
+    <p id="actions-message" class="actions__message">読み込み中…</p>
+    <div id="actions-groups" class="actions"></div>
+</section>
+{% endmacro %}
+
+
+{% macro scenario() %}
+<section class="panel" aria-labelledby="scenario-heading">
+    <h2 id="scenario-heading">実行中のシナリオ</h2>
+    <p id="scenario-message" class="muted">読み込み中…</p>
+    <div id="scenario-current" class="scenario" hidden>
+        <p class="scenario__name"><span id="scenario-name"></span></p>
+        <p id="scenario-interrupt" class="scenario__interrupt" hidden></p>
+        <p class="scenario__meta">
+            <span id="scenario-event"></span>
+            <span id="scenario-processing" class="scenario__tags"></span>
+            <span id="scenario-updated" class="muted"></span>
+        </p>
+        <div class="waits">
+            <h3 class="subheading">待ち状態</h3>
+            <ol id="scenario-waits" class="waits__list"></ol>
+            <p id="scenario-waits-empty" class="muted">何も待っていません</p>
+            <p id="scenario-last-wait" class="muted" hidden></p>
+            <p id="scenario-wait-note" class="muted waits__note" hidden>
+                RISM が待ち状態の詳細（条件・残り時間）を出力していないため、分かる範囲だけ表示しています。
+            </p>
+        </div>
+    </div>
+    <h3 class="subheading">シナリオ履歴</h3>
+    <ol id="scenario-history" class="actions__list"></ol>
+</section>
+{% endmacro %}
+
+{% macro map() %}
+<section class="panel" aria-labelledby="map-heading">
+    <h2 id="map-heading">ロボットの位置</h2>
+    <p id="map-message" class="muted">地図を読み込み中…</p>
+    <div class="map" hidden>
+        <svg id="map-svg" role="img" aria-labelledby="map-heading map-status"></svg>
+    </div>
+    <p class="map__legend">
+        <span class="map__legend-item"><span class="map__swatch map__swatch--robot"></span>ロボット</span>
+        <span class="map__legend-item"><span class="map__swatch map__swatch--goal"></span>移動先</span>
+        <span class="map__legend-item"><span class="map__swatch map__swatch--place"></span>登録された場所</span>
+        <span id="map-status" class="muted"></span>
+    </p>
+</section>
+{% endmacro %}
+
+
+{% macro timeline() %}
+<section class="panel" aria-labelledby="timeline-heading">
+    <div class="panel__header">
+        <h2 id="timeline-heading">シナリオのタイムライン</h2>
+        <div class="segmented" role="group" aria-label="表示する期間">
+            <button type="button" class="segmented__button" data-minutes="10" aria-pressed="false">10分</button>
+            <button type="button" class="segmented__button" data-minutes="30" aria-pressed="true">30分</button>
+            <button type="button" class="segmented__button" data-minutes="60" aria-pressed="false">1時間</button>
+            <button type="button" class="segmented__button" data-minutes="180" aria-pressed="false">3時間</button>
+        </div>
+    </div>
+    <p id="timeline-message" class="muted">読み込み中…</p>
+    <div class="timeline">
+        <svg id="timeline-svg" role="img" aria-labelledby="timeline-heading"></svg>
+    </div>
+    <p class="map__legend">
+        <span class="map__legend-item"><span class="timeline__swatch timeline__swatch--main"></span>メインのシナリオ</span>
+        <span class="map__legend-item"><span class="timeline__swatch timeline__swatch--interrupt"></span>割り込み（下の段に分岐）</span>
+        <span class="map__legend-item"><span class="timeline__swatch timeline__swatch--open"></span>実行中</span>
+    </p>
+</section>
+{% endmacro %}

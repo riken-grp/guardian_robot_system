@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 # Messages
@@ -18,7 +19,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TrackedPerson.msg"
   "msg/TrackedPersonArray.msg"
   "msg/SpeechSegment.msg"
-  DEPENDENCIES std_msgs builtin_interfaces
+  "msg/SpeakerFaceSegment.msg"
+  DEPENDENCIES std_msgs builtin_interfaces sensor_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)

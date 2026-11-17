@@ -24,7 +24,10 @@ Indyを動かす場合はロボット搭載マシンとサーバマシン、robo
 それぞれ以下の手順書を参照すること。
 
 ※ロボット搭載マシン、robodjはサーバマシン上のMongoDBに接続する。  
-　先にサーバマシンを構築し、MongoDBを構築しておくこと(サーバマシン構築.mdの「5. MongoDBの構築」)。
+　先にサーバマシンを構築し、MongoDBを構築しておくこと(サーバマシン構築.mdの「5. MongoDBの構築」)。  
+　MongoDBは、対話式のツール`setup/mongo_docker/setup_mongo.sh`で構築する。  
+　MongoDBは2種類あり、全ロボット共通の設定DB(既定のポート9100)と、ロボットごとのロボットDB(ロボットN台目は9100+10×N。1台目は9110)を使う。  
+　設定DBとロボットDBの中身は、[Indyソフトウェア仕様書.md](../仕様書/Indyソフトウェア仕様書.md)の「3. MongoDBのデータ構成」を参照すること。
 
 - サーバマシン(Indy・robodj共通。MongoDBの構築を含む)
   - [docs/手順書/サーバマシン構築.md](../手順書/サーバマシン構築.md)
@@ -119,17 +122,43 @@ tmux source ~/.tmux.conf
 
 ### 2.5. シナリオの起動
 
-1. シナリオ起動マシンにて、以下のコマンドを実行する。
+シナリオは、シナリオマネージャ(`modules/scenario_manager/rism2`)が実行する。  
+シナリオマネージャは設定DBの`rism_configs`を読み、そこに書かれたロボットDBからシナリオを読む(「5.2. 新規シナリオの追加」参照)。  
+起動には`uv`が必要である(初回の起動時に依存パッケージが自動でインストールされる)。
+
+1. シナリオ起動マシン(通常はロボット搭載マシン。robodjの場合はrobodj)にて、以下のコマンドを実行する。
    ```
    ~/module_launch/scenario_launch.sh
    ```
+   tmuxセッション`scenario_manager`で、以下のコマンドが実行される。
+   ```
+   cd $GUARDIAN_ROBOT_PATH/modules/scenario_manager/rism2
+   uv run main.py --robots $SCENARIO_ROBOTS --demo $SCENARIO_DEMO --host $RISM_CONFIG_HOST --port $RISM_CONFIG_PORT
+   ```
 
-   シナリオの対象ロボットは、環境変数`SCENARIO_ROBOTS`(空白区切りで複数指定可)で指定する。  
-   未設定の場合は`ROBOT_NAME`のロボットが対象となる。  
-   robodjのように1台のマシンで複数のロボットのシナリオを実行する場合は、~/indy.envに以下を設定する。
+   使用する環境変数(~/indy.envで設定する)を以下に示す。
+
+   |環境変数|内容|未設定の場合|
+   |---|---|---|
+   |`GUARDIAN_ROBOT_PATH`|リポジトリのパス|起動しない(必須)|
+   |`SCENARIO_ROBOTS`|シナリオの対象ロボット(設定DBの`robot_list`の`robot_id`)。空白区切りで複数指定可|`ROBOT_NAME`|
+   |`SCENARIO_DEMO`|デモID(設定DBの`demo_list`の`demo_id`)|`<SCENARIO_ROBOTSの先頭のロボット名>_demo`|
+   |`RISM_CONFIG_HOST`|設定DBのホスト名|`MONGO_URI`|
+   |`RISM_CONFIG_PORT`|設定DBのポート番号|`9100`|
+
+   ※`MONGO_PORT`(ロボットDBのポート番号)は使用しない。ロボットDBの場所は、設定DBの`robot_list`、`demo_list`に書かれている。  
+   ※`RISM_CONFIG_HOST`、`RISM_CONFIG_PORT`は、設定DBをロボットDBと別のサーバ、または9100以外のポートに置いた場合のみ設定する。  
+   　`SCENARIO_DEMO`は、デモIDを既定と異なる値にした場合のみ設定する。  
+   　設定すべき値は、MongoDBの構築時に`setup_mongo.sh`が最後に表示する。
+
+   robodjのように1台のマシンで複数のロボットのシナリオを実行する場合は、~/indy.envに以下を設定する。  
+   シナリオの`actor`の`robot1`、`robot2`、…は、`SCENARIO_ROBOTS`に指定した順にロボットに対応する。  
+   デモIDの既定は先頭のロボット名から決まる(下記の場合は`dj_ri_demo`)ため、異なる場合は`SCENARIO_DEMO`も設定する。
    ```
    export SCENARIO_ROBOTS="dj_ri dj_ken"
    ```
+
+シナリオの停止は、「3.1. ソフトウェアの終了」を参照すること(セッション名は`scenario_manager`)。
 
 ## 3. 終了手順
 
@@ -348,11 +377,29 @@ ros2 topic pub /<ロボット名>/auto_charge/dock_start std_msgs/msg/Empty "{}"
 各Documentとそれを読み込むモジュールの対応は、[Indyソフトウェア仕様書.md](../仕様書/Indyソフトウェア仕様書.md)の「3.1. パラメータ」を参照すること。  
 各モジュールは起動時にパラメータを読み込むため、変更後は対象モジュールを再起動すること(「6.2. 機能の個別再起動」参照)。
 
-1. ブラウザでMongoDB管理画面(Mongo Express)に接続する。  
-   URLは`http://<MongoDBサーバのホスト名>:<管理画面のポート番号>/`(サーバマシンのmongo.envの`MONGO_PUBLIC_HOST`と`ME_PORT`)。  
-   ※他のマシンのブラウザから開くには、サーバマシンのmongo.envで`ME_BIND_ADDR=0.0.0.0`を設定しておく必要がある([サーバマシン構築.md](../手順書/サーバマシン構築.md)の「5. MongoDBの構築」参照)。
+MongoDBは、設定DBとロボットDBの2種類がある。主なパラメータの置き場所を以下に示す。  
+詳細は、[Indyソフトウェア仕様書.md](../仕様書/Indyソフトウェア仕様書.md)の「3. MongoDBのデータ構成」を参照すること。
 
-2. Databasesの中から、「robot_config」を押下する。
+|MongoDB|既定のポート|主なDatabase/Collection|内容|
+|---|---|---|---|
+|設定DB(全ロボット共通)|9100|`rism_configs`/`rism_config`|シナリオマネージャの設定|
+|||`rism_configs`/`robot_list`|ロボットごとの設定(接続するDB、LLM、音声認識の設定など)|
+|||`rism_configs`/`demo_list`|デモごとの設定(シナリオを読むDB)|
+|||`rism_configs`/`common`|全ロボット共通の設定(天気の取得など)|
+|ロボットDB(ロボットごと)|9100+10×N(1台目は9110)|`robot_config`/`system_parameters`|各モジュールのパラメータ(「3.1. パラメータ」)|
+|||`demo_configs`/`scenarios`など|シナリオ(「5.2. 新規シナリオの追加」)|
+|||`memory_settings`、`persona`|LLMのプロンプト、ジェスチャーの定義など|
+|||`tBlackBoard`|観測、ロボットへの動作指示、実行中の状態など(ロボット・シナリオマネージャが書き込む)|
+
+1. ブラウザでMongoDB管理画面(Web UI)に接続する。  
+   URLは`http://<MongoDBサーバのホスト名>:<MongoDBのポート番号+1>/`である(e.g. 設定DBは9101、1台目のロボットDBは9111)。  
+   Web UIの種類(mongo-express、DbGate、なし)は、MongoDBの構築時に`setup_mongo.sh`で選択する。  
+   ※mongo-expressは、MongoDBごとに1つ起動する(各MongoDBのポート番号+1)。  
+   ※DbGateは、composeファイルごとに1つ起動し、その中のすべてのMongoDBを扱う(設定DBとロボットDBを同じサーバに置いた場合は、設定DBのポート番号+1)。  
+   ※Web UIはログインなしで、同じネットワーク内の他のマシンから開ける。信頼できるネットワーク内でのみ使用すること。  
+   以降の手順は、mongo-expressの画面での操作を示す。
+
+2. ロボットDBのWeb UIで、Databasesの中から、「robot_config」を押下する。
 
 3. Collectionsの中から、「system_parameters」を押下する。
 
@@ -364,136 +411,96 @@ ros2 topic pub /<ロボット名>/auto_charge/dock_start std_msgs/msg/Empty "{}"
 
 ### 5.2. 新規シナリオの追加
 
-1. ブラウザでMongoDB管理画面(Mongo Express)に接続する(「5.1. MongoDBでのパラメータ設定」参照)。
+シナリオは、ロボットDBの`demo_configs`に置く。  
+どのDBのシナリオを使うかは、設定DBの`rism_configs`/`demo_list`のデモ(`SCENARIO_DEMO`で指定したデモID)に書かれている(既定ではロボットDBの`demo_configs`)。  
+シナリオの書き方の詳細(全フィールド、条件の書き方、イベントの種類、Event Generator)は、[modules/scenario_manager/rism2/docs/SCENARIO_SCHEMA.md](../../modules/scenario_manager/rism2/docs/SCENARIO_SCHEMA.md)を参照すること。  
+サンプルは[modules/scenario_manager/rism2/samples/](../../modules/scenario_manager/rism2/samples/)にある(MongoDBの構築時にサンプルを入れることを選んだ場合は、ロボットDBに登録済みである)。
 
-2. Databasesの中から、「rism_configs」を押下する。
+|Collection|内容|
+|---|---|
+|`scenarios`|メインシナリオ。`status`が`active`で`condition`に合うものから、`priority`を重みにして次に実行するものを選ぶ|
+|`interruption_subscenarios`|割り込みサブシナリオ。`condition`に合う観測(音声認識、顔検出など)が来たら、実行中のシナリオに割り込んで実行する|
+|`knowledge`|KnowledgeEventGeneratorが使う知識|
 
-3. Collectionsの中から、「scenarios」、「interruption_subscenarios」、「interaction_subscenarios」のいずれかを押下する。
+※旧シナリオマネージャの`rism_configs`/`scenarios`、`interruption_subscenarios`、`interaction_subscenarios`は使用しない。旧形式のフィールド(`trigger`、`'return'`、`interaction_subscenario_ids`、`utterance`など)も使えない。  
+※シナリオ切り替え用のWeb UI(`modules/indy_modules/scenario_switchboard`)を使うと、ロボットDBの`demo_configs`/`scenarios`、`interruption_subscenarios`の`status`(`active`/`inactive`)を一覧から切り替えられる。起動方法は[README](../../modules/indy_modules/scenario_switchboard/README.md)を参照。
+
+1. ブラウザでロボットDBのMongoDB管理画面(Web UI)に接続する(「5.1. MongoDBでのパラメータ設定」参照)。
+
+2. Databasesの中から、「demo_configs」を押下する。
+
+3. Collectionsの中から、「scenarios」、「interruption_subscenarios」のいずれかを押下する。
 
 4. 画面左上の「New Document」ボタンを押下する。
 
 5. Add Document画面で、シナリオを入力する。
-   - scenariosの入力例(標準データの「充電ステーションへ移動」)
+   - scenariosの入力例(発話とジェスチャーの後、指定位置へ移動して発話する)
       ```
       {
-         name: '充電ステーションへ移動',
-         status: 'inactive',
-         priority: 1,
-         trigger: [],
-         interaction_subscenario_ids: [],
-         ignore_after_activated: 30,
-         ignore_same_observations: true,
-         'return': true,
-         events: [
-            {
-               actor: 'robot1',
-               type: 'action',
-               utterance: {
-                  type: 'normal',
-                  sentence: '基地局に移動します。'
-               },
-               navigation: {
-                  type: 'normal',
-                  navigation: [6.5, 1.15, 0]
-               },
-               interruptable: false
-            },
-            {
-               actor: 'robot1',
-               type: 'action',
-               navigation: {
-                  type: 'normal',
-                  rotate: 3.14
-               },
-               interruptable: false
-            },
-            {
-               actor: 'robot1',
-               type: 'action',
-               interruptable: false,
-               utterance: {
-                  type: 'normal',
-                  sentence: 'ナビゲーション機能を停止します。'
-               },
-               ros_command: {
-                  type: 'normal',
-                  topic: '/<ロボット名>/robot/action_ctl',
-                  topic_type: 'std_msgs/msg/String',
-                  data: 'deactivate nav'
-               }
-            },
-            {
-               actor: 'robot1',
-               type: 'action',
-               interruptable: false,
-               utterance: {
-                  type: 'normal',
-                  sentence: 'バッテリの充電のため，自動でステーションに入ります。'
-               }
-            },
-            {
-               actor: 'robot1',
-               type: 'action',
-               interruptable: false,
-               utterance: {
-                  type: 'normal',
-                  sentence: 'ちゃんと戻れるか，応援してください．'
-               },
-               ros_command: {
-                  type: 'normal',
-                  topic: '/<ロボット名>/robot/action_ctl',
-                  topic_type: 'std_msgs/msg/String',
-                  data: 'battery charge'
-               }
-            }
-         ]
+        "name": "受付で案内",
+        "status": "active",
+        "version": "2.0",
+        "priority": 100,
+        "condition": {},
+        "events": [
+          {
+            "actor": "robot1",
+            "type": "action",
+            "interruptable": false,
+            "speak": {"type": "normal", "option": {"text": "受付へ移動します。"}},
+            "gesture": {"type": "normal", "option": {"command": "raise_hand", "duration": 2}}
+          },
+          {
+            "actor": "robot1",
+            "type": "action",
+            "interruptable": true,
+            "navigation": {"type": "normal", "option": {"navigation": [1.0, -5.0, 1.57]}}
+          },
+          {
+            "actor": "robot1",
+            "type": "action",
+            "interruptable": true,
+            "speak": {"type": "normal", "option": {"text": "ご用の方は声をかけてください。"}}
+          }
+        ],
+        "next_scenarios": []
       }
       ```
 
-   - interruption_subscenariosの入力例(標準データの「インディー戻って」)
+   - interruption_subscenariosの入力例(「こんにちは」「おはよう」と話しかけられたら返事をし、元のシナリオの続きに戻る)
       ```
       {
-         name: 'インディー戻って',
-         status: 'active',
-         priority: 100,
-         'return': false,
-         trigger: [
-            {
-               asr: {
-                  text: 'インディー戻って'
-               }
-            }
-         ],
-         important: true,
-         ignore_after_activated: 5,
-         ignore_same_observations: true,
-         interaction_subscenario_ids: [],
-         next_scenarios: [],
-         events: [
-            {
-               actor: 'robot1',
-               type: 'action',
-               utterance: {
-                  type: 'normal',
-                  sentence: 'はい，いったん帰りますね．じゃ！'
-               },
-               gesture: {
-                  type: 'normal',
-                  command: 'Look_around'
-               },
-               navigation: {
-                  type: 'normal',
-                  navigation: [6.88, 1.88, -2.75]
-               },
-               interruptable: false
-            }
-         ]
+        "name": "あいさつへの返事",
+        "status": "active",
+        "version": "2.0",
+        "priority": 100,
+        "condition": {"asr": {"text": {"$regex": "こんにちは|おはよう"}}},
+        "resume_after": "resume",
+        "ignore_after_activated": 30,
+        "ignore_same_observations": true,
+        "events": [
+          {
+            "actor": "robot1",
+            "type": "action",
+            "interruptable": false,
+            "speak": {"type": "normal", "option": {"text": "こんにちは！声をかけてくれてありがとうございます。"}},
+            "gesture": {"type": "normal", "option": {"command": "bowing_max", "duration": 2}}
+          }
+        ]
       }
       ```
 
-   - 各フィールドの内容は、[Indyソフトウェア仕様書.md](../仕様書/Indyソフトウェア仕様書.md)の「3.2. シナリオ関連のコレクション」「3.3. eventsフィールド」を参照すること。
+   - 主なフィールドの内容は、[Indyソフトウェア仕様書.md](../仕様書/Indyソフトウェア仕様書.md)の「3.2. シナリオ関連のコレクション」「3.3. eventsフィールド」を参照すること。
+   - 座標(`navigation`)は、使用する地図に合わせて変更すること。`gesture`の`command`には、ロボットDBの`persona`/`ActionPrimitives`の`name`の値を記載する。
+   - `next_scenarios`(次に実行するシナリオ)、`ignore_interruptions`(実行中は発動させないサブシナリオ)、`include`イベントの`scenario`には、参照先のシナリオの`_id`(24桁の16進数の文字列。e.g. `"6650a1b2c3d4e5f601234567"`)を記載する。  
+     `_id`は、参照先のDocumentをWeb UIで開いて確認する。  
+     ※サンプルのJSONにある`"@名前"`の形式は、サンプルの登録時にツールが`_id`に置き換えるためのもので、Web UIから直接登録する場合は使えない。
 
 6. 「Save」ボタンを押下する。
+
+追加・変更したシナリオは、シナリオマネージャを再起動しなくても反映される(メインシナリオは次のシナリオを選ぶときに読み込み、サブシナリオは変更を検知して読み直す)。  
+シナリオの形がスキーマ(`modules/scenario_manager/rism2/src/rism2/schemas/scenario.schema.json`)に合わない場合は、シナリオマネージャのログに警告が出る(実行は止まらない)。  
+不要になったシナリオは、Documentを削除するか、`status`を`inactive`にする(`inactive`のシナリオは自動では選ばれないが、`next_scenarios`、`include`からは実行できる)。
 
 ## 6. トラブル時の対応
 

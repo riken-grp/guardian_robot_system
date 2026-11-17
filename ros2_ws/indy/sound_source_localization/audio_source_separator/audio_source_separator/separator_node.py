@@ -24,6 +24,49 @@ except ImportError:  # pragma: no cover - tf2_ros is part of ROS 2 desktop
     TransformListener = None
 
 
+def active_level_db(audio: np.ndarray, frame: int = 320,
+                    active_ratio: float = 0.3) -> float:
+    """RMS (dBFS) of the loudest ``active_ratio`` of the ``frame``-sample frames."""
+    a = np.asarray(audio, dtype=np.float32)
+    if a.size == 0:
+        return -120.0
+    n = (a.size // frame) * frame
+    if n >= frame:
+        fe = np.sqrt(np.mean(a[:n].reshape(-1, frame) ** 2, axis=1))
+        k = max(1, int(len(fe) * active_ratio))
+        active = float(np.sqrt(np.mean(np.sort(fe)[-k:] ** 2)))
+    else:
+        active = float(np.sqrt(np.mean(a ** 2)))
+    return 20.0 * math.log10(max(active, 1e-6))
+
+
+def normalize_segment(audio: np.ndarray, target_db: float, max_gain_db: float,
+                      peak_db: float, frame: int = 320,
+                      active_ratio: float = 0.3) -> tuple[np.ndarray, float]:
+    """Scale a speech segment so that its active-speech RMS is ``target_db``.
+
+    The active RMS is the RMS of the loudest ``active_ratio`` of the
+    ``frame``-sample frames (so pauses inside the segment do not lower it).
+    The gain is limited by ``max_gain_db`` and so that the peak stays at or
+    below ``peak_db`` (dBFS, full scale = 1.0).
+
+    Returns:
+        (scaled audio as float32, applied gain in dB)
+    """
+    a = np.asarray(audio, dtype=np.float32)
+    if a.size == 0:
+        return a, 0.0
+    active_db = active_level_db(a, frame, active_ratio)
+    peak = float(np.max(np.abs(a)))
+    if active_db <= -119.0 or peak < 1e-9:
+        return a, 0.0
+    gain_db = min(target_db - active_db,
+                  max_gain_db,
+                  peak_db - 20.0 * math.log10(peak))
+    gain = 10.0 ** (gain_db / 20.0)
+    return (a * gain).astype(np.float32), gain_db
+
+
 class SeparatorNode(Node):
     """Audio source separator node.
 
@@ -67,6 +110,31 @@ class SeparatorNode(Node):
         self.declare_parameter('vad_min_speech_frames', 3)
         # Blocks kept before the VAD onset and prepended to the segment
         self.declare_parameter('vad_preroll_frames', 5)
+        # Adaptive VAD: threshold = max(vad_threshold_db, noise floor + margin)
+        self.declare_parameter('vad_adaptive', False)
+        self.declare_parameter('vad_margin_db', 6.0)
+        self.declare_parameter('vad_noise_init_db', -60.0)
+        self.declare_parameter('vad_noise_rise_db', 0.05)   # per block (32 ms)
+        # Log per-person energy / noise floor / threshold (throttled, INFO)
+        self.declare_parameter('vad_debug', False)
+
+        # Process every tracked person continuously (beam at the person even
+        # without a matching DOA peak) so the pre-roll / noise floor are always
+        # fed and utterance onsets are not lost.  Segments still need a DOA
+        # association during (or shortly before) the utterance.
+        self.declare_parameter('process_all_persons', False)
+        self.declare_parameter('require_doa_confirmation', True)
+        self.declare_parameter('doa_confirm_frames', 10)     # blocks (32 ms) before onset
+        # Drop segments whose active level is less than this above the noise
+        # floor (adaptive VAD only; 0 = disabled)
+        self.declare_parameter('min_segment_snr_db', 0.0)
+
+        # Output level normalization of published segments (after VAD;
+        # does not affect detection)
+        self.declare_parameter('normalize_output', False)
+        self.declare_parameter('normalize_target_db', -20.0)   # active-speech RMS, dBFS
+        self.declare_parameter('normalize_max_gain_db', 40.0)
+        self.declare_parameter('normalize_peak_db', -1.0)       # dBFS
 
         # Segmentation
         self.declare_parameter('min_speech_duration', 0.3)
@@ -112,7 +180,20 @@ class SeparatorNode(Node):
                 'vad_min_speech_frames').value,
             time_func=lambda: self.get_clock().now().nanoseconds * 1e-9,
             vad_preroll_frames=self.get_parameter('vad_preroll_frames').value,
+            vad_adaptive=self.get_parameter('vad_adaptive').value,
+            vad_margin_db=self.get_parameter('vad_margin_db').value,
+            vad_noise_init_db=self.get_parameter('vad_noise_init_db').value,
+            vad_noise_rise_db=self.get_parameter('vad_noise_rise_db').value,
+            require_doa_confirmation=self.get_parameter('require_doa_confirmation').value,
+            doa_confirm_frames=self.get_parameter('doa_confirm_frames').value,
         )
+        self._process_all = self.get_parameter('process_all_persons').value
+        self._min_snr_db = self.get_parameter('min_segment_snr_db').value
+        self._vad_debug = self.get_parameter('vad_debug').value
+        self._normalize = self.get_parameter('normalize_output').value
+        self._norm_target_db = self.get_parameter('normalize_target_db').value
+        self._norm_max_gain_db = self.get_parameter('normalize_max_gain_db').value
+        self._norm_peak_db = self.get_parameter('normalize_peak_db').value
         self._assoc_threshold = self.get_parameter(
             'association_angle_threshold').value
 
@@ -336,15 +417,24 @@ class SeparatorNode(Node):
                         doa_azimuths, doa_powers,
                     )
 
+        # ---- Optionally keep processing every (fresh) tracked person ----
+        tracked: dict[int, float] = {}
+        if (self._process_all and self._latest_persons is not None
+                and now_sec - self._persons_recv_time <= self._max_sync_age):
+            person_ids, person_azimuths, person_distances = self._persons_in_array
+            tracked = self._source_manager.track_persons(
+                person_ids, person_azimuths, person_distances,
+                exclude=set(associations))
+
         # ---- Persons inside an ongoing utterance without fresh association
         # keep being processed with their last known direction, so the audio
         # of the utterance stays contiguous. ----
         continuing = {
             pid: az for pid, az in self._source_manager.speaking_sources().items()
-            if pid not in associations
+            if pid not in associations and pid not in tracked
         }
 
-        if not associations and not continuing:
+        if not associations and not tracked and not continuing:
             # Keep the beamformer history contiguous (only the tail is used)
             ctx = self._beamformer.das_context_samples
             self._beamformer.push_context(
@@ -355,6 +445,8 @@ class SeparatorNode(Node):
         directions: list[float] = []
         person_beam: dict[int, int | None] = {}
         for pid, az in associations.items():
+            person_beam[pid] = self._direction_index(directions, az, 1e-3)
+        for pid, az in tracked.items():
             person_beam[pid] = self._direction_index(directions, az, 1e-3)
         for pid, az in continuing.items():
             # Direction already taken by another person: do not emit the same
@@ -380,6 +472,14 @@ class SeparatorNode(Node):
             segments = self._source_manager.process_audio(
                 pid, block, timestamp_ns
             )
+            if self._vad_debug and pid in self._source_manager.sources:
+                vad = self._source_manager.sources[pid].vad
+                self.get_logger().info(
+                    f'VAD person={pid}: energy={vad.last_energy_db:.1f} dB, '
+                    f'noise={vad.noise_floor_db:.1f} dB, '
+                    f'threshold={vad.current_threshold_db:.1f} dB, '
+                    f'speech={vad.is_speech}',
+                    throttle_duration_sec=1.0)
             for segment in segments:
                 self._publish_segment(segment)
 
@@ -397,6 +497,14 @@ class SeparatorNode(Node):
 
     def _publish_segment(self, segment):
         """Publish a completed speech segment."""
+        if (self._min_snr_db > 0.0
+                and getattr(segment, 'noise_floor_db', None) is not None):
+            snr = active_level_db(segment.audio_data) - segment.noise_floor_db
+            if snr < self._min_snr_db:
+                self.get_logger().info(
+                    f'Dropped speech segment: person={segment.person_id}, '
+                    f'SNR={snr:.1f} dB < {self._min_snr_db:.1f} dB')
+                return
         msg = SpeechSegment()
         msg.header.stamp = self.get_clock().now().to_msg()
         # azimuth / distance are expressed in the microphone-array frame
@@ -406,8 +514,14 @@ class SeparatorNode(Node):
         msg.distance = float(segment.distance)
         msg.sample_rate = segment.sample_rate
         msg.duration = float(len(segment.audio_data) / segment.sample_rate)
+        audio = segment.audio_data
+        gain_db = 0.0
+        if self._normalize:
+            audio, gain_db = normalize_segment(
+                audio, self._norm_target_db, self._norm_max_gain_db,
+                self._norm_peak_db)
         msg.audio_data = array.array(
-            'f', np.ascontiguousarray(segment.audio_data, dtype=np.float32).tobytes())
+            'f', np.ascontiguousarray(audio, dtype=np.float32).tobytes())
         msg.speech_start_ns = segment.speech_start_ns
         msg.speech_end_ns = segment.speech_end_ns
 
@@ -415,6 +529,7 @@ class SeparatorNode(Node):
         self.get_logger().info(
             f'Published speech segment: person={segment.person_id}, '
             f'duration={msg.duration:.2f}s, azimuth={segment.azimuth:.2f}rad'
+            + (f', gain={gain_db:+.1f}dB' if self._normalize else '')
         )
 
     def _on_cleanup_timer(self):

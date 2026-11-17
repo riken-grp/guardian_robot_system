@@ -1,0 +1,346 @@
+{
+  "name": "制御フローを試す",
+  "priority": 100,
+  "version": "2.0",
+  "condition": {},
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "ここで、いろいろな反応を試してみますね。"
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "raise_hand",
+          "duration": 2
+        }
+      },
+      "eye": {
+        "type": "normal",
+        "image": "smile.jpg",
+        "duration": 2
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "repeat",
+      "times": 3,
+      "variable": "rep",
+      "interruptable": true,
+      "subevents": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "blank",
+            "option": {
+              "text": "{rep}回目、まわりを見てみます。",
+              "except": "まわりを見てみます。"
+            }
+          },
+          "gesture": {
+            "type": "normal",
+            "option": {
+              "command": "Look_around",
+              "duration": 3
+            }
+          }
+        },
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "LlmJPEventGenerator",
+              "prompt": "まわりを見回しながら、気づいたことを独り言で短く一文でつぶやいて。前のつぶやきとは違う内容にして。",
+              "hitorigoto": true,
+              "hist_len": 3,
+              "llm_max_tokens": 50
+            }
+          }
+        }
+      ]
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "どなたか、答えてください。今日は元気ですか？"
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "speaking_b",
+          "duration": 1
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "if",
+      "interruptable": false,
+      "timeout": 10,
+      "condition": {
+        "asr": {
+          "text": {
+            "$regex": "はい|うん|元気"
+          }
+        }
+      },
+      "true": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "normal",
+            "option": {
+              "text": "元気なんですね、よかったです！"
+            }
+          },
+          "eye": {
+            "type": "normal",
+            "image": "smile.jpg",
+            "duration": 2
+          },
+          "gesture": {
+            "type": "normal",
+            "option": {
+              "command": "raise_hand",
+              "duration": 2
+            }
+          }
+        }
+      ],
+      "false": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "blank",
+            "option": {
+              "text": "「{wait_for.contents.text}」ですか。",
+              "except": "そうですか。"
+            }
+          }
+        },
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "LlmJPEventGenerator",
+              "prompt": "元気かと聞いたら、はっきりしない返事だった。相手を気づかう一言を短く一文で言って。",
+              "hitorigoto": true,
+              "hist_len": 0,
+              "llm_max_tokens": 50
+            }
+          }
+        }
+      ],
+      "failure": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "normal",
+            "option": {
+              "text": "返事がないですね。またあとで聞いてみます。"
+            }
+          },
+          "eye": {
+            "type": "normal",
+            "image": "sad.jpg",
+            "duration": 2
+          }
+        }
+      ]
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "では、話しかけてもらえるまで、少し待ってみます。"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "until",
+      "interruptable": true,
+      "loop_timeout": 30,
+      "condition": {
+        "asr": null
+      },
+      "loop": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": true,
+          "gesture": {
+            "type": "normal",
+            "option": {
+              "command": "Look_around",
+              "duration": 3
+            }
+          }
+        },
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "LlmJPEventGenerator",
+              "prompt": "人を待ちながら、話しかけてほしい気持ちを独り言で短く一文でつぶやいて。前のつぶやきとは違う内容にして。",
+              "hitorigoto": true,
+              "hist_len": 2,
+              "llm_max_tokens": 50
+            }
+          }
+        }
+      ],
+      "failure": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "normal",
+            "option": {
+              "text": "誰も話しかけてくれませんでした。"
+            }
+          },
+          "eye": {
+            "type": "normal",
+            "image": "sad.jpg",
+            "duration": 2
+          }
+        }
+      ]
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "最後に、何か一言どうぞ。"
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "speaking_b",
+          "duration": 1
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "wait_for",
+      "interruptable": false,
+      "timeout": 10,
+      "success": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "blank",
+            "option": {
+              "text": "「{wait_for.contents.text}」、ありがとうございます。",
+              "except": "ありがとうございます。"
+            }
+          }
+        },
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "LlmJPEventGenerator",
+              "prompt": "相手の発言に、短く一文で答えて。",
+              "hitorigoto": true,
+              "hist_len": 3,
+              "llm_max_tokens": 50
+            }
+          }
+        }
+      ],
+      "failure": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "normal",
+            "option": {
+              "text": "聞こえなかったみたいです。"
+            }
+          },
+          "eye": {
+            "type": "normal",
+            "image": "sad.jpg",
+            "duration": 2
+          }
+        }
+      ],
+      "condition": {
+        "asr": null
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "試してみたいことは以上です。"
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "default_posture",
+          "duration": 2
+        }
+      },
+      "eye": {
+        "type": "normal",
+        "image": "default.jpg",
+        "duration": 1
+      }
+    }
+  ],
+  "status": "inactive"
+}

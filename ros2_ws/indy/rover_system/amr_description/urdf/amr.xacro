@@ -231,6 +231,15 @@
     </visual>
   </link>
 
+  <!-- microphone array (audio_source_separator, sound_source_localizer):
+       coincident with body_link, see microphone_array/config/array_geometry.yaml -->
+  <joint name="$(arg robot_name)_microphone_array_base_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="$(arg robot_name)_body_link" />
+    <child link="$(arg robot_name)_microphone_array_base" />
+  </joint>
+  <link name="$(arg robot_name)_microphone_array_base" />
+
   <joint name="$(arg robot_name)_body_pitch_joint" type="revolute">
     <axis xyz="0 1 0" />
     <limit effort="1000.0" lower="-0.5" upper="1.0" velocity="1.0" />

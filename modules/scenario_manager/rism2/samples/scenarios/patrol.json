@@ -1,0 +1,222 @@
+{
+  "name": "見回りサンプル",
+  "status": "active",
+  "version": "2.0",
+  "priority": 100,
+  "condition": {},
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "見回りに行ってきます。"
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "raise_hand",
+          "duration": 2
+        }
+      },
+      "eye": {
+        "type": "normal",
+        "image": "smile.jpg",
+        "duration": 2
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": true,
+      "navigation": {
+        "type": "normal",
+        "option": {
+          "navigation": [
+            -35.99,
+            -5.8,
+            -0.8
+          ]
+        }
+      },
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "移動します。"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "generate",
+        "option": {
+          "text": "",
+          "generator": "LlmJPEventGenerator",
+          "prompt": "いまは{now}です。見回りの途中の独り言として、この場所の様子を時刻に軽く触れながら一文でつぶやいて。",
+          "hitorigoto": true,
+          "hist_len": 2,
+          "llm_max_tokens": 60,
+          "use_observations": {
+            "appear": "name"
+          }
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "次へ行きます。"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": true,
+      "navigation": {
+        "type": "normal",
+        "option": {
+          "navigation": [
+            -25.3,
+            2.01,
+            0.0
+          ]
+        }
+      },
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "移動します。"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "どなたかいますか？"
+        }
+      },
+      "ignore_interruptions": [
+        "@顔検知⇒あいさつ",
+        "@音声対話モード"
+      ]
+    },
+    {
+      "actor": "robot1",
+      "type": "wait_for",
+      "interruptable": false,
+      "timeout": 8,
+      "condition": {
+        "asr": null,
+        "face_detected": null
+      },
+      "ignore_interruptions": [
+        "@顔検知⇒あいさつ",
+        "@音声対話モード"
+      ],
+      "success": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "LlmJPEventGenerator",
+              "prompt": "返事をしてくれた人に、見回りの途中であることを伝えて、短い一言を添えて。二文以内で。",
+              "hist_len": 3,
+              "llm_max_tokens": 60
+            }
+          },
+          "eye": {
+            "type": "normal",
+            "image": "smile.jpg",
+            "duration": 2
+          }
+        }
+      ],
+      "failure": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "LlmJPEventGenerator",
+              "prompt": "返事がなく、誰もいないようだ。「誰もいないみたいですね」と言ってから、少しさみしそうな一言を続けて、二文以内でつぶやいて。",
+              "hitorigoto": true,
+              "hist_len": 2,
+              "llm_max_tokens": 60
+            }
+          },
+          "eye": {
+            "type": "normal",
+            "image": "sad.jpg",
+            "duration": 2
+          }
+        }
+      ]
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": true,
+      "navigation": {
+        "type": "normal",
+        "option": {
+          "navigation": [
+            20.66,
+            -4.94,
+            -0.7
+          ]
+        }
+      },
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "ホームに戻ります。"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "見回り完了です。"
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "default_posture",
+          "duration": 2
+        }
+      },
+      "eye": {
+        "type": "normal",
+        "image": "default.jpg",
+        "duration": 1
+      }
+    }
+  ]
+}

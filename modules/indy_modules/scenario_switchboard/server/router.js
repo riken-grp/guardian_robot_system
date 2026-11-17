@@ -36,13 +36,13 @@ router.get("/css/:file", (req, res) => {
 
 /* MONGODB STUFF */
 
-import { rism_configs } from "./db.js";
+import { scenario_db } from "./db.js";
 import { ObjectId } from "mongodb";
 
 router.get("/api/data", async (req, res) => {
     try {
-        let coll_sce = rism_configs.collection("scenarios");
-        let coll_sub = rism_configs.collection("interruption_subscenarios");
+        let coll_sce = scenario_db.collection("scenarios");
+        let coll_sub = scenario_db.collection("interruption_subscenarios");
         let projectFields = { _id: 1, name: 1, status: 1 };
         let scenarios = await coll_sce.find().project(projectFields).toArray();
         let subscenarios = await coll_sub.find().project(projectFields).toArray();
@@ -62,7 +62,7 @@ router.post("/api/toggle", async (req, res) => {
         const { id, scenario_type, status } = req.body;
 
         let coll_name = (scenario_type === "scenario" ? "scenarios" : "interruption_subscenarios");
-        let coll = rism_configs.collection(coll_name);
+        let coll = scenario_db.collection(coll_name);
         let filter = { _id: ObjectId.createFromHexString(id) };
         let update = { $set: { status: status } };
         let updated = await coll.updateOne(filter, update);

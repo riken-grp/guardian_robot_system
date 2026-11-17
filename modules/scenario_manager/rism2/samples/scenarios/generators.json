@@ -1,0 +1,101 @@
+{
+  "name": "ジェネレータを試す",
+  "status": "inactive",
+  "version": "2.0",
+  "priority": 100,
+  "condition": {},
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "generate",
+        "option": {
+          "text": "",
+          "generator": "TemplateEventGenerator",
+          "prompt": "",
+          "templates": [
+            "{greeting}！いまは{now}です。",
+            "{greeting}。{now}になりました。"
+          ]
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "何か質問してください。トイレや会議室の場所なら答えられます。"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "wait_for",
+      "interruptable": false,
+      "timeout": 15,
+      "condition": {
+        "asr": null
+      },
+      "success": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "KeywordResponseEventGenerator",
+              "prompt": "親しみやすい口調で、一文で。",
+              "responses": [
+                {
+                  "keywords": [
+                    "名前"
+                  ],
+                  "text": "インディーといいます。"
+                }
+              ],
+              "fallback_generator": "KnowledgeEventGenerator"
+            }
+          }
+        }
+      ],
+      "failure": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": false,
+          "speak": {
+            "type": "normal",
+            "option": {
+              "text": "質問がなかったので、また今度にしますね。"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "generate",
+        "option": {
+          "text": "",
+          "generator": "MemoryEventGenerator",
+          "prompt": "今日話したことを覚えておきます、と一文で伝えて。",
+          "recall": 0,
+          "save": true,
+          "hitorigoto": true,
+          "hist_len": 4,
+          "llm_max_tokens": 60
+        }
+      }
+    }
+  ]
+}

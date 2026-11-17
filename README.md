@@ -9,7 +9,8 @@
 |robodj|2台のロボットによる会話システム|robodj + サーバマシン(MongoDB・時刻同期のみ)|
 
 ※Indyを動かすには、ロボット搭載マシンとサーバマシンの両方の構築が必要です。robodjの構築は不要です。  
-※robodjを動かす場合も、MongoDBはサーバマシン上に構築します(robodj用のMongoDB)。
+※robodjを動かす場合も、MongoDBはサーバマシン上に構築します(robodj用のMongoDB)。  
+※MongoDBは、設定DB(シナリオ管理とロボットの設定。全ロボットで1つ)と、ロボットDB(ロボットごとに1つ)の2種類です。サーバマシンで対話式のツール(`setup/mongo_docker/setup_mongo.sh`)を実行して構築します([setup/mongo_docker/README.md](setup/mongo_docker/README.md)参照)。
 
 ## はじめに読むドキュメント
 
@@ -38,11 +39,11 @@ guardian_robot_system/
 │   └── indy/               Indyの各ROS 2パッケージ
 ├── modules/                ROS 2以外のモジュール
 │   ├── module_launch/      起動スクリプト(tmuxセッションで一括起動・停止)
-│   ├── scenario_manager/   シナリオ管理(rism)
+│   ├── scenario_manager/   シナリオ管理(rism2)
 │   ├── pyindy/             各モジュールが共通で使用するPythonライブラリ
-│   └── indy_modules/       会話ログ配信(chat_monitor)、mic2sock、tmux設定などのツール
+│   └── indy_modules/       会話ログ配信(chat_monitor)、ロボットの状態表示・操作画面(indyxe_viewer)、mic2sock、tmux設定などのツール
 ├── setup/                  環境構築用の設定
-│   ├── mongo_docker/       MongoDB(Docker)の構成と標準データ
+│   ├── mongo_docker/       MongoDB(Docker)の構築ツール(setup_mongo.sh)と標準データ
 │   ├── container_image/    サーバマシン用Apptainerコンテナの定義
 │   └── ros2/zenoh/         マシン間通信(zenoh-bridge-ros2dds)の設定
 ├── tools/

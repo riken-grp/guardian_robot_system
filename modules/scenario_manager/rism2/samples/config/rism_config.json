@@ -1,0 +1,27 @@
+{
+  "interruption_probability": 0.5,
+  "latest_N": 100,
+  "observation_cache_size": 1000,
+  "use_change_streams": true,
+  "executor": {
+    "max_retry": 3,
+    "default_timeout": 3,
+    "default_gesture_timeout": 30,
+    "default_utterance_timeout": 60,
+    "default_navigation_timeout": 180,
+    "default_eye_timeout": 15,
+    "default_ros_command_timeout": 10,
+    "log_level": "INFO",
+    "resumed_navigation_quick_fail_sec": 5,
+    "resumed_navigation_resend_delay": 3,
+    "resumed_navigation_resends": 2
+  },
+  "prefetch": {
+    "enabled": true,
+    "wait_timeout": 2
+  },
+  "timezone": {
+    "mode": "system",
+    "explicit": "Asia/Tokyo"
+  }
+}

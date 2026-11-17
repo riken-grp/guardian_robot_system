@@ -1,0 +1,43 @@
+{
+  "name": "顔検知⇒あいさつ",
+  "status": "active",
+  "version": "2.0",
+  "priority": 100,
+  "condition": {
+    "face_detected": null
+  },
+  "resume_after": "resume",
+  "ignore_after_activated": 60,
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "generate",
+        "option": {
+          "text": "",
+          "generator": "TemplateEventGenerator",
+          "prompt": "",
+          "templates": [
+            "{greeting}！ゆっくりしていってくださいね。",
+            "{greeting}。何かあれば声をかけてくださいね。",
+            "{greeting}！お会いできてうれしいです。"
+          ]
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "bowing_max",
+          "duration": 2
+        }
+      },
+      "eye": {
+        "type": "normal",
+        "image": "smile.jpg",
+        "duration": 2
+      }
+    }
+  ]
+}

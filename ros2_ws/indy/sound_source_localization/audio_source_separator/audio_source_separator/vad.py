@@ -15,6 +15,11 @@ class EnergyVAD:
         threshold_db: float = -40.0,
         hangover_frames: int = 10,
         min_speech_frames: int = 3,
+        adaptive: bool = False,
+        margin_db: float = 6.0,
+        noise_init_db: float = -60.0,
+        noise_rise_db: float = 0.05,
+        noise_fall_alpha: float = 0.5,
     ):
         """Initialize the VAD.
 
@@ -24,18 +29,46 @@ class EnergyVAD:
                 energy drops below threshold (prevents choppy detection).
             min_speech_frames: Minimum consecutive above-threshold frames
                 required to trigger speech onset.
+            adaptive: When True the effective threshold is
+                ``max(threshold_db, noise_floor_db + margin_db)``, where the
+                noise floor is tracked from every frame (fast fall, slow
+                rise).  ``threshold_db`` then acts as the
+                absolute minimum.
+            margin_db: Margin above the noise floor (adaptive mode).
+            noise_init_db: Initial noise floor estimate (adaptive mode).
+            noise_rise_db: Max increase of the noise floor per frame (dB).
+            noise_fall_alpha: EMA weight when the energy is below the floor.
         """
         self.threshold_db = threshold_db
         self.hangover_frames = hangover_frames
         self.min_speech_frames = min_speech_frames
+        self.adaptive = adaptive
+        self.margin_db = margin_db
+        self.noise_rise_db = noise_rise_db
+        self.noise_fall_alpha = noise_fall_alpha
+        self.noise_floor_db = noise_init_db
+        self.last_energy_db = -100.0
 
         # State
         self._is_speech = False
         self._hangover_counter = 0
         self._onset_counter = 0
 
+    @property
+    def current_threshold_db(self) -> float:
+        """Threshold (dB) applied to the next frame."""
+        if not self.adaptive:
+            return self.threshold_db
+        return max(self.threshold_db, self.noise_floor_db + self.margin_db)
+
+    def _update_noise_floor(self, energy_db: float) -> None:
+        if energy_db < self.noise_floor_db:
+            self.noise_floor_db += self.noise_fall_alpha * (energy_db - self.noise_floor_db)
+        else:
+            self.noise_floor_db = min(energy_db, self.noise_floor_db + self.noise_rise_db)
+
     def reset(self):
-        """Reset the VAD state."""
+        """Reset the VAD state (the learned noise floor is kept)."""
         self._is_speech = False
         self._hangover_counter = 0
         self._onset_counter = 0
@@ -72,7 +105,14 @@ class EnergyVAD:
             True if speech is detected (including hangover), False otherwise.
         """
         energy_db = self.compute_energy_db(audio_frame)
-        above_threshold = energy_db >= self.threshold_db
+        self.last_energy_db = energy_db
+        above_threshold = energy_db >= self.current_threshold_db
+        # Track the noise floor on every frame: fast fall, slow rise (at most
+        # noise_rise_db per frame), so a speech onset barely moves it, while
+        # a lasting increase of the background noise (which would otherwise
+        # keep the VAD in "speech") is followed within a few seconds.
+        if self.adaptive:
+            self._update_noise_floor(energy_db)
 
         prev_speech = self._is_speech
 

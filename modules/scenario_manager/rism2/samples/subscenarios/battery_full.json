@@ -1,0 +1,68 @@
+{
+  "name": "バッテリ復活",
+  "status": "active",
+  "version": "2.0",
+  "priority": 1000,
+  "condition": {
+    "full_battery": null
+  },
+  "important": true,
+  "resume_after": "terminate",
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "元気百倍！"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "ros_command": {
+        "type": "normal",
+        "topic": "/{robot_id}/robot/action_ctl",
+        "topic_type": "std_msgs/msg/String",
+        "data": "activate nav"
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "ナビゲーション機能を再開します。"
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "navigation": {
+        "type": "normal",
+        "option": {
+          "move": 0.8
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "さて，動きますか。"
+        }
+      }
+    }
+  ]
+}

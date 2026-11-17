@@ -8,3 +8,21 @@ asr_node:
     beam_size: 1
     condition_on_previous_text: false
     without_timestamps: true
+    # Hallucination suppression
+    vad_filter: true                 # faster-whisper Silero VAD (false if onnxruntime fails)
+    vad_min_silence_ms: 500
+    no_speech_threshold: 0.6         # drop a segment if no_speech_prob > 0.6 and avg_logprob < -1.0
+    log_prob_threshold: -1.0
+    compression_ratio_threshold: 2.4 # drop repetitive segments
+    min_duration: 0.3                # s; shorter segments are not transcribed
+    # A result consisting only of these phrases (and repetitions) is dropped
+    hallucination_phrases:
+      - 'ご視聴ありがとうございました'
+      - 'ご視聴ありがとうございます'
+      - '最後までご視聴いただきありがとうございました'
+      - '最後までご視聴ありがとうございました'
+      - 'チャンネル登録よろしくお願いします'
+      - 'チャンネル登録お願いします'
+      - 'チャンネル登録'
+      - '高評価'
+      - '字幕視聴ありがとうございました'

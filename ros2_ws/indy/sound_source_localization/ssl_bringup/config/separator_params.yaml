@@ -8,10 +8,29 @@
     forget_factor: 0.3          # EMA weight for covariance update (0 < alpha <= 1)
 
     # VAD parameters
-    vad_threshold_db: -48.0
+    # Adaptive VAD: threshold = max(vad_threshold_db, noise floor + vad_margin_db)
+    vad_threshold_db: -66.0       # absolute minimum in adaptive mode
+    vad_adaptive: true
+    vad_margin_db: 6.0            # speech = noise floor + 6 dB
+    vad_noise_init_db: -60.0      # initial noise floor (replaced by learning)
+    vad_noise_rise_db: 0.05       # max noise floor rise per block (32 ms)
+    vad_debug: true               # per-person energy/noise/threshold log (set false after tuning)
     vad_hangover_frames: 10
     vad_min_speech_frames: 3
-    vad_preroll_frames: 5       # blocks kept before VAD onset and prepended
+    vad_preroll_frames: 10      # blocks kept before VAD onset and prepended (320 ms)
+
+    # Process every tracked person continuously (beam at the person even
+    # without a DOA peak) so the pre-roll / noise floor are always fed
+    process_all_persons: true
+    require_doa_confirmation: true   # segment needs a DOA association during
+    doa_confirm_frames: 10           # the utterance or within 10 blocks (320 ms) before it
+    min_segment_snr_db: 6.0          # drop segments < noise floor + 6 dB (adaptive VAD only)
+
+    # Output level normalization of published segments (after VAD)
+    normalize_output: true
+    normalize_target_db: -20.0    # active-speech RMS (dBFS)
+    normalize_max_gain_db: 25.0   # do not boost weak segments too much
+    normalize_peak_db: -1.0       # dBFS
 
     # Segmentation parameters
     min_speech_duration: 0.3    # seconds

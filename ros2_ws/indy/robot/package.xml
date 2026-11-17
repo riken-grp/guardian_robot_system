@@ -9,6 +9,9 @@
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <!-- navigate_to_charge (auto_charge) for {"dock": true} in rosNAV_smr -->
+  <exec_depend>nav2_msgs</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
   <!-- pactl / paplay for rosVolume -->
   <exec_depend>pulseaudio-utils</exec_depend>
 

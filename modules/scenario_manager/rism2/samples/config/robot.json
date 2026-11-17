@@ -1,0 +1,46 @@
+{
+  "robot_id": "{robot_id}",
+  "name_alias": "{name_alias}",
+  "action_db": {
+    "host": "{db_host}",
+    "port": "{db_port}",
+    "dbname": "tBlackBoard",
+    "version": "1.0"
+  },
+  "physical_topic": {
+    "host": "{db_host}",
+    "port": "{db_port}",
+    "dbname": "tBlackBoard"
+  },
+  "cyber_topic": {
+    "host": "{db_host}",
+    "port": "{db_port}",
+    "dbname": "tBlackBoard"
+  },
+  "internalstate_db": {
+    "host": "{db_host}",
+    "port": "{db_port}",
+    "dbname": "tBlackBoard"
+  },
+  "llm": {
+    "url": "{llm_url}",
+    "model": "{llm_model}",
+    "system_prompt": "インディーは理化学研究所ガーディアンロボットプロジェクトによって開発されたロボットです。\nインディーは理化学研究所ガーディアンロボットプロジェクトのオフィスを巡回しています。\nインディーは事実に基づいた共感的コミュニケーションを行います。\n知識の期限: 2024-11",
+    "log_db": {
+      "host": "{db_host}",
+      "port": "{db_port}",
+      "dbname": "llm_log",
+      "coll": "llm_log"
+    },
+    "defaults": {
+      "retries": 10,
+      "temperature": 0.8,
+      "stop": [
+        "\n",
+        "###"
+      ],
+      "timeout": 60,
+      "max_tokens": 100
+    }
+  }
+}

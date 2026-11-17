@@ -1,0 +1,213 @@
+{
+  "name": "音声対話モード",
+  "status": "inactive",
+  "version": "2.0",
+  "priority": 500,
+  "condition": {
+    "face_detected": null
+  },
+  "important": true,
+  "resume_after": "resume",
+  "ignore_after_activated": 120,
+  "ignore_interruptions": [
+    "@顔検知⇒あいさつ",
+    "@no people"
+  ],
+  "exit_condition": {
+    "no people": null
+  },
+  "exit_events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "あれ、行っちゃいましたね。"
+        }
+      },
+      "eye": {
+        "type": "normal",
+        "image": "sad.jpg",
+        "duration": 2
+      }
+    }
+  ],
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "look_front",
+          "duration": 2
+        }
+      },
+      "eye": {
+        "type": "normal",
+        "image": "smile.jpg",
+        "duration": 2
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "generate",
+        "option": {
+          "text": "",
+          "generator": "MemoryEventGenerator",
+          "prompt": "目の前の人に「{greeting}」と挨拶して、前回話した内容があれば軽く触れ、「今日はどうしたんですか？」のように用件を尋ねて。二文以内で。",
+          "recall": 2,
+          "hitorigoto": true,
+          "hist_len": 0,
+          "llm_max_tokens": 80
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "raise_hand",
+          "duration": 2
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "repeat",
+      "times": 5,
+      "variable": "turn",
+      "interruptable": false,
+      "subevents": [
+        {
+          "actor": "robot1",
+          "type": "if",
+          "interruptable": false,
+          "timeout": 15,
+          "condition": {
+            "asr": {
+              "text": {
+                "$regex": "さようなら|さよなら|バイバイ|ばいばい|またね|じゃあね|終わり|おわり|もういい"
+              }
+            }
+          },
+          "true": [
+            {
+              "actor": "robot1",
+              "type": "action",
+              "interruptable": false,
+              "speak": {
+                "type": "generate",
+                "option": {
+                  "text": "",
+                  "generator": "MemoryEventGenerator",
+                  "prompt": "会話のお礼を短く一文で言って。",
+                  "recall": 0,
+                  "save": true,
+                  "hist_len": 6,
+                  "llm_max_tokens": 60
+                }
+              },
+              "gesture": {
+                "type": "normal",
+                "option": {
+                  "command": "bowing_max",
+                  "duration": 2
+                }
+              },
+              "eye": {
+                "type": "normal",
+                "image": "smile.jpg",
+                "duration": 2
+              }
+            },
+            {
+              "actor": "robot1",
+              "type": "scenario_exit",
+              "exit_code": "return"
+            }
+          ],
+          "false": [
+            {
+              "actor": "robot1",
+              "type": "action",
+              "interruptable": false,
+              "speak": {
+                "type": "generate",
+                "option": {
+                  "text": "",
+                  "generator": "KeywordResponseEventGenerator",
+                  "responses": [
+                    {
+                      "keywords": [
+                        "名前"
+                      ],
+                      "text": "インディーといいます。よろしくお願いします。"
+                    }
+                  ],
+                  "fallback_generator": "KnowledgeEventGenerator",
+                  "no_match_generator": "LlmJPEventGenerator",
+                  "prompt": "相手の発言に、親しみやすく一、二文で答えて。挨拶や自己紹介は繰り返さないで。必要なら短い質問を一つだけ返して。",
+                  "hist_len": 8,
+                  "llm_max_tokens": 80
+                }
+              }
+            }
+          ],
+          "failure": [
+            {
+              "actor": "robot1",
+              "type": "action",
+              "interruptable": false,
+              "speak": {
+                "type": "normal",
+                "option": {
+                  "text": "お返事がないみたいなので、また今度お話ししましょうね。"
+                }
+              },
+              "eye": {
+                "type": "normal",
+                "image": "sad.jpg",
+                "duration": 2
+              }
+            },
+            {
+              "actor": "robot1",
+              "type": "scenario_exit",
+              "exit_code": "return"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": false,
+      "speak": {
+        "type": "generate",
+        "option": {
+          "text": "",
+          "generator": "MemoryEventGenerator",
+          "prompt": "ここまでの会話のお礼を短く一文で言って、見回りに戻ることを伝えて。",
+          "recall": 0,
+          "save": true,
+          "hitorigoto": true,
+          "hist_len": 6,
+          "llm_max_tokens": 60
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "raise_hand",
+          "duration": 2
+        }
+      }
+    }
+  ]
+}

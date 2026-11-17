@@ -18,6 +18,63 @@ except ImportError:  # pragma: no cover
 # faster-whisper expects 16 kHz mono float32 audio
 WHISPER_SAMPLE_RATE = 16000
 
+# Phrases Whisper tends to hallucinate on silence / noise (Japanese models are
+# trained on subtitled videos).  A result consisting only of these is dropped.
+DEFAULT_HALLUCINATION_PHRASES = [
+    # Only phrases that are practically never said to the robot; generic
+    # ones such as "ありがとうございました" are intentionally not listed.
+    'ご視聴ありがとうございました',
+    'ご視聴ありがとうございます',
+    '最後までご視聴いただきありがとうございました',
+    '最後までご視聴ありがとうございました',
+    'チャンネル登録よろしくお願いします',
+    'チャンネル登録お願いします',
+    'チャンネル登録',
+    '高評価',
+    '字幕視聴ありがとうございました',
+]
+
+_STRIP_CHARS = ' 　、。，．,.!！?？…・「」『』()（）[]【】~〜ー-'
+
+
+def normalize_text(text: str) -> str:
+    """Text without spaces / punctuation, for phrase matching."""
+    return ''.join(ch for ch in text if ch not in _STRIP_CHARS)
+
+
+def is_hallucination(text: str, phrases: list[str]) -> bool:
+    """True if ``text`` consists only of (repetitions of) known phrases."""
+    t = normalize_text(text)
+    if not t:
+        return True
+    norm = sorted({normalize_text(p) for p in phrases if normalize_text(p)},
+                  key=len, reverse=True)
+    changed = True
+    while t and changed:
+        changed = False
+        for p in norm:
+            if t.startswith(p):
+                t = t[len(p):]
+                changed = True
+                break
+    return t == ''
+
+
+def keep_segment(no_speech_prob: float, avg_logprob: float,
+                 compression_ratio: float, no_speech_threshold: float,
+                 log_prob_threshold: float,
+                 compression_ratio_threshold: float) -> bool:
+    """Whisper segment filter (same criteria as openai-whisper's fallback).
+
+    Drop when the model thinks it is silence (high no_speech_prob *and* low
+    confidence), or when the text is highly repetitive.
+    """
+    if no_speech_prob > no_speech_threshold and avg_logprob < log_prob_threshold:
+        return False
+    if compression_ratio > compression_ratio_threshold:
+        return False
+    return True
+
 
 def to_whisper_rate(audio: np.ndarray, sample_rate: int) -> np.ndarray | None:
     """Resample ``audio`` to 16 kHz; None if impossible (no scipy / bad rate)."""
@@ -44,6 +101,14 @@ class AsrNode(Node):
         self.declare_parameter('beam_size', 1)
         self.declare_parameter('condition_on_previous_text', False)
         self.declare_parameter('without_timestamps', True)
+        # Hallucination suppression
+        self.declare_parameter('vad_filter', True)              # faster-whisper Silero VAD
+        self.declare_parameter('vad_min_silence_ms', 500)
+        self.declare_parameter('no_speech_threshold', 0.6)
+        self.declare_parameter('log_prob_threshold', -1.0)
+        self.declare_parameter('compression_ratio_threshold', 2.4)
+        self.declare_parameter('min_duration', 0.3)             # s; shorter segments are not transcribed
+        self.declare_parameter('hallucination_phrases', DEFAULT_HALLUCINATION_PHRASES)
 
         self._load_model()
 
@@ -91,19 +156,48 @@ class AsrNode(Node):
             return
         audio = resampled
 
-        language = self.get_parameter('language').value
+        if len(audio) < self.get_parameter('min_duration').value * WHISPER_SAMPLE_RATE:
+            return
 
-        segments, info = self._model.transcribe(
-            audio, language=language,
+        language = self.get_parameter('language').value
+        nst = float(self.get_parameter('no_speech_threshold').value)
+        lpt = float(self.get_parameter('log_prob_threshold').value)
+        crt = float(self.get_parameter('compression_ratio_threshold').value)
+        kwargs = dict(
+            language=language,
             beam_size=int(self.get_parameter('beam_size').value),
             condition_on_previous_text=bool(
                 self.get_parameter('condition_on_previous_text').value),
             without_timestamps=bool(
                 self.get_parameter('without_timestamps').value),
+            no_speech_threshold=nst,
+            log_prob_threshold=lpt,
+            compression_ratio_threshold=crt,
         )
-        text = ''.join(s.text for s in segments).strip()
+        if self.get_parameter('vad_filter').value:
+            kwargs['vad_filter'] = True
+            kwargs['vad_parameters'] = dict(
+                min_silence_duration_ms=int(self.get_parameter('vad_min_silence_ms').value))
+
+        segments, info = self._model.transcribe(audio, **kwargs)
+        kept, dropped = [], []
+        for s in segments:
+            if keep_segment(s.no_speech_prob, s.avg_logprob, s.compression_ratio,
+                            nst, lpt, crt):
+                kept.append(s.text)
+            else:
+                dropped.append(s.text)
+        text = ''.join(kept).strip()
+        if dropped:
+            self.get_logger().info(
+                f'[person={msg.person_id}] dropped low-confidence: {"".join(dropped).strip()}')
 
         if not text:
+            return
+        phrases = list(self.get_parameter('hallucination_phrases').value)
+        if is_hallucination(text, phrases):
+            self.get_logger().info(
+                f'[person={msg.person_id}] dropped hallucination: {text}')
             return
 
         out = StringStamped()

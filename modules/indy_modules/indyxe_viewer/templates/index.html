@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% import "_parts.html" as parts %}
+
+{% block content %}
+{{ parts.camera() }}
+<div class="row">
+    {{ parts.speech_form() }}
+    {{ parts.dpad() }}
+</div>
+{{ parts.scenario() }}
+{{ parts.timeline() }}
+{{ parts.map() }}
+{{ parts.robot_actions() }}
+{{ parts.speech_player(speech_enabled, asr_enabled) }}
+{{ parts.room_buttons() }}
+{% endblock %}

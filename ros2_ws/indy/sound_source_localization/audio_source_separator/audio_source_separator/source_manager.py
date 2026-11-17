@@ -29,6 +29,10 @@ class SpeechSource:
     # Pre-roll ring buffer of (timestamp_ns, block) while not speaking, so
     # the blocks that led to the VAD onset are not lost.
     preroll: deque = field(default_factory=deque)
+    # Blocks left in which a recent DOA association still confirms an onset
+    doa_recent: int = 0
+    # A DOA association confirmed the current utterance
+    doa_confirmed: bool = False
 
 
 @dataclass
@@ -41,6 +45,9 @@ class CompletedSegment:
     audio_data: np.ndarray
     speech_start_ns: int
     speech_end_ns: int
+    # Noise floor (dB, beam level) of the source when the segment ended;
+    # None when the VAD is not adaptive.
+    noise_floor_db: float | None = None
 
 
 class SourceManager:
@@ -63,6 +70,12 @@ class SourceManager:
         sample_rate: int = 16000,
         time_func: Callable[[], float] | None = None,
         vad_preroll_frames: int = 5,
+        vad_adaptive: bool = False,
+        vad_margin_db: float = 6.0,
+        vad_noise_init_db: float = -60.0,
+        vad_noise_rise_db: float = 0.05,
+        require_doa_confirmation: bool = True,
+        doa_confirm_frames: int = 10,
     ):
         """Initialize the source manager.
 
@@ -82,6 +95,20 @@ class SourceManager:
             vad_preroll_frames: Number of blocks kept before the VAD onset and
                 prepended to the segment.  At least ``vad_min_speech_frames -
                 1`` (the blocks the onset detector needs) is always kept.
+            vad_adaptive: Use a noise-floor-relative VAD threshold
+                (see :class:`EnergyVAD`); ``vad_threshold_db`` is then the
+                absolute minimum threshold.
+            vad_margin_db: Margin above the noise floor (adaptive VAD).
+            vad_noise_init_db: Initial noise floor of a new source.  Once any
+                source has learned a floor, new sources start from the most
+                recent learned value instead.
+            vad_noise_rise_db: Max noise floor increase per block (dB).
+            require_doa_confirmation: Drop segments of sources that were not
+                associated with a DOA peak during the utterance or within
+                ``doa_confirm_frames`` blocks before its onset.  Only matters
+                for sources fed via :meth:`track_persons` (processing every
+                person continuously); DOA-associated sources are confirmed.
+            doa_confirm_frames: See ``require_doa_confirmation``.
         """
         self.association_angle_threshold = association_angle_threshold
         self.stale_timeout = stale_timeout
@@ -92,6 +119,14 @@ class SourceManager:
         self.vad_min_speech_frames = vad_min_speech_frames
         self.vad_preroll_frames = max(int(vad_preroll_frames),
                                       int(vad_min_speech_frames) - 1, 0)
+        self.vad_adaptive = vad_adaptive
+        self.vad_margin_db = vad_margin_db
+        self.vad_noise_init_db = vad_noise_init_db
+        self.vad_noise_rise_db = vad_noise_rise_db
+        self.require_doa_confirmation = require_doa_confirmation
+        self.doa_confirm_frames = int(doa_confirm_frames)
+        # Most recent learned noise floor (seed for new sources)
+        self._noise_floor_db: float | None = None
         self.sample_rate = sample_rate
         self._time_func: Callable[[], float] = (
             time_func if time_func is not None else time.monotonic
@@ -156,26 +191,68 @@ class SourceManager:
             matched_az = doa_azimuths[j]
             associations[pid] = matched_az
 
-            # Create or update source
-            if pid not in self.sources:
-                self.sources[pid] = SpeechSource(
-                    person_id=pid,
-                    azimuth=matched_az,
-                    distance=p_dist,
-                    vad=EnergyVAD(
-                        threshold_db=self.vad_threshold_db,
-                        hangover_frames=self.vad_hangover_frames,
-                        min_speech_frames=self.vad_min_speech_frames,
-                    ),
-                    last_update_time=now,
-                    preroll=deque(maxlen=self.vad_preroll_frames),
-                )
-            else:
-                self.sources[pid].azimuth = matched_az
-                self.sources[pid].distance = p_dist
-                self.sources[pid].last_update_time = now
+            src = self._get_or_create_source(pid, matched_az, p_dist, now)
+            src.doa_recent = self.doa_confirm_frames
+            if src.is_speaking:
+                src.doa_confirmed = True
 
         return associations
+
+    def _get_or_create_source(self, pid: int, azimuth: float, distance: float,
+                              now: float) -> SpeechSource:
+        """Create the source of ``pid`` or update its direction / time."""
+        src = self.sources.get(pid)
+        if src is None:
+            src = SpeechSource(
+                person_id=pid,
+                azimuth=azimuth,
+                distance=distance,
+                vad=EnergyVAD(
+                    threshold_db=self.vad_threshold_db,
+                    hangover_frames=self.vad_hangover_frames,
+                    min_speech_frames=self.vad_min_speech_frames,
+                    adaptive=self.vad_adaptive,
+                    margin_db=self.vad_margin_db,
+                    noise_init_db=(self._noise_floor_db
+                                   if self._noise_floor_db is not None
+                                   else self.vad_noise_init_db),
+                    noise_rise_db=self.vad_noise_rise_db,
+                ),
+                last_update_time=now,
+                preroll=deque(maxlen=self.vad_preroll_frames),
+            )
+            self.sources[pid] = src
+        else:
+            src.azimuth = azimuth
+            src.distance = distance
+            src.last_update_time = now
+        return src
+
+    def track_persons(
+        self,
+        person_ids: list[int],
+        person_azimuths: list[float],
+        person_distances: list[float],
+        exclude: set[int] | None = None,
+    ) -> dict[int, float]:
+        """Keep a source for every tracked person, steered at the person.
+
+        Used to process every person continuously (independently of DOA
+        peaks), so that the pre-roll and the noise floor are always fed and
+        the beginning of an utterance is not lost.  Persons in ``exclude``
+        (already associated with a DOA peak this block) are skipped.
+
+        Returns:
+            Dict person_id -> azimuth for the persons handled here.
+        """
+        now = self._time_func()
+        out: dict[int, float] = {}
+        for pid, az, dist in zip(person_ids, person_azimuths, person_distances):
+            if exclude and pid in exclude:
+                continue
+            self._get_or_create_source(pid, az, dist, now)
+            out[pid] = az
+        return out
 
     def speaking_sources(self) -> dict[int, float]:
         """person_id -> last associated azimuth for sources inside an utterance."""
@@ -224,6 +301,12 @@ class SourceManager:
         source.last_audio_end_ns = end_ns
 
         onset, offset = source.vad.detect_onset(beamformed_audio)
+        if self.vad_adaptive:
+            self._noise_floor_db = source.vad.noise_floor_db
+        if onset and source.doa_recent > 0:
+            source.doa_confirmed = True
+        if source.doa_recent > 0 and not source.is_speaking:
+            source.doa_recent -= 1
 
         results: list[CompletedSegment] = []
 
@@ -287,6 +370,8 @@ class SourceManager:
         audio = np.concatenate(source.audio_buffer)
         duration = len(audio) / self.sample_rate
         start_ns = source.speech_start_ns
+        confirmed = source.doa_confirmed
+        noise_db = source.vad.noise_floor_db if self.vad_adaptive else None
 
         # Reset source state
         source.audio_buffer = []
@@ -298,8 +383,11 @@ class SourceManager:
             source.is_speaking = False
             source.preroll.clear()
             source.vad.reset()
+            source.doa_confirmed = False
 
         if duration < self.min_speech_duration:
+            return None
+        if self.require_doa_confirmation and not confirmed:
             return None
 
         return CompletedSegment(
@@ -310,6 +398,7 @@ class SourceManager:
             audio_data=audio,
             speech_start_ns=start_ns,
             speech_end_ns=end_timestamp_ns,
+            noise_floor_db=noise_db,
         )
 
     def cleanup_stale(self) -> list[CompletedSegment]:

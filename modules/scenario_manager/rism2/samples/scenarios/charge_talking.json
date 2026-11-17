@@ -1,0 +1,66 @@
+{
+  "name": "charge talking",
+  "status": "inactive",
+  "version": "2.0",
+  "priority": 1,
+  "condition": {},
+  "next_scenarios": [
+    "@charge talking"
+  ],
+  "ignore_interruptions": [
+    "@バッテリ補充",
+    "@バッテリ補充（緊急）"
+  ],
+  "events": [
+    {
+      "actor": "robot1",
+      "type": "action",
+      "interruptable": true,
+      "speak": {
+        "type": "normal",
+        "option": {
+          "text": "充電中です。しばらくここで休憩しますね．"
+        }
+      },
+      "gesture": {
+        "type": "normal",
+        "option": {
+          "command": "look_down",
+          "duration": 1
+        }
+      }
+    },
+    {
+      "actor": "robot1",
+      "type": "repeat",
+      "times": 10,
+      "variable": "rep",
+      "interruptable": true,
+      "subevents": [
+        {
+          "actor": "robot1",
+          "type": "action",
+          "interruptable": true,
+          "speak": {
+            "type": "generate",
+            "option": {
+              "text": "",
+              "generator": "LlmJPEventGenerator",
+              "prompt": "充電しながら、オフィスやロボットの研究について思いついたことを、独り言として一文でつぶやいて。前のつぶやきとは違う話題にして。",
+              "hitorigoto": true,
+              "hist_len": 3,
+              "llm_max_tokens": 80
+            }
+          },
+          "gesture": {
+            "type": "normal",
+            "option": {
+              "command": "look_down",
+              "duration": 1
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

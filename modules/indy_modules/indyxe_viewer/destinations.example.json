@@ -1,0 +1,7 @@
+[
+    {"label": "会議室"},
+    {"label": "Alice", "text": "Aliceの部屋の様子を見てきて"},
+    {"label": "Bob"},
+    {"label": "実験室", "enabled": false},
+    {"label": "ホーム", "text": "ホームに戻って", "order": 99}
+]

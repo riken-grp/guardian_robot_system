@@ -1,0 +1,26 @@
+[project]
+name = "indyxe-viewer"
+version = "0.1.0"
+description = "Web UI to monitor and operate the IndyXe robots"
+readme = "Readme.md"
+# ROS 2 Humble の rclpy はシステムの Python 3.10 向けにビルドされている
+requires-python = "==3.10.*"
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn==0.34.2",
+    "websockets>=13",  # uvicorn の WebSocket 対応 (発話音声の配信)
+    "jinja2>=3.1",
+    "python-multipart>=0.0.18",
+    "numpy<2",  # pyindy が numpy==1.24.4 を要求 (ROS Humble も numpy 1.x 前提)
+    "opencv-python==4.11.0.86",
+    "pymongo==4.12.1",
+    "pyindy",
+]
+
+[tool.uv]
+package = false
+# rclpy と ABI を合わせるため, uv 管理の Python ではなくシステムの Python を使う
+python-preference = "only-system"
+
+[tool.uv.sources]
+pyindy = { path = "../../pyindy", editable = true }

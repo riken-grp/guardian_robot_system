@@ -1,0 +1,31 @@
+[project]
+name = "rism2"
+version = "0.1.0"
+description = "Robot Interactive Scenario Manager"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pymongo>=4.0.0",
+    "readerwriterlock>=1.0.9",
+    "jsonschema>=4.0.0",   # シナリオと観測の形の検査（src/rism2/schemas）
+    "pyindy",
+]
+
+[project.optional-dependencies]
+viz = ["rich>=13.0"]   # 割り込みキューの表示（なくても動く）
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "mongomock>=4.1",   # テストで MongoDB の代わりに使う
+]
+
+[tool.uv.sources]
+pyindy = { path = "../../pyindy", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rism2"]

@@ -3,7 +3,8 @@ from logging import getLogger
 
 from pymongo import MongoClient
 
-CONFIG_DB_HOST = os.getenv("RISM_CONFIG_HOST", "example.local")
+# 設定DB の場所。RISM_CONFIG_HOST が未設定なら、ロボットの DB と同じサーバ（MONGO_URI）
+CONFIG_DB_HOST = os.getenv("RISM_CONFIG_HOST") or os.getenv("MONGO_URI") or "localhost"
 CONFIG_DB_PORT = int(os.getenv("RISM_CONFIG_PORT", "9100"))
 
 # robot_list から読む項目（ロボットごと）と、common から読む項目（全ロボット共通）

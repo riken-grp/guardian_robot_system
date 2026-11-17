@@ -1,0 +1,11 @@
+/**/speaker_face_node:
+  ros__parameters:
+    image_buffer_sec: 3.0         # camera images kept to crop the (late) faces from (s)
+    face_buffer_sec: 15.0         # face crops kept (s; > max_speech_duration + delays)
+    image_stamp_tolerance: 0.005  # max |face stamp - image stamp| (s)
+    pre_margin: 0.3               # faces searched in [start - pre_margin, end + post_margin] (s)
+    post_margin: 0.2
+    max_wait: 2.0                 # publish without a face after this wait (s)
+    crop_margin: 0.4              # margin around the face box (fraction of the face size per side)
+    min_face_size: 16             # px
+    jpeg_quality: 90

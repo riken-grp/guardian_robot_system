@@ -4,7 +4,10 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from rclpy import qos
+from rclpy.action import ActionClient
 
+from action_msgs.msg import GoalStatus
+from nav2_msgs.action import NavigateToPose
 
 from std_msgs.msg import String, Empty, Float32
 from sensor_msgs.msg import BatteryState
@@ -23,6 +26,13 @@ from pyindy.mongo import StatusManager
 IDLE_WAIT_TIMEOUT = 3.0
 # interval [s] of rover/stop sent while the rover is in error (recovery)
 ERROR_RECOVERY_INTERVAL = 1.0
+# max time [s] to wait for the result of a docking ({"dock": true}); the
+# navigate_to_charge server gives up by itself after its docking_timeout
+# (180 s, plus up to about 7 s to confirm the charging), this is only a
+# safeguard when the server does not answer. Keep it shorter than the time
+# RISM waits for the dock (executor.default_dock_timeout, 200 s) so that
+# RISM gets failed from the robot
+DOCK_RESULT_TIMEOUT = 195.0
 ##
 # import quaternion
 ### Quaternion
@@ -91,6 +101,98 @@ class polling_nav_node(Node):
         self.nav_pub=self.create_publisher(PoseAngle, 'rover/navigate', 10)
         self.stop_pub=self.create_publisher(Empty, 'rover/stop', 10)
         self.init_pose_pub=self.create_publisher(PoseAngle, 'rover/set_initialpose', 10)
+        # docking ({"dock": true}): navigate_to_charge waits until charging starts
+        self.dock_client=ActionClient(self, NavigateToPose, 'navigate_to_charge')
+        self.docking=False        # a docking is executing (self.p is True)
+        self.dock_seq=0           # id of the current docking (older callbacks are ignored)
+        self.dock_goal_handle=None
+        self.dock_result=None     # None while docking, then 'done' / 'failed'
+        self.dock_started=0.0
+    #
+    @staticmethod
+    def _is_dock(nav):
+        return isinstance(nav, dict) and isinstance(nav.get('option'), dict) and bool(nav['option'].get('dock'))
+    #
+    def _start_dock(self):
+        """Send the navigate_to_charge goal; the result is handled in the callbacks (no wait here)."""
+        if not self.dock_client.server_is_ready():
+            self.get_logger().warn("  dock: navigate_to_charge server is not available")
+            return False
+        self.dock_seq+=1
+        seq=self.dock_seq
+        self.docking=True
+        self.dock_goal_handle=None
+        self.dock_result=None
+        self.dock_started=time.time()
+        future=self.dock_client.send_goal_async(NavigateToPose.Goal())
+        future.add_done_callback(lambda f: self._dock_goal_response(seq, f))
+        self.get_logger().info("  dock: navigate_to_charge goal sent")
+        return True
+    #
+    def _dock_current(self, seq):
+        return self.docking and seq == self.dock_seq
+    #
+    def _dock_goal_response(self, seq, future):
+        try:
+            goal_handle=future.result()
+        except Exception as e:
+            goal_handle=None
+            self.get_logger().warn("  dock: cannot send the goal: " + str(e))
+        if not self._dock_current(seq):
+            # stopped before the goal was accepted: cancel it now
+            if goal_handle is not None and goal_handle.accepted:
+                goal_handle.cancel_goal_async()
+            return
+        if goal_handle is None or not goal_handle.accepted:
+            self.get_logger().warn("  dock: goal rejected")
+            self.dock_result='failed'
+            return
+        self.dock_goal_handle=goal_handle
+        goal_handle.get_result_async().add_done_callback(lambda f: self._dock_result_callback(seq, f))
+    #
+    def _dock_result_callback(self, seq, future):
+        if not self._dock_current(seq):
+            return
+        try:
+            status=future.result().status
+        except Exception as e:
+            self.get_logger().warn("  dock: no result: " + str(e))
+            status=GoalStatus.STATUS_UNKNOWN
+        # the time limit of a docking is the server's docking_timeout only
+        # (there is no other limit here except DOCK_RESULT_TIMEOUT)
+        self.get_logger().info("  dock: result status " + str(status)
+                               + " after " + "{:.1f}".format(time.time()-self.dock_started) + " s")
+        self.dock_result='done' if status == GoalStatus.STATUS_SUCCEEDED else 'failed'
+    #
+    def _cancel_dock(self):
+        """Cancel the docking goal (the server sends auto_charge/dock_cancel)."""
+        if self.dock_goal_handle is not None:
+            self.dock_goal_handle.cancel_goal_async()
+        # a goal accepted later is canceled in _dock_goal_response
+        self.docking=False
+        self.dock_goal_handle=None
+    #
+    def _finish_dock(self):
+        """Called while docking; True when the docking has finished."""
+        result=self.dock_result
+        if result is None and time.time()-self.dock_started > DOCK_RESULT_TIMEOUT:
+            self.get_logger().warn("  dock: no result in " + str(DOCK_RESULT_TIMEOUT) + " s")
+            self._cancel_dock()
+            result='failed'
+        if result is None:
+            return False
+        self.docking=False
+        self.dock_goal_handle=None
+        self.mng.set_status(self.nav['_id'],result)
+        msg=String()
+        msg.data="navigation: " + result
+        self.mpub.publish(msg)
+        elapsed="{:.1f}".format(time.time()-self.dock_started)
+        if result == 'done':
+            self.get_logger().info("  done (docked) in " + elapsed + " s")
+        else:
+            self.get_logger().warn("  failed: docking (" + elapsed + " s)")
+        return True
     #
     def satisfy_condition(self):
         # self.get_logger().warn("mode    " + self.rover_state['mode'])
@@ -117,6 +219,10 @@ class polling_nav_node(Node):
         msg=String()
         msg.data=json.dumps(g)
         self.mpub.publish(msg)
+        if g.get('dock'):
+            # docking is executed even when deactivated (the scenarios send
+            # 'deactivate nav' before it); activate is not changed here
+            return self._start_dock()
         if not self.activate:
             return False
         # the rover is idle here: it is checked in timer_callback
@@ -177,7 +283,7 @@ class polling_nav_node(Node):
                 if self.nav == False:
                     return self._publish_status()
                 self.mng.set_status(self.nav['_id'],'is_playing')
-                if self.activate and self.rover_state['mode']!='idle':
+                if (self.activate or self._is_dock(self.nav)) and self.rover_state['mode']!='idle':
                     # stop once and check again in the next timer callbacks
                     self.get_logger().info("  waiting for the rover to become idle (mode: "
                                            + str(self.rover_state['mode']) + "), id == " + str(self.nav['_id']))
@@ -204,7 +310,7 @@ class polling_nav_node(Node):
             self.get_logger().info("  id == " + str(self.nav['_id']))
             if self.p==False:
                 msg=String()
-                if self.activate == False:
+                if self.activate == False and not self._is_dock(self.nav):
                     self.mng.set_status(self.nav['_id'],'ignored')
                     msg.data='navigation: ignored'
                     self.get_logger().warn("  ignored.")
@@ -213,9 +319,13 @@ class polling_nav_node(Node):
                     msg.data='navigation: failed'
                     self.get_logger().warn("  failed.")
                 # self.mpub.publish(msg)
-            else:
+            elif not self.docking:
                 self.rover_state['mode']='executing'
                 self.cdt=3.0 # set timer
+        elif self.docking:
+            # the rover mode is not used: auto_charge drives the rover directly
+            if self._finish_dock():
+                self.p = False
         else:
             if self.cdt > 0.0:
                 self.cdt = self.cdt-0.1
@@ -252,10 +362,13 @@ class polling_nav_node(Node):
                 self.get_logger().info("  stopped. id == " + str(self.nav['_id']))
                 stop_msg = Empty()
                 self.stop_pub.publish(stop_msg)
+                if self.docking:
+                    self._cancel_dock()
                 self.mng.set_status(self.nav['_id'],'stopped')
                 stopped=StringStamped()
                 stopped.data="navigation: stopped"
                 self.spub.publish(stopped)
+                self.stop_pub.publish(Empty())
 
                 self.p = False
                 self.waiting_idle_since = None
@@ -264,7 +377,7 @@ class polling_nav_node(Node):
         if msg.data == 'deactivate nav':
             self.get_logger().warn("== deactivated ==")
             self.activate = False
-            if self.waiting_idle_since is not None:
+            if self.waiting_idle_since is not None and not self._is_dock(self.nav):
                 # the held navigation is not started
                 self.get_logger().warn("  ignored. id == " + str(self.nav['_id']))
                 self.mng.set_status(self.nav['_id'],'ignored')

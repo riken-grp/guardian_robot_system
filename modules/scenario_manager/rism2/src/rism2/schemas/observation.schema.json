@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RISM が読む観測（tBlackBoard.physical_topic / cyber_topic）の contents",
+  "description": "イベント名ごとの contents の形。書いていない項目はあってもよい。~/format.md と docs/SCENARIO_SCHEMA.md の「観測イベント」を参照",
+  "$defs": {
+    "id": {
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "battery": {
+      "type": "object",
+      "properties": {
+        "percentage": {
+          "type": "number"
+        },
+        "current": {
+          "type": "number"
+        },
+        "voltage": {
+          "type": "number"
+        }
+      }
+    },
+    "any": {
+      "type": "object"
+    },
+    "asr": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "words": {
+          "type": [
+            "string",
+            "array"
+          ]
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "sep_port": {
+          "type": "integer"
+        },
+        "turn_end": {
+          "type": "boolean"
+        }
+      }
+    },
+    "face_detected": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "$ref": "#/$defs/id"
+        },
+        "face_location": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "no_people": {
+      "type": "object",
+      "properties": {
+        "num_people": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "many_people": {
+      "type": "object",
+      "properties": {
+        "num_people": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "person_found": {
+      "type": "object",
+      "required": [
+        "instance_id",
+        "distance"
+      ],
+      "properties": {
+        "instance_id": {
+          "$ref": "#/$defs/id"
+        },
+        "distance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "奥行きが取れないときは null"
+        },
+        "location_global": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "person_in_range": {
+      "type": "object",
+      "required": [
+        "instance_id",
+        "distance"
+      ],
+      "properties": {
+        "instance_id": {
+          "$ref": "#/$defs/id"
+        },
+        "distance": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "person_appear": {
+      "type": "object",
+      "required": [
+        "instance_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "$ref": "#/$defs/id"
+        },
+        "distance": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "person_noticed": {
+      "type": "object",
+      "required": [
+        "instance_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "$ref": "#/$defs/id"
+        },
+        "noticed": {
+          "type": "object",
+          "description": "noticed_node の判定（noticed, looking, waving_hand, raising_hand, approaching, distance など）"
+        }
+      }
+    },
+    "conversation_finished": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "keyword_wake": {
+      "type": "object",
+      "properties": {
+        "activate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "qr_code": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "qr_code_detect_only": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "low_battery": {
+      "$ref": "#/$defs/battery"
+    },
+    "full_battery": {
+      "$ref": "#/$defs/battery"
+    },
+    "request_battery_charge": {
+      "$ref": "#/$defs/battery"
+    }
+  },
+  "known_events": [
+    "asr",
+    "face_detected",
+    "no_people",
+    "many_people",
+    "person_found",
+    "person_in_range",
+    "person_appear",
+    "person_noticed",
+    "conversation_finished",
+    "keyword_wake",
+    "qr_code",
+    "qr_code_detect_only",
+    "low_battery",
+    "full_battery",
+    "request_battery_charge",
+    "bumper",
+    "weather",
+    "indy_ignored_in_chat",
+    "waving_hand",
+    "raising_hand",
+    "looking",
+    "long_looking",
+    "many_looking",
+    "wheelchair",
+    "person_too_near",
+    "debug_ping"
+  ]
+}

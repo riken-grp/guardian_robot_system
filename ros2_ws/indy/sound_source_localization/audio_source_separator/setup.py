@@ -27,6 +27,8 @@ setup(
             f"separator_node = {package_name}.separator_node:main",
             f"speaker_id_node = {package_name}.speaker_id_node:main",
             f"monitor_node = {package_name}.monitor_node:main",
+            f"camera_person_adapter_node = {package_name}.camera_person_adapter_node:main",
+            f"speaker_face_node = {package_name}.speaker_face_node:main",
         ],
     },
 )
