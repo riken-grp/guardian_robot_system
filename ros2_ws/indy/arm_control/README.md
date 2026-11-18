@@ -46,9 +46,9 @@ ros2 launch arm_motor_control arm_bringup.launch.py
 |トピック名|トピックタイプ|概要|
 |---|---|---|
 |/$ROBOT_NAME/right(left)_arm/goal_joints|sensor_msgs/JointState|モータごとの角度制御コマンド|
-|/$ROBOT_NAME/right(left)_arm/goal_pose|geometry_msgs/Pose|手先位置制御コマンド（Quaternion）|
-|/$ROBOT_NAME/right(left)_arm/euler_goal_pose|flamingo_grp_msgs/EulerPoseStamped|手先位置制御コマンド（Euler角）|
-|/$ROBOT_NAME/right(left)_arm/euler_way_and_end_pose|flamingo_grp_msgs/EulerWayEndPoseStamped|経由点付き手先位置制御コマンド（Euler角）|
+|/$ROBOT_NAME/right(left)_arm/goal_pose|geometry_msgs/Pose|手先位置制御コマンド（腕基準・位置のみ。orientation は無視。詳細は arm_moveit_driver/README.md）|
+|/$ROBOT_NAME/right(left)_arm/euler_goal_pose|flamingo_grp_msgs/EulerPoseStamped|手先位置制御コマンド（frame_id 基準・位置のみ。胴体基準も可。roll/pitch/yaw は無視）|
+|/$ROBOT_NAME/right(left)_arm/euler_way_and_end_pose|flamingo_grp_msgs/EulerWayEndPoseStamped|経由点付き手先位置制御コマンド（frame_id 基準・位置のみ。roll/pitch/yaw は無視）|
 |/$ROBOT_NAME/right(left)_arm/joint_trajectory|trajectory_msgs/JointTrajectory|関節位置制御コマンド（内部トピック）|
 |/$ROBOT_NAME/right(left)_arm/enable|std_msgs/Empty|全モータのenable命令|
 |/$ROBOT_NAME/right(left)_arm/disable|std_msgs/Empty|全モータのdisable命令|
@@ -88,7 +88,7 @@ arm_motor_control/config/arm_motor_control.yamlにて設定されている。
 |joint_names|["bracket_arm_a_joint", "bracket_arm_b_joint", "bracket_arm_c_joint", "bracket_arm_d_joint"]|ジョイント名の配列|
 |can_id|[0x01, 0x02, 0x03, 0x04]|各ジョイントのCAN ID|
 |default_offset|[0.0, 0.0, 1.3, 0.0]|各ジョイントのデフォルトオフセット [rad]|
-|gain|[-0.8, 1.0, -1.0, 1.0]|各ジョイントのゲイン|
+|gain|[-1.0, 1.0, -1.0, 1.0]|各ジョイントのゲイン|
 |default_position|[0.0, -1.4, 1.3, -0.3]|各ジョイントのデフォルト位置 [rad]|
 |max_position|[0.785, 1.571, 1.571, 0.0]|各ジョイントの最大位置 [rad]|
 |min_position|[-3.142, -1.571, -1.571, -2.094]|各ジョイントの最小位置 [rad]|

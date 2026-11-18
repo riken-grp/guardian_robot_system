@@ -236,6 +236,8 @@ tmux source ~/.tmux.conf
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/<ロボット名>/rover/cmd_vel
 ```
 
+※ロボット搭載マシンでは、同じ内容を`33_teleop_keyboard.sh`(tools/bin、トピック名に`ROBOT_NAME`を使用)でも起動できる。
+
 - 操作方法
   - iキー: 前進
   - kキー: 停止

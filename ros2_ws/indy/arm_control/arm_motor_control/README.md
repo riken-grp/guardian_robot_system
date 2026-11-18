@@ -51,7 +51,7 @@ arm_motor_control/config/arm_motor_control.yamlにて設定されている。
 |joint_names|["bracket_arm_a_joint", "bracket_arm_b_joint", "bracket_arm_c_joint", "bracket_arm_d_joint"]|ジョイント名の配列|
 |can_id|[0x01, 0x02, 0x03, 0x04]|各ジョイントのCAN ID|
 |default_offset|[0.0, 0.0, 1.3, 0.0]|各ジョイントのデフォルトオフセット [rad]|
-|gain|[-0.8, 1.0, -1.0, 1.0]|各ジョイントのゲイン|
+|gain|[-1.0, 1.0, -1.0, 1.0]|各ジョイントのゲイン|
 |default_position|[0.0, -1.4, 1.3, -0.3]|各ジョイントのデフォルト位置 [rad]|
 |max_position|[0.785, 1.571, 1.571, 0.0]|各ジョイントの最大位置 [rad]|
 |min_position|[-3.142, -1.571, -1.571, -2.094]|各ジョイントの最小位置 [rad]|

@@ -240,6 +240,21 @@
   </joint>
   <link name="$(arg robot_name)_microphone_array_base" />
 
+  <!-- 腕の取り付けフレーム（arm_mount.yaml を arm_moveit_driver と共有）
+       腕の形状（guardian_urdf）は ARM_ON 付きでしかビルドされないため、ここでは参照せずフレームのみ置く -->
+  <xacro:property name="arm_mount" value="${xacro.load_yaml('arm_mount.yaml')}" />
+  <xacro:macro name="arm_mount_frame" params="side">
+    <xacro:property name="m" value="${arm_mount[side + '_arm']}" />
+    <joint name="$(arg robot_name)_${side}_arm_mount_joint" type="fixed">
+      <origin xyz="${m['xyz'][0]} ${m['xyz'][1]} ${m['xyz'][2]}" rpy="${m['rpy'][0]} ${m['rpy'][1]} ${m['rpy'][2]}" />
+      <parent link="$(arg robot_name)_${arm_mount['parent_link']}" />
+      <child link="$(arg robot_name)_${side}_arm_base_link" />
+    </joint>
+    <link name="$(arg robot_name)_${side}_arm_base_link" />
+  </xacro:macro>
+  <xacro:arm_mount_frame side="right" />
+  <xacro:arm_mount_frame side="left" />
+
   <joint name="$(arg robot_name)_body_pitch_joint" type="revolute">
     <axis xyz="0 1 0" />
     <limit effort="1000.0" lower="-0.5" upper="1.0" velocity="1.0" />

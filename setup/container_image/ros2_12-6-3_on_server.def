@@ -101,6 +101,8 @@ From: nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
     MONGO_VER=8.0
     # zenoh: 1.10.0 以降の deb は glibc>=2.38 (Ubuntu 24.04+) 要求で jammy に入らない
     ZENOH_VER=1.9.0
+    # JUMAN++: asr (metadata_tt.py) が使う。動作確認済みの 1.02 に固定 (v2 系は未確認)
+    JUMANPP_VER=1.02
     # コンテナ内に用意しておく bind mount 先 (空ディレクトリ)。
     #   overlay / underlay が無効なホストでは、バインド先がイメージ内に存在しないと
     #   "destination /xxx doesn't exist in container" でコンテナ生成に失敗する
@@ -313,6 +315,30 @@ CHECK
         libavdevice-dev libavfilter-dev libavformat-dev libavcodec-dev \
         libswresample-dev libswscale-dev libavutil-dev \
         tesseract-ocr tesseract-ocr-jpn libtesseract-dev
+
+    # =======================================================================
+    # JUMAN++ 1.02 (形態素解析器。/usr/local/bin/jumanpp)
+    #   asr パッケージの asr_metadata (metadata_tt.py) が `echo ... | jumanpp`
+    #   で呼び出す。無いと ASR の起動・解析が失敗する (2026-11-18 判明)。
+    #   - 必須扱い (失敗したらビルドを止める)。
+    #   - Boost はヘッダのみ使用 (バイナリの実行時依存は libstdc++ だけ)。
+    #     libboost-dev は後段の「ビルド専用の開発ヘッダを削除」で purge する。
+    #   - 辞書・モデル込みで約 1.9GB 増える。ビルド自体は数十秒。
+    #   - モデルのパスを 100 バイトの固定長バッファへ strcpy するため、
+    #     --prefix は短くすること (長いと実行時に "buffer overflow detected")。
+    # =======================================================================
+    apt-get -y install libboost-dev xz-utils
+    cd /opt
+    wget -q "http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-${JUMANPP_VER}.tar.xz"
+    tar xJf "jumanpp-${JUMANPP_VER}.tar.xz"
+    cd "jumanpp-${JUMANPP_VER}"
+    ./configure --prefix=/usr/local
+    make -j"$(nproc)"
+    make install
+    cd /opt
+    rm -rf "jumanpp-${JUMANPP_VER}" "jumanpp-${JUMANPP_VER}.tar.xz"
+    echo "私もあさって日曜最終日" | jumanpp | tail -n 1 | grep -qx EOS
+    cd /
 
     # =======================================================================
     # CMake (faiss / dlib 用に最新を /opt/cmake へ)
@@ -530,7 +556,7 @@ PY
         libopencv-dev libboost-python-dev portaudio19-dev libtesseract-dev \
         libavdevice-dev libavfilter-dev libavformat-dev libavcodec-dev \
         libswresample-dev libswscale-dev libavutil-dev \
-        libopenblas-dev swig || true
+        libopenblas-dev libboost-dev swig || true
     apt-get -y autoremove --purge
 
     # 削除後も必須ライブラリが残っているか確認 (欠けていたらビルドを止める)
@@ -592,6 +618,13 @@ PY
     python3 -c "from nav2_msgs.msg import Costmap; from nav2_msgs.action import NavigateToPose; print('nav2_msgs OK')"
     ros2 pkg list > /dev/null && echo "ros2 CLI OK"
     command -v zenoh-bridge-ros2dds >/dev/null && echo "zenoh bridge OK"
+
+    echo "--- JUMAN++ (asr 用) ---"
+    if [ "$(echo 私もあさって | jumanpp 2>&1 | tail -n 1)" = "EOS" ]; then
+        echo "jumanpp OK"
+    else
+        echo "  FAIL jumanpp"
+    fi
 
     echo "--- dlib GPU アーキテクチャ ---"
     python3 -c "import dlib; print('dlib', dlib.__version__, 'DLIB_USE_CUDA', dlib.DLIB_USE_CUDA)"

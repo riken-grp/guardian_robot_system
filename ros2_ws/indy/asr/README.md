@@ -1,4 +1,18 @@
 # asrノード
+## 前提
+- 形態素解析器 JUMAN++(`jumanpp` コマンド、1.02)が必要(`asr_metadata` が `echo ... | jumanpp` で呼び出す)。
+- 標準の起動スクリプト(`modules/module_launch/available/50_grsrv_asr.sh`)で使うコンテナイメージ `setup/container_image/ros2_12-6-3_on_server.sif` には同梱されている(`ros2_12-6-3_on_server.def` でビルド)。jumanpp を含まない古いイメージの場合は再ビルドする。
+- コンテナ外で起動する場合は、以下の手順で個別にインストールする(Boost のヘッダ `libboost-dev` が必要)。`--prefix` が長すぎると実行時に `buffer overflow detected` で異常終了するため、短いパスにすること。
+  ```
+  wget http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz
+  tar xJf jumanpp-1.02.tar.xz
+  cd jumanpp-1.02
+  ./configure --prefix=$HOME/tools
+  make
+  make install
+  # $HOME/tools/bin を PATH に追加する
+  ```
+
 ## 起動手順
 ### ノード起動方法
 - ROS2ワークスペースにて以下のコマンドを実行することで起動する。

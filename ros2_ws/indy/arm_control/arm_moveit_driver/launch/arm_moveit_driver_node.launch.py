@@ -28,6 +28,64 @@ def load_yaml_file(package_name, file_path):
     except EnvironmentError:  # parent of IOError, OSError *and* WindowsError where available
         return None    
 
+def pose_control_params(prefix_name_str):
+    """手先位置制御用のパラメータを作る。
+
+    - モータの gain / offset / 可動範囲は arm_motor_control.yaml の該当する腕の節をそのまま読む
+      （キーがノード名付きのため、ファイルを渡すだけでは本ノードに届かない）
+    - 取り付け位置と干渉判定の箱は amr_description の arm_mount.yaml を読む（amr.xacro と共有）
+    読めない場合は空のまま渡し、ノード側で手先制御を無効にする（関節角指令には影響しない）。
+    """
+    params = {}
+    side = prefix_name_str.rstrip("/").split("/")[-1]   # "right_arm" / "left_arm"
+    robot_name = prefix_name_str.strip("/").split("/")[0]
+
+    try:
+        motor_yaml_path = os.path.join(
+            get_package_share_directory("arm_motor_control"), "config", "arm_motor_control.yaml")
+        with open(motor_yaml_path, "r") as f:
+            motor_yaml = yaml.safe_load(f)
+        motor = None
+        for key, value in motor_yaml.items():
+            if key.endswith("/" + side + "/arm_motor_control_node"):
+                motor = value["ros__parameters"]
+                break
+        if motor is None:
+            raise KeyError(side + "/arm_motor_control_node が見つからない")
+        params.update({
+            "motor_joint_names": list(motor["joint_names"]),
+            "motor_gain": [float(v) for v in motor["gain"]],
+            "motor_default_offset": [float(v) for v in motor["default_offset"]],
+            "motor_min_position": [float(v) for v in motor["min_position"]],
+            "motor_max_position": [float(v) for v in motor["max_position"]],
+        })
+    except Exception as e:
+        print("[arm_moveit_driver] WARNING: arm_motor_control.yaml を読めないため手先制御を無効にする: " + str(e))
+        return {}
+
+    try:
+        mount_yaml_path = os.path.join(
+            get_package_share_directory("amr_description"), "urdf", "urdf", "arm_mount.yaml")
+        with open(mount_yaml_path, "r") as f:
+            mount_yaml = yaml.safe_load(f)
+        mount = mount_yaml[side]
+        boxes = mount_yaml.get("collision_boxes", {}) or {}
+        params.update({
+            "mount_parent_frame": robot_name + "_" + mount_yaml["parent_link"],
+            "mount_xyz": [float(v) for v in mount["xyz"]],
+            "mount_rpy": [float(v) for v in mount["rpy"]],
+            "collision_box_names": list(boxes.keys()) if boxes else [""],
+            "collision_box_sizes": [float(v) for b in boxes.values() for v in b["size"]] or [0.0],
+            "collision_box_poses": [float(v) for b in boxes.values() for v in list(b["xyz"]) + list(b["rpy"])] or [0.0],
+            "collision_padding": float(mount_yaml.get("collision_padding", 0.0)),
+            "collision_allowed_links": list(mount_yaml.get("collision_allowed_links", [""])),
+        })
+    except Exception as e:
+        print("[arm_moveit_driver] WARNING: arm_mount.yaml を読めないため手先制御を無効にする（関節角指令は従来どおり）: " + str(e))
+
+    return params
+
+
 def launch_node(context: LaunchContext):
     prefix_name = LaunchConfiguration("prefix_name")
     prefix_name_str = context.perform_substitution(prefix_name)
@@ -118,6 +176,10 @@ def launch_node(context: LaunchContext):
                 robot_description_planning,
                 trajectory_execution,
                 node_params,
+                # 手先位置制御用（本ノード内の IK のみが使う。move_group には渡さない）
+                # 本ノードの IK ソルバはトップレベルの "<group>.*" を読むため、上の kinematics_yaml を後勝ちで上書きする
+                load_yaml_file(package_name_str, "config/kinematics_pose_ik.yaml"),
+                pose_control_params(prefix_name_str),
                 ],
             # output="screen",
             on_exit = Shutdown()

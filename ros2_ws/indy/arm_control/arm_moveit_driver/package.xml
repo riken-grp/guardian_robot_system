@@ -32,6 +32,9 @@
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>guardian_urdf</exec_depend>
   <exec_depend>flamingo_grp_msgs</exec_depend>
+  <!-- 手先位置制御: モータの gain・可動範囲と腕の取り付け位置を読む -->
+  <exec_depend>arm_motor_control</exec_depend>
+  <exec_depend>amr_description</exec_depend>
   <exec_depend>trajectory_msgs</exec_depend>
   <exec_depend>moveit_configs_utils</exec_depend>
   <exec_depend>moveit_ros_move_group</exec_depend>

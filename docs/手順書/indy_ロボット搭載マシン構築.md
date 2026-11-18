@@ -54,6 +54,7 @@
    sudo apt install -y ros-humble-laser-proc
    sudo apt install -y ros-humble-realsense2-camera
    sudo apt install -y ros-humble-slam-toolbox
+   sudo apt install -y ros-humble-teleop-twist-keyboard
    ```
 
 4. 以下のコマンドを実行し、Pythonライブラリをインストールする。
@@ -367,6 +368,8 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
    module_launch/check_sessions.sh
    ```
 
+   ※初めての環境で動かす場合は、既定の地図(GRPの環境用)では自己位置推定・ナビゲーションが正しく動かない。「13. 地図の作成」で地図を作成・配置すること。
+
 5. ブラウザで`http://<ロボット搭載マシンのホスト名>:3000/`を開き、会話ログ(chat_monitor)が表示されることを確認する。  
    ※chat_monitorは、MongoDBの接続先として~/indy.envの`MONGO_URI`、`MONGO_PORT`を使用する。  
    ※ポート番号はchat_monitorの`config_server.js`の`display_port`で変更できる。
@@ -400,3 +403,171 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
 
    module_launch.shで起動後、ブラウザで`http://<ロボット搭載マシンのホスト名>:8000/`を開き、画面が表示されることを確認する。  
    ※認証が無く、ロボットの移動・発話を操作できるため、信頼できるネットワーク内でのみ使用すること。
+
+## 13. 地図の作成
+
+自己位置推定(AMCL)とナビゲーションは、MongoDBの`map_server`パラメータで指定した地図を使用する。  
+既定の地図(`grp_space.yaml`)はGRPの環境用のため、初めての環境で動かす場合は、SLAMで地図を作成し、worldパッケージに配置してから使用する。
+
+### 13.1. SLAMの起動
+
+1. 以下のコマンドを実行し、起動中のセッションをすべて停止する。  
+   ※SLAM用のlaunchは、ローバのドライバ・LiDAR・rover_wrapperなども自分で起動する。通常の起動スクリプト(01_indyXe_rover_sense、02_indyXe_rover_baseなど)と同時に起動すると、ノードが重複して正しく動かない。  
+   また、02_indyXe_mapが既存の地図を`/map`に配信するため、SLAMの地図と混ざる。
+   ```
+   ~/module_launch/kill_sessions.sh
+   ~/module_launch/check_sessions.sh
+   ```
+
+2. (任意)別のマシンのrvizで地図を確認する場合は、以下のコマンドを実行し、zenoh-bridge-ros2ddsだけを起動する。
+   ```
+   ~/module_launch/available/000_zenoh_bridge.sh
+   ```
+
+3. ロボットを、地図の原点にしたい位置・向きに置く。  
+   ※SLAMを開始した位置・向きが、地図の原点(x=0、y=0、yaw=0)になる。充電ステーションの前など、後で同じ位置に置き直しやすい場所を選ぶとよい。
+
+4. 以下のコマンドを実行し、SLAM(slam_toolbox)を起動する。
+   ```
+   ros2 launch rover_tools slam_bringup.launch.py
+   ```
+
+   ※起動スクリプトの`03_indyXe_slam_toolbox`は、名前に反して地図を作成するものではない(作成済みの地図での自己位置推定とナビゲーションを起動する)。地図の作成には使用しないこと。
+
+### 13.2. rvizでの地図の確認
+
+1. 以下のコマンドを実行し、rvizを起動する。  
+   ※ロボット搭載マシンにディスプレイがない場合は、別のマシンから起動する。別のマシンでは、[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「4.1. マシン間のROS通信(zenoh)」の設定を行い、`export ROBOT_NAME=<ロボット名>`を設定してから`$GUARDIAN_ROBOT_PATH/tools/bin/60_rviz.sh`を実行する。
+   ```
+   60_rviz.sh
+   ```
+
+   ※60_rviz.shは、`modules/indy_modules/rviz2/robot_config.rviz`のロボット名を`ROBOT_NAME`に置き換えて起動する。Fixed Frameは`map`、Mapの表示は`/map`トピックに設定済みである。
+
+2. 地図(Map)、LiDARの点群(LaserScan)、ロボットのモデル(RobotModel)が表示されることを確認する。  
+   ※地図が表示されない場合は、別のターミナルで`ros2 topic list | grep map`を実行し、`/map`が配信されていることを確認する。
+
+3. 「13.3. キーボードでの操作」でロボットを動かしながら、地図が広がっていくことを確認する。
+
+### 13.3. キーボードでの操作
+
+1. 別のターミナルで以下のコマンドを実行し、キーボード操作を起動する。  
+   ※`/<ロボット名>/rover/cmd_vel`に速度指令を送る。速度はteleop_twist_keyboardの既定値(並進0.5m/s、回転1.0rad/s)で始まるため、地図の作成中は`z`キーで速度を下げてから動かすとよい。
+   ```
+   33_teleop_keyboard.sh
+   ```
+
+   ※「12. 起動スクリプトの準備」で~/binに個別にリンクを作成した場合は、`ln -s $GUARDIAN_ROBOT_PATH/tools/bin/33_teleop_keyboard.sh ~/bin/`でリンクを追加する。
+
+   |キー|動作|
+   |---|---|
+   |`i`|前進|
+   |`,`|後退|
+   |`j`|左回転|
+   |`l`|右回転|
+   |`u` / `o`|左前 / 右前に進む|
+   |`k`(その他のキー)|停止|
+   |`q` / `z`|速度を10%上げる / 下げる|
+   |`Ctrl+C`|終了|
+
+   ※キーを押したときだけ速度指令が送られる。ローバのドライバは、最後の速度指令から1.0秒を超えると停止するため、動かし続けるときはキーを押し続ける。  
+   ※SLAMの起動中は、障害物回避(vel_filter)が動いていない。障害物や人にぶつからないよう、目で確認しながら操作すること。
+
+2. 対象の環境全体を、ゆっくりと走行する。  
+   ※急な回転は地図のずれの原因になるため、回転はゆっくり行う。  
+   ※一周して開始位置付近に戻ると、ループの閉じ込みにより地図のずれが補正される。
+
+### 13.4. 地図の保存
+
+SLAMを起動したまま、以下を行う。
+
+1. 以下のコマンドを実行し、地図を保存する。  
+   `<地図名>`には、環境を表す名前を付ける(e.g. `lab_1f`)。`<地図名>.pgm`(画像)と`<地図名>.yaml`(解像度・原点など)が作成される。
+   ```
+   mkdir -p ~/maps
+   cd ~/maps
+   ros2 run nav2_map_server map_saver_cli -f <地図名>
+   ```
+
+   ※`/map`トピックを受信して保存する。`Map saved successfully`と表示されれば成功。  
+   ※`Failed to save the map`などで失敗した場合は、`ros2 topic list | grep map`で`/map`が配信されていることを確認し、もう一度実行する。
+
+2. 以下のコマンドを実行し、保存した地図を確認する。  
+   `image:`がパスを含まないファイル名(`<地図名>.pgm`)になっていること。パスが含まれている場合は、ファイル名だけに修正する。
+   ```
+   cat ~/maps/<地図名>.yaml
+   ```
+
+3. キーボード操作とSLAMを`Ctrl+C`で終了する。  
+   ※地図の作成中、rover_wrapperが`~/config/rover_pose.txt`に新しい地図での現在位置を書き込んでいる。SLAMの終了後にロボットを動かさなければ、次の起動時にその位置から自己位置推定を始める。
+
+### 13.5. 地図の配置
+
+1. 以下のコマンドを実行し、保存した地図をworldパッケージの`map`フォルダにコピーする。
+   ```
+   cp ~/maps/<地図名>.pgm ~/maps/<地図名>.yaml $GUARDIAN_ROBOT_PATH/ros2_ws/indy/world/map/
+   ```
+
+2. 以下のコマンドを実行し、worldパッケージをビルドする。  
+   ※地図はビルド時に`install/world/share/world/`へコピーされ、そこから読み込まれる。ビルドしないと新しい地図は使われない。
+   ```
+   cd $GUARDIAN_ROBOT_PATH/ros2_ws
+   colcon build --packages-select world
+   source ~/.bashrc
+   ```
+
+3. ロボットDBのMongoDB管理画面で、`robot_config`/`system_parameters`の`map_server`のDocumentを開き、以下の通り変更して保存する。  
+   操作方法は、[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「5.1. MongoDBでのパラメータ設定」を参照。
+
+   |parameter名|設定値|
+   |---|---|
+   |map_yaml_file|`<地図名>.yaml`|
+   |keepout_yaml_file|`""`(空)<br>※進入禁止エリアを設定する場合は、手順4で作成したファイル名にする。|
+
+   ※既定の`keepout_yaml_file`(`grp_keepout.yaml`)はGRPの環境用で、大部分が進入禁止になっている。新しい地図で残したままにすると、ナビゲーションが動かなくなるため、必ず変更すること。  
+   ※`keepout_yaml_file`が空の場合、進入禁止エリアの配信は起動しない。nav2のkeepoutフィルタは`Filter mask was not received`の警告を出すが、制限なしで動作する。
+
+4. (任意)進入禁止エリアを設定する場合は、keepoutマップを作成する。
+   1. `<地図名>.pgm`を画像編集ソフト(GIMPなど)で開き、ロボットが通ってよい場所を白、進入禁止の場所を黒で塗る。画像のサイズは変えないこと。
+   2. `<地図名>_keepout.pgm`という名前でPGM形式(raw)で保存する。
+   3. `<地図名>.yaml`をコピーして`<地図名>_keepout.yaml`を作成し、`image:`を`<地図名>_keepout.pgm`に変更する。`resolution`、`origin`は地図と同じ値のままにする。
+   4. 2つのファイルを`world/map`に置き、手順2のビルドと、手順3の`keepout_yaml_file`の設定を行う。
+
+   ※作成例は`world/map/grp_keepout.pgm`、`grp_keepout.yaml`を参照。
+
+### 13.6. 新しい地図での動作確認
+
+1. ロボットを、SLAMを終了した位置に置いたまま(または地図の原点に置き直して)、以下のコマンドを実行して起動する。
+   ```
+   cd ~
+   module_launch/module_launch.sh
+   module_launch/check_sessions.sh
+   ```
+
+   ※地図の原点に置き直した場合は、起動前に以下のコマンドを実行し、初期位置を原点にしておく。
+   ```
+   echo "0.0,0.0,0.0" > ~/config/rover_pose.txt
+   ```
+
+2. 以下のコマンドを実行してrvizを起動し、新しい地図が表示されることを確認する。
+   ```
+   60_rviz.sh
+   ```
+
+3. LiDARの点群(LaserScan)が地図の壁と重なっていない場合は、「2D Pose Estimate」で自己位置を設定する。
+   1. rviz上部のツールバーで「2D Pose Estimate」を押下する。
+   2. 地図上で、ロボットが実際にいる位置をクリックし、そのままロボットの向きの方向へドラッグして離す。
+   3. LaserScanが地図の壁と重なることを確認する。ずれている場合は、もう一度設定する。
+
+   ※設定した位置は`/<ロボット名>/rover/initialpose`に送られ、AMCLの自己位置が更新される(60_rviz.shの設定で変更済み)。
+
+4. 「Goal Pose」で移動先を指定し、ナビゲーションで移動することを確認する。
+   1. rviz上部のツールバーで「Goal Pose」を押下する。
+   2. 地図上で、移動先の位置をクリックし、そのまま到着時に向かせたい方向へドラッグして離す。
+   3. 経路(Path)が表示され、ロボットが移動先まで移動することを確認する。
+
+   ※設定した移動先は`/<ロボット名>/rover/goal_pose`に送られる(60_rviz.shの設定で変更済み)。  
+   ※rvizから送った移動先は、`40_stop_nav.py`(rover_wrapper経由の移動を止めるもの)では止まらない。途中で止める場合は、ロボットの現在位置付近をGoal Poseで指定し直す(新しい移動先で上書きされる)。
+
+5. 新しい地図では座標が変わるため、地図の座標を使う設定(充電ステーションの位置、`40_goto_home.sh`の移動先、`20_set_poseangle_to_station.sh`の初期位置、シナリオで指定している移動先など)は、新しい地図の座標に合わせて変更すること。  
+   ※Goal Poseで移動させた(または手で置いた)ロボットが目的の位置にある状態で`ros2 topic echo --once /<ロボット名>/rover/pose`を実行すると、その位置の座標を確認できる。
