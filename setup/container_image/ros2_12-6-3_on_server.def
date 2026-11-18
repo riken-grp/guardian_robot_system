@@ -376,7 +376,7 @@ CHECK
     pipi bottle flask
     pipi janome
     pipi pyowm gdown timm positional-encodings
-    pipo gtts
+    pipi gtts
     pipo pit
     pipo bitsandbytes
 
@@ -473,6 +473,14 @@ CHECK
     # =======================================================================
     # chromadb は依存に CPU 版 onnxruntime を持つ。下の「入れ直し」で解消する。
     pipi chromadb
+
+    # =======================================================================
+    # pyindy (modules/pyindy) の依存
+    # =======================================================================
+    # pyindy 本体は PYTHONPATH で読み込む (indy.env.sample 参照)。
+    # pyproject.toml の numpy==1.24.4 は入れない。
+    # pymongo / scipy / pydub / gtts / chromadb は上で導入済み。
+    pipi requests openai simpleaudio
 
     # =======================================================================
     # OpenCV は最後に入れ直す (他パッケージが引き込む opencv-python を掃除)
@@ -662,7 +670,8 @@ mods = ["scipy", "sklearn", "h5py", "pymongo",
         "quaternion", "filterpy", "lap", "PIL", "timm", "transformers",
         "faiss", "dlib", "easyocr", "janome",
         "pydub", "sentencepiece", "langdetect", "faster_whisper", "whisper",
-        "rtmlib", "supervision", "chromadb"]
+        "rtmlib", "supervision", "chromadb",
+        "requests", "openai", "simpleaudio", "gtts"]
 for m in mods:
     try:
         importlib.import_module(m)

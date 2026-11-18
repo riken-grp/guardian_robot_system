@@ -139,7 +139,7 @@ class ros_watchdog_node(Node):
 
     def asr_callback(self, msg):
         d = json.loads(msg.data)
-        if np.abs(np.degrees(np.arctan2(d["x"], d["y"]))) > 45:
+        if np.abs(np.degrees(np.arctan2(d["y"], d["x"]))) > 45:
             self.get_logger().info("asr from outside" + d["words"])
         else:
             self.get_logger().info("asr " + d["words"])

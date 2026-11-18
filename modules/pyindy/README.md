@@ -24,4 +24,5 @@ pip3 install .
 
 - `pip3 install .`はソースをコピーしてインストールするため、pyindyのソースを更新した場合は再度インストールしてください。
 
-- サーバマシンでは、Apptainerコンテナ上で上記のコマンドを実行してインストールします。
+- サーバマシンでは、上記のコマンドは実行しません。`~/indy.env`(`indy.env.sample`の「pyindy（サーバマシンのみ）」)で`PYTHONPATH`に本ディレクトリを追加して使用します。
+  依存ライブラリはコンテナイメージ(`setup/container_image/ros2_12-6-3_on_server.def`)で導入します。`dependencies`を追加した場合は、defファイルにも追加してイメージを再ビルドしてください(`numpy`は除く)。
