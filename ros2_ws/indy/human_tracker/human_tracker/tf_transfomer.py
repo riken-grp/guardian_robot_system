@@ -25,9 +25,9 @@ class TFTransformer():
         cur_time = rclpy.time.Time().to_msg()
         pose.header.frame_id = source_link
         pose.header.stamp = cur_time
-        pose.point.x = pose_list[0]
-        pose.point.y = pose_list[1]
-        pose.point.z = pose_list[2]
+        pose.point.x = float(pose_list[0])
+        pose.point.y = float(pose_list[1])
+        pose.point.z = float(pose_list[2])
         if (self.tf_buffer.can_transform(target_link,
                                          source_link,
                                          cur_time,
@@ -44,9 +44,9 @@ class TFTransformer():
 
     def transform_angle(self, vec_list, source_link, target_link):
         vec_trans = Vector3Stamped()
-        vec_trans.vector.x = vec_list[0]
-        vec_trans.vector.y = vec_list[1]
-        vec_trans.vector.z = vec_list[2]
+        vec_trans.vector.x = float(vec_list[0])
+        vec_trans.vector.y = float(vec_list[1])
+        vec_trans.vector.z = float(vec_list[2])
         cur_time = rclpy.time.Time().to_msg()
         if (self.tf_buffer.can_transform(target_link,
                                          source_link,
@@ -79,13 +79,13 @@ class TFTransformer():
         cur_time = rclpy.time.Time().to_msg()
         trans.header.frame_id = source_link
         trans.header.stamp = cur_time
-        trans.pose.position.x = pose_list[0]
-        trans.pose.position.y = pose_list[1]
-        trans.pose.position.z = pose_list[2]
-        trans.pose.orientation.w = quat_list[0]
-        trans.pose.orientation.x = quat_list[1]
-        trans.pose.orientation.y = quat_list[2]
-        trans.pose.orientation.z = quat_list[3]
+        trans.pose.position.x = float(pose_list[0])
+        trans.pose.position.y = float(pose_list[1])
+        trans.pose.position.z = float(pose_list[2])
+        trans.pose.orientation.w = float(quat_list[0])
+        trans.pose.orientation.x = float(quat_list[1])
+        trans.pose.orientation.y = float(quat_list[2])
+        trans.pose.orientation.z = float(quat_list[3])
         if (self.tf_buffer.can_transform(target_link,
                                          source_link,
                                          cur_time,
@@ -115,10 +115,10 @@ class TFTransformer():
         rot_face.vector.z = 0.0
         quat_on_face = self.quaternion_from_euler([rpy[0], rpy[1], rpy[2]])
         trans_face = TransformStamped()
-        trans_face.transform.rotation.w = quat_on_face[0]
-        trans_face.transform.rotation.x = quat_on_face[1]
-        trans_face.transform.rotation.y = quat_on_face[2]
-        trans_face.transform.rotation.z = quat_on_face[3]
+        trans_face.transform.rotation.w = float(quat_on_face[0])
+        trans_face.transform.rotation.x = float(quat_on_face[1])
+        trans_face.transform.rotation.y = float(quat_on_face[2])
+        trans_face.transform.rotation.z = float(quat_on_face[3])
         face_unit_pose = tf2_geometry_msgs.do_transform_vector3(rot_face, trans_face)
 
         face_x = pose[0]
@@ -131,14 +131,14 @@ class TFTransformer():
         quat_to_camera = self.vector_to_quaternion([1.0, 0.0, 0.0], unit_face)
 
         dir_pose = Vector3Stamped()
-        dir_pose.vector.x = camera_to_dir_pose[0]
-        dir_pose.vector.y = camera_to_dir_pose[1]
-        dir_pose.vector.z = camera_to_dir_pose[2]
+        dir_pose.vector.x = float(camera_to_dir_pose[0])
+        dir_pose.vector.y = float(camera_to_dir_pose[1])
+        dir_pose.vector.z = float(camera_to_dir_pose[2])
         trans = TransformStamped()
-        trans.transform.rotation.w = quat_to_camera[0]
-        trans.transform.rotation.x = quat_to_camera[1]
-        trans.transform.rotation.y = quat_to_camera[2]
-        trans.transform.rotation.z = quat_to_camera[3]
+        trans.transform.rotation.w = float(quat_to_camera[0])
+        trans.transform.rotation.x = float(quat_to_camera[1])
+        trans.transform.rotation.y = float(quat_to_camera[2])
+        trans.transform.rotation.z = float(quat_to_camera[3])
         camera_rpy = tf2_geometry_msgs.do_transform_vector3(dir_pose, trans)
         dx = camera_rpy.vector.x - face_x
         dy = camera_rpy.vector.y - face_y

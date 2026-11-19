@@ -1,6 +1,6 @@
 #!/bin/bash
 # ロボット搭載マシンに必要なパッケージを一括でインストールする
-# （docs/手順書/indy_ロボット搭載マシン構築.md の 1〜6、8、11、12 のうち、インストール部分）
+# （docs/手順書/indy_ロボット搭載マシン構築.md の「1. 一括インストール」。内容は同「2. 一括インストールの内容」）
 #
 #   ./install_robot_packages.sh                  既定の手順をすべて実行する
 #   ./install_robot_packages.sh pyindy check     指定した手順だけ実行する（手順名は --help を参照）
@@ -9,11 +9,11 @@
 # 何度実行してもよい。
 #
 # 以下は本スクリプトでは行わない。手順書に従って設定する。
-#   - chrony の同期先（4. 時刻同期設定）
-#   - Avahi のインタフェース（6. Avahi設定）
-#   - /etc/rc.local の CAN 設定（7. CANインターフェースの起動時自動設定）
-#   - ~/indy.env と ~/.bashrc（9. 環境変数設定）
-#   - ビルド（10）、起動スクリプトの登録（12）
+#   - chrony の同期先（3. 時刻同期設定）
+#   - Avahi のインタフェース（4. Avahi設定）
+#   - /etc/rc.local の CAN 設定（5. CANインターフェースの起動時自動設定）
+#   - ~/indy.env と ~/.bashrc（6. 環境変数設定）
+#   - ビルド（7）、起動スクリプトの登録（8）
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -77,9 +77,9 @@ usage() {
   ros2      ROS2 Humble と関連パッケージ、rosdep による不足分の補完
   python    Python ライブラリ（opencv-python、open3d）
   zenoh     zenoh-bridge-ros2dds ${ZENOH_VERSION}（apt-mark hold で固定）
-  chrony    chrony のインストール（同期先の設定は手順書 4. で行う）
+  chrony    chrony のインストール（同期先の設定は手順書 3. で行う）
   mic2sock  Rust、JACK
-  avahi     avahi-daemon、avahi-utils（インタフェースの設定は手順書 6. で行う）
+  avahi     avahi-daemon、avahi-utils（インタフェースの設定は手順書 4. で行う）
   pyindy    pyindy（modules/pyindy）と依存ライブラリ
   node      Node.js（LTS）と chat_monitor のライブラリ
   rism2     uv とシナリオマネージャ（rism2）の依存
@@ -89,10 +89,10 @@ EOF
 }
 
 # ---------------------------------------------------------------
-# 1. 基本パッケージ
+# 2.1. 基本パッケージ
 # ---------------------------------------------------------------
 step_base() {
-  log "1. 基本パッケージ"
+  log "2.1. 基本パッケージ"
   sudo apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
   apt_install vim openssh-server git net-tools tmux ffmpeg can-utils \
@@ -102,7 +102,7 @@ step_base() {
 }
 
 # ---------------------------------------------------------------
-# 2. ROS2
+# 2.2. ROS2
 # ---------------------------------------------------------------
 ros2_key() {
   sudo curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
@@ -110,7 +110,7 @@ ros2_key() {
 }
 
 step_ros2() {
-  log "2. ROS2 Humble"
+  log "2.2. ROS2 Humble"
   add_apt_repo "ROS2" 'packages\.ros\.org/ros2/' /etc/apt/sources.list.d/ros2.list \
     "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo "$UBUNTU_CODENAME") main" \
     ros2_key
@@ -142,15 +142,15 @@ step_ros2() {
 }
 
 # ---------------------------------------------------------------
-# 2-4. Python ライブラリ
+# 2.2. ROS2 の手順4（Python ライブラリ）
 # ---------------------------------------------------------------
 step_python() {
-  log "2-4. Python ライブラリ"
+  log "2.2. Python ライブラリ"
   pip3 install "$NUMPY_SPEC" "$OPENCV_SPEC" open3d
 }
 
 # ---------------------------------------------------------------
-# 3. zenoh-bridge-ros2dds
+# 2.3. zenoh-bridge-ros2dds
 # ---------------------------------------------------------------
 zenoh_key() {
   sudo mkdir -p /etc/apt/keyrings
@@ -159,7 +159,7 @@ zenoh_key() {
 }
 
 step_zenoh() {
-  log "3. zenoh-bridge-ros2dds ${ZENOH_VERSION}"
+  log "2.3. zenoh-bridge-ros2dds ${ZENOH_VERSION}"
   add_apt_repo "zenoh" 'download\.eclipse\.org/zenoh/debian-repo' /etc/apt/sources.list.d/zenoh.list \
     "deb [signed-by=/etc/apt/keyrings/zenoh-public-key.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" \
     zenoh_key
@@ -169,19 +169,19 @@ step_zenoh() {
 }
 
 # ---------------------------------------------------------------
-# 4. chrony
+# 2.4. chrony
 # ---------------------------------------------------------------
 step_chrony() {
-  log "4. chrony"
+  log "2.4. chrony"
   apt_install chrony
   sudo systemctl enable chrony
 }
 
 # ---------------------------------------------------------------
-# 5. mic2sock（Rust、JACK）
+# 2.5. mic2sock（Rust、JACK）
 # ---------------------------------------------------------------
 step_mic2sock() {
-  log "5. mic2sock（Rust、JACK）"
+  log "2.5. mic2sock（Rust、JACK）"
   if [ ! -x "$HOME/.cargo/bin/rustup" ]; then
     curl https://sh.rustup.rs -sSf | sh -s -- -y
   fi
@@ -194,27 +194,27 @@ step_mic2sock() {
 }
 
 # ---------------------------------------------------------------
-# 6. Avahi
+# 2.6. Avahi
 # ---------------------------------------------------------------
 step_avahi() {
-  log "6. Avahi"
+  log "2.6. Avahi"
   apt_install avahi-daemon avahi-utils
 }
 
 # ---------------------------------------------------------------
-# 8. pyindy
+# 2.7. pyindy
 # ---------------------------------------------------------------
 step_pyindy() {
-  log "8. pyindy"
+  log "2.7. pyindy"
   # numpy、opencv-python は step_python と同じ版を指定する
   pip3 install "$NUMPY_SPEC" "$OPENCV_SPEC" "$REPO/modules/pyindy"
 }
 
 # ---------------------------------------------------------------
-# 11. Node.js と chat_monitor
+# 2.8. Node.js と chat_monitor
 # ---------------------------------------------------------------
 step_node() {
-  log "11. Node.js（LTS）と chat_monitor"
+  log "2.8. Node.js（LTS）と chat_monitor"
   if [ ! -x /usr/local/bin/node ]; then
     apt_install nodejs npm
     sudo npm install -g n
@@ -227,7 +227,7 @@ step_node() {
 }
 
 # ---------------------------------------------------------------
-# 12-6. uv とシナリオマネージャ（rism2）
+# 2.9. uv とシナリオマネージャ（rism2）
 # ---------------------------------------------------------------
 uv_bin() {
   if [ ! -x "$HOME/.local/bin/uv" ]; then
@@ -237,7 +237,7 @@ uv_bin() {
 }
 
 step_rism2() {
-  log "12-6. uv とシナリオマネージャ（rism2）"
+  log "2.9. uv とシナリオマネージャ（rism2）"
   local uv
   uv=$(uv_bin)
   "$uv" --version
@@ -245,10 +245,10 @@ step_rism2() {
 }
 
 # ---------------------------------------------------------------
-# 12-7. indyxe_viewer
+# 2.10. indyxe_viewer
 # ---------------------------------------------------------------
 step_viewer() {
-  log "12-7. indyxe_viewer"
+  log "2.10. indyxe_viewer"
   local uv
   uv=$(uv_bin)
   (cd "$REPO/modules/indy_modules/indyxe_viewer" && "$uv" sync)
@@ -277,14 +277,14 @@ EOF
   fi
   cat <<'EOF'
 
-インストールが完了しました。続けて、手順書の以下を実施してください。
-  4.  時刻同期設定（/etc/chrony/chrony.conf の同期先）
-  6.  Avahi設定（/etc/avahi/avahi-daemon.conf のインタフェース）
-  7.  CANインターフェースの起動時自動設定（/etc/rc.local）
-  9.  環境変数設定（~/indy.env、~/.bashrc）
-  10. ソフトウェアのビルド
-  12. 起動スクリプトの準備
-  13. 地図の作成
+インストールが完了しました。続けて、手順書の「後半: 手動設定」を順に実施してください。
+  3. 時刻同期設定（/etc/chrony/chrony.conf の同期先）
+  4. Avahi設定（/etc/avahi/avahi-daemon.conf のインタフェース）
+  5. CANインターフェースの起動時自動設定（/etc/rc.local）
+  6. 環境変数設定（~/indy.env、~/.bashrc）
+  7. ソフトウェアのビルド
+  8. 起動スクリプトの準備
+  9. 地図の作成
 EOF
 }
 

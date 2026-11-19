@@ -3,24 +3,54 @@
 > **注意**  
 > ロボット搭載マシンは、サーバマシン上のMongoDBに接続して動作する。  
 > 本手順の前に、[サーバマシン構築.md](サーバマシン構築.md)の「5. MongoDBの構築」を実施し、MongoDBを構築しておくこと。  
-> 「9. 環境変数設定」で設定する`MONGO_URI`、`MONGO_PORT`には、構築したMongoDBの値を使用する。
+> 「6. 環境変数設定」で設定する`MONGO_URI`、`MONGO_PORT`には、構築したMongoDBの値を使用する。
 
-> **一括インストール**  
-> 以下のパッケージのインストールは、`setup/robot/install_robot_packages.sh`で一括して実行できる。  
-> 「1. 基本パッケージのインストール」、「2. ROS2のインストール」、「3. zenoh-bridge-ros2ddsのインストール」、「4. 時刻同期設定(chrony)」の手順1、「5. mic2sock環境構築」、「6. Avahi設定」の手順1、「8. ソフトウェアの準備」の手順2、「11. chat_monitorの準備」、「12. 起動スクリプトの準備」の手順6、手順7の`uv sync`  
-> ```
-> sudo apt update
-> sudo apt install -y git
-> git clone <guardian_robot_systemリポジトリ> <guardian_robot_systemのパス>
-> cd <guardian_robot_systemのパス>/setup/robot
-> ./install_robot_packages.sh
-> ```
-> ※sudoできる一般ユーザで実行すること(rootでは実行しない)。  
-> ※ROS2、zenohのaptリポジトリが既に設定されている場合(既にROS2が入っているマシンなど)は、鍵とリポジトリの設定を変更せずにそのまま使う。  
-> ※実行後、上記以外の手順(4. の手順2〜4、6. の手順2〜5、7.、9.、10.、12. の手順1〜5と手順7の起動スクリプトの登録、13.)を実施すること。  
-> ※一部の手順だけを実行する場合は、`./install_robot_packages.sh --help`で手順名を確認し、`./install_robot_packages.sh pyindy check`のように指定する。
+本手順は、前半(1〜2章)の**自動インストール**と、後半(3〜9章)の**手動設定**に分かれる。  
+1章の一括インストールを実行したあと、**3章以降の手動設定を必ず実施すること**。
 
-## 1. 基本パッケージのインストール
+|章|内容|実施方法|
+|---|---|---|
+|1. 一括インストール|パッケージ・ライブラリのインストール|自動(`install_robot_packages.sh`)|
+|2. 一括インストールの内容|1. で実行される内容(手動で行う場合の参考)|1. を実行した場合は不要|
+|3. 時刻同期設定(chrony)|同期先(サーバマシン)の設定|手動|
+|4. Avahi設定|ネットワークインタフェースの設定|手動|
+|5. CANインターフェースの起動時自動設定|/etc/rc.local の作成|手動|
+|6. 環境変数設定|~/indy.env、~/.bashrc|手動|
+|7. ソフトウェアのビルド|colcon build|手動|
+|8. 起動スクリプトの準備|シンボリックリンク、起動スクリプトの登録、動作確認|手動|
+|9. 地図の作成|SLAM による地図の作成と配置|手動|
+
+# 前半: 自動インストール
+
+## 1. 一括インストール
+
+パッケージ・ライブラリのインストールは、`setup/robot/install_robot_packages.sh`で一括して実行する(実行される内容は「2. 一括インストールの内容」を参照)。
+
+1. 以下のコマンドを実行し、guardian_robot_systemリポジトリをクローンして、一括インストールを実行する。
+   ```
+   sudo apt update
+   sudo apt install -y git
+   git clone <guardian_robot_systemリポジトリ> <guardian_robot_systemのパス>
+   cd <guardian_robot_systemのパス>/setup/robot
+   ./install_robot_packages.sh
+   ```
+
+   ※sudoできる一般ユーザで実行すること(rootでは実行しない)。  
+   ※ROS2、zenohのaptリポジトリが既に設定されている場合(既にROS2が入っているマシンなど)は、鍵とリポジトリの設定を変更せずにそのまま使う。  
+   ※一部の手順だけを実行する場合は、`./install_robot_packages.sh --help`で手順名を確認し、`./install_robot_packages.sh pyindy check`のように指定する。
+
+2. 最後に「インストールが完了しました」と表示されることを確認する。  
+   ※確認で問題が見つかった場合は`[WARN]`が表示される。表示に従って該当の手順を実行し直す。
+
+3. 続けて、「後半: 手動設定」(3〜9章)を実施する。
+
+## 2. 一括インストールの内容
+
+「1. 一括インストール」で実行される内容である。**1. を実行した場合、本章の作業は不要。**  
+スクリプトを使わずに手動でインストールする場合や、一部だけをインストールする場合(robodjなど)に参照する。  
+※本章のコマンドの`$GUARDIAN_ROBOT_PATH`は、guardian_robot_systemのパスに読み替える(環境変数は「6. 環境変数設定」で設定するため、本章の時点では未設定)。
+
+### 2.1. 基本パッケージのインストール
 
 1. 以下のコマンドを実行し、システムを最新の状態に更新する。
    ```
@@ -40,7 +70,7 @@
    sudo apt install -y python3-pip python3-dev build-essential libasound2-dev
    ```
 
-## 2. ROS2のインストール
+### 2.2. ROS2のインストール
 
 1. 以下のコマンドを実行し、ROS2リポジトリを追加する。
    ```
@@ -82,7 +112,7 @@
 
    ※numpyは`1.24.4`、opencv-pythonは`4.12`未満を指定すること。
 
-## 3. zenoh-bridge-ros2ddsのインストール
+### 2.3. zenoh-bridge-ros2ddsのインストール
 
 ROSの通信はマシン内に限定しているため、サーバマシンなど別のマシンとのROS通信はzenoh-bridge-ros2ddsで中継する。  
 別のマシン(rviz用のマシンなど)からROSトピックにアクセスする場合の設定は、[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「4.1. マシン間のROS通信(zenoh)」を参照。
@@ -109,10 +139,9 @@ ROSの通信はマシン内に限定しているため、サーバマシンな�
    zenoh-bridge-ros2dds --version
    ```
 
-## 4. 時刻同期設定(chrony)
+### 2.4. chronyのインストール
 
-ロボット搭載マシンは、サーバマシンをNTPサーバとして時刻同期する(NTPクライアントとして設定する)。  
-※先に[サーバマシン構築.md](サーバマシン構築.md)の「1. 時刻同期設定(NTPサーバ)」を実施しておくこと。
+同期先の設定は「3. 時刻同期設定(chrony)」で行う。
 
 1. 以下のコマンドを実行し、chronyをインストールする。
    ```
@@ -120,12 +149,102 @@ ROSの通信はマシン内に限定しているため、サーバマシンな�
    sudo systemctl enable chrony
    ```
 
-2. 以下のコマンドを実行し、設定ファイルのバックアップを作成する。
+### 2.5. mic2sock環境構築
+
+1. 以下のコマンドを実行し、Rust環境を構築する。
+   ```
+   curl https://sh.rustup.rs -sSf | sh
+   sudo apt install -y cargo
+   ```
+
+2. 以下のコマンドを実行し、JACK関連ライブラリをインストールする。
+   ```
+   sudo apt install -y jackd
+   sudo apt install -y libjack-jackd2-dev
+   ```
+
+### 2.6. Avahiのインストール
+
+ネットワークインタフェースの設定は「4. Avahi設定」で行う。
+
+1. 以下のコマンドを実行し、Avahiをインストールする。
+   ```
+   sudo apt install -y avahi-daemon
+   sudo apt install -y avahi-utils
+   ```
+
+### 2.7. pyindyのインストール
+
+1. 以下のコマンドを実行し、pyindy(各モジュールが共通で使用するPythonライブラリ)をインストールする。
+   ```
+   cd <guardian_robot_systemのパス>/modules/pyindy
+   pip3 install .
+   ```
+
+### 2.8. chat_monitorの準備(Node.js)
+
+会話ログ配信(chat_monitor)はNode.jsで動作する。chat_monitor(30_chat_monitor)は標準で起動する。
+
+1. 以下のコマンドを実行し、Node.js(LTS版)をインストールする。
+   ```
+   sudo apt install -y nodejs npm
+   sudo npm install -g n
+   sudo n lts
+   sudo apt purge -y nodejs npm
+   exec $SHELL -l
+   node --version
+   ```
+
+2. 以下のコマンドを実行し、chat_monitorが使用するライブラリをインストールする。
+   ```
+   cd $GUARDIAN_ROBOT_PATH/modules/indy_modules/chat_monitor
+   npm install mongodb express deepl-node
+   ```
+
+### 2.9. シナリオマネージャ(rism2)の準備(uv)
+
+1. 以下のコマンドを実行し、シナリオマネージャ(rism2)を動かすためのuvと依存パッケージをインストールする。  
+   ※シナリオマネージャは、ロボット搭載マシンで`~/module_launch/scenario_launch.sh`により起動し、ホスト上でuvを使って動作する(起動方法は[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「2.5. シナリオの起動」を参照)。  
+   ※rism2はPython 3.10で動作確認している(pyindyが`numpy==1.24.4`固定のため、Python 3.12ではビルドできない)。`.python-version`で3.10を指定しているため、Ubuntu 22.04のpython3(3.10)が使われる。python3が3.10以外の場合は、uvがPython 3.10を自動でダウンロードする。  
+   ※依存パッケージ(pyindy経由のchromadb、onnxruntime、scipyなど)をダウンロードするため、インターネット接続と時間が必要。未実行の場合も、初回の`scenario_launch.sh`で自動でインストールされる。
+   ```
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+   新しいターミナルを開き、以下を実行する。
+   ```
+   uv --version
+   cd $GUARDIAN_ROBOT_PATH/modules/scenario_manager/rism2
+   uv sync
+   ```
+
+   ※シナリオマネージャは、サーバマシンの設定DB(既定のポート9100)とロボットDB(e.g. 9110)に接続する。ロボット搭載マシンから両方のポートに到達できること。
+
+### 2.10. indyxe_viewerの準備(uv)
+
+ロボットの状態表示・操作画面(indyxe_viewer)の依存パッケージをインストールする。起動スクリプトの登録は「8. 起動スクリプトの準備」の手順6で行う(任意)。
+
+1. 以下のコマンドを実行する。
+   ```
+   cd $GUARDIAN_ROBOT_PATH/modules/indy_modules/indyxe_viewer
+   uv sync
+   ```
+
+# 後半: 手動設定
+
+「1. 一括インストール」の後に、以下を順に実施する。
+
+## 3. 時刻同期設定(chrony)
+
+ロボット搭載マシンは、サーバマシンをNTPサーバとして時刻同期する(NTPクライアントとして設定する)。  
+※先に[サーバマシン構築.md](サーバマシン構築.md)の「1. 時刻同期設定(NTPサーバ)」を実施しておくこと。
+
+1. 以下のコマンドを実行し、設定ファイルのバックアップを作成する。
    ```
    sudo cp -p /etc/chrony/chrony.conf /etc/chrony/chrony.conf.old
    ```
 
-3. /etc/chrony/chrony.confを開き、既存のpool行をコメントアウトして、以下のように同期先(サーバマシン)の設定を追加する。
+2. /etc/chrony/chrony.confを開き、既存のpool行をコメントアウトして、以下のように同期先(サーバマシン)の設定を追加する。
    ```
    sudo vi /etc/chrony/chrony.conf
    ```
@@ -140,47 +259,27 @@ ROSの通信はマシン内に限定しているため、サーバマシンな�
 
    ※`server`には、サーバマシンのIPアドレスを設定すること(`192.168.0.1`は例)。
 
-4. 以下のコマンドを実行し、設定を反映して時刻同期状態を確認する。  
+3. 以下のコマンドを実行し、設定を反映して時刻同期状態を確認する。  
    `Reference ID`がサーバマシンのIPアドレスで、`Leap status`が`Normal`であれば正常。
    ```
    sudo systemctl restart chrony
    chronyc tracking
    ```
 
-## 5. mic2sock環境構築
-
-1. 以下のコマンドを実行し、Rust環境を構築する。
-   ```
-   curl https://sh.rustup.rs -sSf | sh
-   sudo apt install -y cargo
-   ```
-
-2. 以下のコマンドを実行し、JACK関連ライブラリをインストールする。
-   ```
-   sudo apt install -y jackd
-   sudo apt install -y libjack-jackd2-dev
-   ```
-
-## 6. Avahi設定
+## 4. Avahi設定
 
 Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local`で名前解決できるようにする。  
 設定するネットワークインタフェースはマシンごとに異なるため、マシンごとに確認して設定すること。
 
-1. 以下のコマンドを実行し、Avahiをインストールする。
-   ```
-   sudo apt install -y avahi-daemon
-   sudo apt install -y avahi-utils
-   ```
-
-2. 以下のコマンドを実行し、他のマシンと通信するネットワークインタフェースの名前を確認する。  
+1. 以下のコマンドを実行し、他のマシンと通信するネットワークインタフェースの名前を確認する。  
    インタフェース名はマシンごとに異なる(e.g. `enp2s0`、`enp0s31f6`、無線LANの場合は`wlp3s0`など)。  
    他のマシンと同じネットワークのIPアドレスが割り当てられているものを選ぶ。
    ```
    ip -br addr
    ```
 
-3. /etc/avahi/avahi-daemon.confを開き、以下の通り設定を編集する。  
-   `allow-interfaces`には、手順2で確認したインタフェース名を設定する(`enp2s0`は例)。
+2. /etc/avahi/avahi-daemon.confを開き、以下の通り設定を編集する。  
+   `allow-interfaces`には、手順1で確認したインタフェース名を設定する(`enp2s0`は例)。
    ```
    sudo vi /etc/avahi/avahi-daemon.conf
    ```
@@ -191,17 +290,17 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
    allow-interfaces=enp2s0
    ```  
 
-4. 以下のコマンドを実行し、設定を反映させる。
+3. 以下のコマンドを実行し、設定を反映させる。
    ```
    sudo service avahi-daemon restart
    ```
 
-5. 他のマシンから以下のコマンドを実行し、本マシンのホスト名(`<ホスト名>.local`)でIPアドレスが引けることを確認する。
+4. 他のマシンから以下のコマンドを実行し、本マシンのホスト名(`<ホスト名>.local`)でIPアドレスが引けることを確認する。
    ```
    avahi-resolve -n <本マシンのホスト名>.local
    ```
 
-## 7. CANインターフェースの起動時自動設定
+## 5. CANインターフェースの起動時自動設定
 
 1. /etc/rc.localを作成し、以下の内容を記述する。
    ```
@@ -227,17 +326,9 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
    sudo chmod +x /etc/rc.local
    ```
 
-## 8. ソフトウェアの準備
+※アーム・首のモータのゼロ点設定やCAN IDの変更、LiDARのIPアドレス変更は、ハードウェア設定ツール([tools/other_tools/README.md](../../tools/other_tools/README.md))で行う。
 
-1. guardian_robot_systemリポジトリ(※guardian_robot_systemリポジトリのパス※)をクローンする。
-
-2. 以下のコマンドを実行し、pyindy(各モジュールが共通で使用するPythonライブラリ)をインストールする。
-   ```
-   cd <guardian_robot_systemのパス>/modules/pyindy
-   pip3 install .
-   ```
-
-## 9. 環境変数設定
+## 6. 環境変数設定
 
 ビルドや起動スクリプトは環境変数を参照するため、ビルドより先に本設定を行うこと。
 
@@ -284,7 +375,7 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
    . "$HOME/.cargo/env"
    ```
 
-   ※ビルド結果(install/local_setup.bash)は「10. ソフトウェアのビルド」の後に読み込まれるようになる。
+   ※ビルド結果(install/local_setup.bash)は「7. ソフトウェアのビルド」の後に読み込まれるようになる。
 
 4. 以下のコマンドを実行して設定を反映し、環境変数が設定されていることを確認する。
    ```
@@ -294,7 +385,7 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
 
    ※起動スクリプトは、tmuxが起動した時点の環境変数を引き継ぐ。後から~/indy.envを変更した場合は、`~/module_launch/kill_sessions.sh`で全セッションを停止して`tmux kill-server`を実行し、新しいターミナルから起動し直すこと。
 
-## 10. ソフトウェアのビルド
+## 7. ソフトウェアのビルド
 
 1. 以下のコマンドを実行し、ビルドする。
    ```
@@ -307,28 +398,7 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
    source ~/.bashrc
    ```
 
-## 11. chat_monitorの準備
-
-会話ログ配信(chat_monitor)はNode.jsで動作する。  
-chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動スクリプトの準備」より先に本章を実施すること。
-
-1. 以下のコマンドを実行し、Node.js(LTS版)をインストールする。
-   ```
-   sudo apt install -y nodejs npm
-   sudo npm install -g n
-   sudo n lts
-   sudo apt purge -y nodejs npm
-   exec $SHELL -l
-   node --version
-   ```
-
-2. 以下のコマンドを実行し、chat_monitorが使用するライブラリをインストールする。
-   ```
-   cd $GUARDIAN_ROBOT_PATH/modules/indy_modules/chat_monitor
-   npm install mongodb express deepl-node
-   ```
-
-## 12. 起動スクリプトの準備
+## 8. 起動スクリプトの準備
 
 起動スクリプト(module_launch)と運用ツール(tools/bin)は、迷わず実行できるよう、ホームディレクトリにシンボリックリンクを作成して使用する。  
 ※コピーではなくシンボリックリンクを作成すること。各スクリプトはリポジトリ内の`enable`フォルダを参照するため、コピーした先の`enable`に登録したスクリプトは起動されない。
@@ -387,35 +457,17 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
    module_launch/check_sessions.sh
    ```
 
-   ※初めての環境で動かす場合は、既定の地図(GRPの環境用)では自己位置推定・ナビゲーションが正しく動かない。「13. 地図の作成」で地図を作成・配置すること。
+   ※初めての環境で動かす場合は、既定の地図(GRPの環境用)では自己位置推定・ナビゲーションが正しく動かない。「9. 地図の作成」で地図を作成・配置すること。
 
 5. ブラウザで`http://<ロボット搭載マシンのホスト名>:3000/`を開き、会話ログ(chat_monitor)が表示されることを確認する。  
    ※chat_monitorは、MongoDBの接続先として~/indy.envの`MONGO_URI`、`MONGO_PORT`を使用する。  
    ※ポート番号はchat_monitorの`config_server.js`の`display_port`で変更できる。
 
-6. 以下のコマンドを実行し、シナリオマネージャ(rism2)を動かすためのuvと依存パッケージをインストールする。  
-   ※シナリオマネージャは、ロボット搭載マシンで`~/module_launch/scenario_launch.sh`により起動し、ホスト上でuvを使って動作する(起動方法は[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「2.5. シナリオの起動」を参照)。  
-   ※rism2はPython 3.10で動作確認している(pyindyが`numpy==1.24.4`固定のため、Python 3.12ではビルドできない)。`.python-version`で3.10を指定しているため、Ubuntu 22.04のpython3(3.10)が使われる。python3が3.10以外の場合は、uvがPython 3.10を自動でダウンロードする。  
-   ※依存パッケージ(pyindy経由のchromadb、onnxruntime、scipyなど)をダウンロードするため、インターネット接続と時間が必要。未実行の場合も、初回の`scenario_launch.sh`で自動でインストールされる。
-   ```
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
 
-   新しいターミナルを開き、以下を実行する。
-   ```
-   uv --version
-   cd $GUARDIAN_ROBOT_PATH/modules/scenario_manager/rism2
-   uv sync
-   ```
-
-   ※シナリオマネージャは、サーバマシンの設定DB(既定のポート9100)とロボットDB(e.g. 9110)に接続する。ロボット搭載マシンから両方のポートに到達できること。
-
-7. (任意)ロボットの状態表示・操作画面(indyxe_viewer)を使う場合は、以下のコマンドを実行し、依存パッケージのインストールと起動スクリプトの登録を行う。  
+6. (任意)ロボットの状態表示・操作画面(indyxe_viewer)を使う場合は、以下のコマンドを実行し、起動スクリプトを登録する(依存パッケージは「2.10. indyxe_viewerの準備(uv)」でインストール済み)。  
    ※indyxe_viewerは、カメラ、バッテリー、シナリオの状態、地図、聞き取った言葉、ロボットの行動を表示し、移動・発話を操作するWebページである。詳細は[README](../../modules/indy_modules/indyxe_viewer/Readme.md)を参照。  
    ※ロボット名・MongoDBの接続先は~/indy.envの`ROBOT_NAME`、`MONGO_URI`、`MONGO_PORT`を使用する。ポート番号は`INDYXE_VIEWER_PORT`(未設定の場合は8000)で変更できる。
    ```
-   cd $GUARDIAN_ROBOT_PATH/modules/indy_modules/indyxe_viewer
-   uv sync
    cd ~/module_launch/enable
    ln -s ../available/30_indyxe_viewer.sh .
    ```
@@ -423,12 +475,12 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
    module_launch.shで起動後、ブラウザで`http://<ロボット搭載マシンのホスト名>:8000/`を開き、画面が表示されることを確認する。  
    ※認証が無く、ロボットの移動・発話を操作できるため、信頼できるネットワーク内でのみ使用すること。
 
-## 13. 地図の作成
+## 9. 地図の作成
 
 自己位置推定(AMCL)とナビゲーションは、MongoDBの`map_server`パラメータで指定した地図を使用する。  
 既定の地図(`grp_space.yaml`)はGRPの環境用のため、初めての環境で動かす場合は、SLAMで地図を作成し、worldパッケージに配置してから使用する。
 
-### 13.1. SLAMの起動
+### 9.1. SLAMの起動
 
 1. 以下のコマンドを実行し、起動中のセッションをすべて停止する。  
    ※SLAM用のlaunchは、ローバのドライバ・LiDAR・rover_wrapperなども自分で起動する。通常の起動スクリプト(01_indyXe_rover_sense、02_indyXe_rover_baseなど)と同時に起動すると、ノードが重複して正しく動かない。  
@@ -453,7 +505,7 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
 
    ※起動スクリプトの`03_indyXe_slam_toolbox`は、名前に反して地図を作成するものではない(作成済みの地図での自己位置推定とナビゲーションを起動する)。地図の作成には使用しないこと。
 
-### 13.2. rvizでの地図の確認
+### 9.2. rvizでの地図の確認
 
 1. 以下のコマンドを実行し、rvizを起動する。  
    ※ロボット搭載マシンにディスプレイがない場合は、別のマシンから起動する。別のマシンでは、[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「4.1. マシン間のROS通信(zenoh)」の設定を行い、`export ROBOT_NAME=<ロボット名>`を設定してから`$GUARDIAN_ROBOT_PATH/tools/bin/60_rviz.sh`を実行する。
@@ -466,9 +518,9 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
 2. 地図(Map)、LiDARの点群(LaserScan)、ロボットのモデル(RobotModel)が表示されることを確認する。  
    ※地図が表示されない場合は、別のターミナルで`ros2 topic list | grep map`を実行し、`/map`が配信されていることを確認する。
 
-3. 「13.3. キーボードでの操作」でロボットを動かしながら、地図が広がっていくことを確認する。
+3. 「9.3. キーボードでの操作」でロボットを動かしながら、地図が広がっていくことを確認する。
 
-### 13.3. キーボードでの操作
+### 9.3. キーボードでの操作
 
 1. 別のターミナルで以下のコマンドを実行し、キーボード操作を起動する。  
    ※`/<ロボット名>/rover/cmd_vel`に速度指令を送る。速度はteleop_twist_keyboardの既定値(並進0.5m/s、回転1.0rad/s)で始まるため、地図の作成中は`z`キーで速度を下げてから動かすとよい。
@@ -476,7 +528,7 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
    33_teleop_keyboard.sh
    ```
 
-   ※「12. 起動スクリプトの準備」で~/binに個別にリンクを作成した場合は、`ln -s $GUARDIAN_ROBOT_PATH/tools/bin/33_teleop_keyboard.sh ~/bin/`でリンクを追加する。
+   ※「8. 起動スクリプトの準備」で~/binに個別にリンクを作成した場合は、`ln -s $GUARDIAN_ROBOT_PATH/tools/bin/33_teleop_keyboard.sh ~/bin/`でリンクを追加する。
 
    |キー|動作|
    |---|---|
@@ -496,7 +548,7 @@ chat_monitor(30_chat_monitor)は標準で起動するため、「12. 起動ス�
    ※急な回転は地図のずれの原因になるため、回転はゆっくり行う。  
    ※一周して開始位置付近に戻ると、ループの閉じ込みにより地図のずれが補正される。
 
-### 13.4. 地図の保存
+### 9.4. 地図の保存
 
 SLAMを起動したまま、以下を行う。
 
@@ -520,7 +572,7 @@ SLAMを起動したまま、以下を行う。
 3. キーボード操作とSLAMを`Ctrl+C`で終了する。  
    ※地図の作成中、rover_wrapperが`~/config/rover_pose.txt`に新しい地図での現在位置を書き込んでいる。SLAMの終了後にロボットを動かさなければ、次の起動時にその位置から自己位置推定を始める。
 
-### 13.5. 地図の配置
+### 9.5. 地図の配置
 
 1. 以下のコマンドを実行し、保存した地図をworldパッケージの`map`フォルダにコピーする。
    ```
@@ -554,7 +606,7 @@ SLAMを起動したまま、以下を行う。
 
    ※作成例は`world/map/grp_keepout.pgm`、`grp_keepout.yaml`を参照。
 
-### 13.6. 新しい地図での動作確認
+### 9.6. 新しい地図での動作確認
 
 1. ロボットを、SLAMを終了した位置に置いたまま(または地図の原点に置き直して)、以下のコマンドを実行して起動する。
    ```

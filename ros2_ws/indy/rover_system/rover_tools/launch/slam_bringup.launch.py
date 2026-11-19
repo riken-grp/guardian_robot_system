@@ -14,7 +14,6 @@ def generate_launch_description():
         return
 
     amr_description_share_dir = get_package_share_directory("amr_description")
-    amr_ros_driver_share_dir = get_package_share_directory("amr_ros_driver")
     rover_wrapper_share_dir = get_package_share_directory("rover_wrapper")
     rover_tools_share_dir = get_package_share_directory("rover_tools")
 
@@ -25,9 +24,11 @@ def generate_launch_description():
                     [amr_description_share_dir + "/launch/amr_description.launch.py"]
                 )
             ),
+            # ドライバは同梱の launch を使わず直接起動する(リマップを確実にするため。amr_ros_driver_node_launch.py 参照)
+            # SLAM 中は vel_filter を起動しないため、速度指令は rover/cmd_vel をそのまま受け取る
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
-                    [amr_ros_driver_share_dir + "/launch/amr_ros_driver.launch.py"]
+                    [rover_tools_share_dir + "/amr_ros_driver_node_launch.py"]
                 )
             ),
             IncludeLaunchDescription(

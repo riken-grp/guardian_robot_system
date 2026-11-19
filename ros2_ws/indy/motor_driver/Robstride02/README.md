@@ -1,5 +1,7 @@
 # ROBSTRIDE02
 
+ゼロ点の設定、CAN IDの変更などのハードウェア設定は、本ディレクトリの`tools/robstride02_tool.cpp`をビルドした`tools/other_tools/robstride02_tool`で行う([tools/other_tools/README.md](../../../../tools/other_tools/README.md)参照)。
+
 
 
 

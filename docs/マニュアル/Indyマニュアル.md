@@ -42,7 +42,7 @@ Indyを動かす場合はロボット搭載マシンとサーバマシン、robo
 どのマシンでも、ホームディレクトリで`module_launch/module_launch.sh`のように起動できる。  
 配置手順は、各マシンの構築手順書の「起動スクリプトの準備」を参照すること。
 
-- ロボット搭載マシン: [indy_ロボット搭載マシン構築.md](../手順書/indy_ロボット搭載マシン構築.md)の「12. 起動スクリプトの準備」
+- ロボット搭載マシン: [indy_ロボット搭載マシン構築.md](../手順書/indy_ロボット搭載マシン構築.md)の「8. 起動スクリプトの準備」
 - サーバマシン: [サーバマシン構築.md](../手順書/サーバマシン構築.md)の「9. 起動スクリプトの準備」
 - robodj: [robodj構築.md](../手順書/robodj構築.md)の「7. 起動スクリプトの準備」
 
@@ -208,7 +208,7 @@ tmux source ~/.tmux.conf
 - ロボット搭載マシン、robodjは待ち受け側、サーバマシンは接続側として、起動スクリプト`000_zenoh_bridge`で起動する(各マシンの構築手順書参照)。
 - rviz用のマシンなど、他のマシンをつなぐ場合は、そのマシンで以下を行う。
   1. Ubuntu 22.04、ROS 2 humbleをインストールし、guardian_robot_systemリポジトリをクローンする。
-  2. [indy_ロボット搭載マシン構築.md](../手順書/indy_ロボット搭載マシン構築.md)の「3. zenoh-bridge-ros2ddsのインストール」を実施する。
+  2. [indy_ロボット搭載マシン構築.md](../手順書/indy_ロボット搭載マシン構築.md)の「2.3. zenoh-bridge-ros2ddsのインストール」を実施する。
   3. 以下の環境変数を設定する(`ROS_DOMAIN_ID`は接続先と同じ値)。
      ```
      export GUARDIAN_ROBOT_PATH=<guardian_robot_systemのパス>
@@ -231,12 +231,18 @@ tmux source ~/.tmux.conf
 
 #### ① キーボードによるローバ操作
 
-以下のコマンドを実行すると、キーボードによるローバ操作が可能となる。
+以下のコマンドを実行すると、キーボードによるローバ操作が可能となる。  
+速度指令は`/<ロボット名>/rover/cmd_vel`に送られる(ロボット名は~/indy.envの`ROBOT_NAME`を使用)。
 ```
-ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/<ロボット名>/rover/cmd_vel
+33_teleop_keyboard.sh
 ```
 
-※ロボット搭載マシンでは、同じ内容を`33_teleop_keyboard.sh`(tools/bin、トピック名に`ROBOT_NAME`を使用)でも起動できる。
+※`33_teleop_keyboard.sh`はtools/binにあり、「2.2. 起動スクリプトの配置」で作成した~/binのリンクから実行する。~/binに個別にリンクを作成した場合は、`ln -s $GUARDIAN_ROBOT_PATH/tools/bin/33_teleop_keyboard.sh ~/bin/`でリンクを追加する。  
+※`ROBOT_NAME`が未設定の場合、または`teleop_twist_keyboard`がインストールされていない場合は、エラーを表示して終了する。  
+※スクリプトを使わない場合は、以下のコマンドで同じ操作ができる。
+```
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/<ロボット名>/rover/cmd_vel
+```
 
 - 操作方法
   - iキー: 前進

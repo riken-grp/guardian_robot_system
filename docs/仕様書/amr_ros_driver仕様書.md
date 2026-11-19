@@ -12,19 +12,25 @@ amr_ros_driverは、ローバ(AMRメイン基板)を制御するROS 2ドライ�
 
 ## 2. 起動方法
 
-ロボット搭載マシンの起動スクリプト`02_indyXe_rover_base`(rover_toolsの`rover_base.launch.py`)から、以下のlaunchファイルで起動される。
+ロボット搭載マシンの起動スクリプト`02_indyXe_rover_base`(rover_toolsの`rover_base.launch.py`)から、rover_toolsの`amr_ros_driver_node_launch.py`で起動される。  
+`rover_bringup.launch.py`、`slam_bringup.launch.py`も同じlaunchファイルを使用する。
 
 ```
-ros2 launch amr_ros_driver amr_ros_driver.launch.py
+ros2 launch rover_tools amr_ros_driver_node_launch.py cmd_vel:=rover/cmd_vel_filtered
 ```
 
 |項目|内容|
 |---|---|
 |ノード名|`/<ロボット名>/amr_ros_driver`(名前空間は環境変数`ROBOT_NAME`)|
-|launch引数|`cmd_vel`: 速度指令を受け取るトピック名(既定値: `rover/cmd_vel`)<br>※`rover_base.launch.py`からは`rover/cmd_vel_filtered`(障害物回避の速度フィルタ通過後の速度指令)が指定される。|
+|launch引数|`cmd_vel`: 速度指令を受け取るトピック名(既定値: `rover/cmd_vel`)<br>※`rover_base.launch.py`、`rover_bringup.launch.py`からは`rover/cmd_vel_filtered`(障害物回避の速度フィルタ通過後の速度指令)が指定される。<br>※`slam_bringup.launch.py`(地図の作成)では速度フィルタを起動しないため、既定値のまま。|
 |設定ファイル|`/opt/ros/humble/share/amr_ros_driver/config/amr_ros_driver.yaml`(場所は変更できない。「4. パラメータ」参照)|
 
-※起動ファイルは`amr_ros_driver.launch.py`のみ(`amr_ros_driver.launch.xml`は含まれない)。  
+※debに同梱の`amr_ros_driver.launch.py`は使用しない。同梱のlaunchは版によってリマップ元のトピック名が異なり(e.g. `/cmd_vel`)、ドライバが購読する`rover/cmd_vel`と一致しない場合、リマップが無視されて速度フィルタを通らない速度指令でローバが動く。そのため、`amr_ros_driver_node_launch.py`でノードを直接起動し、リマップ元を`rover/cmd_vel`に固定している。  
+※リマップが効いていることは、以下で確認できる。`/<ロボット名>/rover/cmd_vel_filtered`のSubscriberに`amr_ros_driver`があり、`/<ロボット名>/rover/cmd_vel`のSubscriberに`amr_ros_driver`が無ければ正常。
+```
+ros2 topic info -v /<ロボット名>/rover/cmd_vel_filtered
+ros2 topic info -v /<ロボット名>/rover/cmd_vel
+```
 ※`ROBOT_NAME`が未設定の場合は、`error: failed to get robot name`を出力し、起動しない。
 
 起動すると、ログに`amr_ros_driver version: 1.0.0`が出力される。主なエラーは以下のとおり。  

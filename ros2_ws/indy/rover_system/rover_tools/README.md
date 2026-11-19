@@ -30,6 +30,12 @@
   ros2 launch rover_tools navigation_launch.py
   ```
   - config/nav2_params.yamlで各種設定
+- ローバのドライバ(amr_ros_driver)
+  ```
+  ros2 launch rover_tools amr_ros_driver_node_launch.py cmd_vel:=rover/cmd_vel_filtered
+  ```
+  - debに同梱のamr_ros_driver.launch.pyは使わず、ノードを直接起動する(リマップ元を`rover/cmd_vel`に固定するため。docs/仕様書/amr_ros_driver仕様書.md参照)
+  - rover_base / rover_bringup / slam_bringupから呼ばれる
 - 足元LiDAR x2 (ナビゲーション用)
   ```
   ros2 launch rover_tools lidar_launch.py
