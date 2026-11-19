@@ -89,8 +89,8 @@ LiDAR(北陽電機 URG、Ethernet接続)のIPアドレスを変更する。
 
 |LiDAR|IPアドレス|設定ファイル|
 |---|---|---|
-|1台目|192.168.4.10|`ros2_ws/indy/urg_node2/config/params_ether.yaml`|
-|2台目|192.168.4.11|`ros2_ws/indy/urg_node2/config/params_ether_2nd.yaml`|
+|1台目(前、laser_f)|192.168.4.10|`ros2_ws/indy/rover_system/rover_tools/config/params_ether_1st.yaml`|
+|2台目(後、laser_b)|192.168.4.11|`ros2_ws/indy/rover_system/rover_tools/config/params_ether_2nd.yaml`|
 
 1. ロボット搭載マシンから、LiDARの今のIPアドレスに接続できることを確認する(`ping <今のIPアドレス>`)。
 2. 以下のコマンドを実行する。

@@ -25,7 +25,7 @@ ros2 launch vel_filter vel_filter.launch.py
 |rover/scan|sensor_msgs/LaserScan|LiDARのスキャンデータ|
 |vel_filter/set_max_velocity|std_msgs/Float64|ローバの最大速度制御トピック|
 |($ROBOT_NAME)_camera_td/depth/camera_info|sensor_msgs/CameraInfo|Depthカメラの内部パラメータ|
-|($ROBOT_NAME)_camera_td/depth/image_rect_raw|sensor_msgs/Image|Depthカメラの震度画像|
+|($ROBOT_NAME)_camera_td/depth/image_rect_raw|sensor_msgs/Image|Depthカメラの深度画像<br>QoSはReliable(深度画像は大きく、Best Effortでは受信バッファが小さい環境でほとんど届かないため)。<br>200ms以上届かない場合、前進・後退の速度を0にする(回転は制限しない)。その間、5秒おきに警告を出す。|
 
 ## 設定方法
 ### rosパラメータ

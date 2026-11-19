@@ -118,9 +118,13 @@ VelFilter::VelFilter() : Node("vel_filter_node")
   //   std::bind(&VelFilter::bu_image_callback, this, std::placeholders::_1),
   //   camera_bu_options);
 
+  // 深度画像(約800KB)は reliable で受け取る。
+  // best_effort では、多数の断片に分かれた1枚のうち1つでも落ちるとその1枚が捨てられ、
+  // 受信バッファが小さい環境ではほとんど届かない(200ms 届かないと前後の速度が0になる)。
+  // RealSense の配信は reliable のため、どちらの組み合わせでも接続はできる。
   camera_td_raw_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
     robot_name_ + "_camera_td/depth/image_rect_raw",
-    rclcpp::QoS(1).best_effort().durability_volatile(),
+    rclcpp::QoS(1).reliable().durability_volatile(),
     std::bind(&VelFilter::td_image_callback, this, std::placeholders::_1),
     camera_td_options);
 
@@ -448,6 +452,13 @@ void VelFilter::timer_callback()
   }
   else {
     filtered_vel = 0.0;
+    // 深度画像が届かない間は前進・後退を止める。止まった理由が分かるよう警告を出す(5秒おき)
+    if (target_vel != 0.0) {
+      RCLCPP_WARN_THROTTLE(
+        this->get_logger(), *this->get_clock(), 5000,
+        "No depth image from %s_camera_td for over 200 ms. linear velocity is set to 0.",
+        robot_name_.c_str());
+    }
   }
   filtered_msg.linear.x = filtered_vel;
   filtered_msg.angular.z = target_angle;
