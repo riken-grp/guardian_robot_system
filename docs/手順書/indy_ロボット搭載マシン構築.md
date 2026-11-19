@@ -65,13 +65,15 @@
    sudo apt install -y ros-humble-rmw-cyclonedds-cpp
    sudo apt install -y ros-humble-urdf-launch
    sudo apt install -y ros-humble-pcl-ros
-   sudo apt install -y ros-humble-moveit*
+   sudo apt install -y ros-humble-moveit ros-humble-moveit-configs-utils ros-humble-moveit-kinematics ros-humble-moveit-simple-controller-manager
    sudo apt install -y ros-humble-diagnostic-updater
    sudo apt install -y ros-humble-laser-proc
    sudo apt install -y ros-humble-realsense2-camera
    sudo apt install -y ros-humble-slam-toolbox
    sudo apt install -y ros-humble-teleop-twist-keyboard
    ```
+
+   ※MoveItは`ros-humble-moveit*`のようなワイルドカードで指定しないこと。不要なパッケージ(moveit_task_constructor、moveit_py、-dbgsymなど)まで入り、moveit_task_constructorとmoveit_pyのファイルが衝突してaptが壊れる。
 
 4. 以下のコマンドを実行し、Pythonライブラリをインストールする。
    ```

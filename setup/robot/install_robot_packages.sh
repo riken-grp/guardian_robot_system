@@ -123,7 +123,10 @@ step_ros2() {
               ros-humble-rmw-cyclonedds-cpp \
               ros-humble-urdf-launch \
               ros-humble-pcl-ros \
-              'ros-humble-moveit*' \
+              ros-humble-moveit \
+              ros-humble-moveit-configs-utils \
+              ros-humble-moveit-kinematics \
+              ros-humble-moveit-simple-controller-manager \
               ros-humble-diagnostic-updater \
               ros-humble-laser-proc \
               ros-humble-realsense2-camera \
