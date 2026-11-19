@@ -32,6 +32,41 @@ log()  { echo; echo "===== $* ====="; }
 warn() { echo "[WARN] $*" >&2; }
 apt_install() { sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"; }
 
+# 指定したリポジトリ（URL の正規表現）を、コメント以外の行で参照している apt の設定ファイルを表示する
+# （.list と deb822 形式の .sources の両方を見る。http / https は区別しない）
+apt_repo_files() {
+  local pattern=$1
+  local files=(/etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources)
+  local f
+  for f in "${files[@]}"; do
+    [ -f "$f" ] || continue
+    grep -Eq "^[^#]*${pattern}" "$f" && echo "$f"
+  done
+  return 0
+}
+
+# apt リポジトリを追加する。同じリポジトリが既に設定されている場合は、鍵もリストも変更しない
+# （Signed-By の異なる設定が重複すると apt-get update がエラーになるため）
+#   add_apt_repo <名前> <URL の正規表現> <書き込む .list> <.list の内容> <鍵を置く関数>
+add_apt_repo() {
+  local name=$1 pattern=$2 list=$3 line=$4 install_key=$5
+  local existing others=()
+  existing=$(apt_repo_files "$pattern")
+  if [ -n "$existing" ]; then
+    echo "$name の apt リポジトリは設定済みのため、追加しません:"
+    sed 's/^/  /' <<<"$existing"
+    # 本スクリプトが過去に書いた $list と、別の設定が重複していないか確認する
+    while read -r f; do [ "$f" != "$list" ] && others+=("$f"); done <<<"$existing"
+    if [ -f "$list" ] && [ ${#others[@]} -gt 0 ]; then
+      warn "$name のリポジトリが $list と ${others[*]} で重複しています。"
+      warn "apt-get update が Signed-By の不一致でエラーになる場合は、内容を確認のうえ sudo rm $list で削除してください"
+    fi
+    return 0
+  fi
+  "$install_key"
+  echo "$line" | sudo tee "$list" >/dev/null
+}
+
 usage() {
   cat <<EOF
 使い方: $0 [手順名 ...]
@@ -69,12 +104,16 @@ step_base() {
 # ---------------------------------------------------------------
 # 2. ROS2
 # ---------------------------------------------------------------
+ros2_key() {
+  sudo curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+       -o /usr/share/keyrings/ros-archive-keyring.gpg
+}
+
 step_ros2() {
   log "2. ROS2 Humble"
-  sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-       -o /usr/share/keyrings/ros-archive-keyring.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo "$UBUNTU_CODENAME") main" \
-    | sudo tee /etc/apt/sources.list.d/ros2.list >/dev/null
+  add_apt_repo "ROS2" 'packages\.ros\.org/ros2/' /etc/apt/sources.list.d/ros2.list \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo "$UBUNTU_CODENAME") main" \
+    ros2_key
   sudo apt-get update
   apt_install ros-humble-desktop ros-dev-tools
   apt_install ros-humble-navigation2 \
@@ -110,13 +149,17 @@ step_python() {
 # ---------------------------------------------------------------
 # 3. zenoh-bridge-ros2dds
 # ---------------------------------------------------------------
-step_zenoh() {
-  log "3. zenoh-bridge-ros2dds ${ZENOH_VERSION}"
+zenoh_key() {
   sudo mkdir -p /etc/apt/keyrings
   curl -fsSL https://download.eclipse.org/zenoh/debian-repo/zenoh-public-key \
     | sudo gpg --dearmor --yes --output /etc/apt/keyrings/zenoh-public-key.gpg
-  echo "deb [signed-by=/etc/apt/keyrings/zenoh-public-key.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" \
-    | sudo tee /etc/apt/sources.list.d/zenoh.list >/dev/null
+}
+
+step_zenoh() {
+  log "3. zenoh-bridge-ros2dds ${ZENOH_VERSION}"
+  add_apt_repo "zenoh" 'download\.eclipse\.org/zenoh/debian-repo' /etc/apt/sources.list.d/zenoh.list \
+    "deb [signed-by=/etc/apt/keyrings/zenoh-public-key.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" \
+    zenoh_key
   sudo apt-get update
   apt_install --allow-change-held-packages "zenoh-bridge-ros2dds=${ZENOH_VERSION}"
   sudo apt-mark hold zenoh-bridge-ros2dds
