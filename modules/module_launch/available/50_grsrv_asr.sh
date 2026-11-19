@@ -19,7 +19,7 @@ else
   tmux new -d -s $filename apptainer exec --nv $GUARDIAN_ROBOT_PATH/setup/container_image/ros2_12-6-3_on_server.sif \
                                       bash -c "\
                                       cd $GUARDIAN_ROBOT_PATH/ros2_ws; 
-                                      source ~/.bashrc; 
+                                      source ~/indy.env; 
                                       source /opt/ros/humble/setup.bash;
                                       source install/setup.bash; 
                                       ros2 launch asr all_asr_launch.py mongo_uri:=$MONGO_URI mongo_port:=$MONGO_PORT"
