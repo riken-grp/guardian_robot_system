@@ -5,6 +5,20 @@
 > 本手順の前に、[サーバマシン構築.md](サーバマシン構築.md)の「5. MongoDBの構築」を実施し、MongoDBを構築しておくこと。  
 > 「9. 環境変数設定」で設定する`MONGO_URI`、`MONGO_PORT`には、構築したMongoDBの値を使用する。
 
+> **一括インストール**  
+> 以下のパッケージのインストールは、`setup/robot/install_robot_packages.sh`で一括して実行できる。  
+> 「1. 基本パッケージのインストール」、「2. ROS2のインストール」、「3. zenoh-bridge-ros2ddsのインストール」、「4. 時刻同期設定(chrony)」の手順1、「5. mic2sock環境構築」、「6. Avahi設定」の手順1、「8. ソフトウェアの準備」の手順2、「11. chat_monitorの準備」、「12. 起動スクリプトの準備」の手順6、手順7の`uv sync`  
+> ```
+> sudo apt update
+> sudo apt install -y git
+> git clone <guardian_robot_systemリポジトリ> <guardian_robot_systemのパス>
+> cd <guardian_robot_systemのパス>/setup/robot
+> ./install_robot_packages.sh
+> ```
+> ※sudoできる一般ユーザで実行すること(rootでは実行しない)。  
+> ※実行後、上記以外の手順(4. の手順2〜4、6. の手順2〜5、7.、9.、10.、12. の手順1〜5と手順7の起動スクリプトの登録、13.)を実施すること。  
+> ※一部の手順だけを実行する場合は、`./install_robot_packages.sh --help`で手順名を確認し、`./install_robot_packages.sh pyindy check`のように指定する。
+
 ## 1. 基本パッケージのインストール
 
 1. 以下のコマンドを実行し、システムを最新の状態に更新する。
@@ -22,6 +36,7 @@
    sudo apt install -y tmux
    sudo apt install -y ffmpeg
    sudo apt install -y can-utils
+   sudo apt install -y python3-pip python3-dev build-essential libasound2-dev
    ```
 
 ## 2. ROS2のインストール
@@ -59,9 +74,10 @@
 
 4. 以下のコマンドを実行し、Pythonライブラリをインストールする。
    ```
-   pip install opencv-python
-   pip install open3d
+   pip install "numpy==1.24.4" "opencv-python<4.12" open3d
    ```
+
+   ※numpyは`1.24.4`、opencv-pythonは`4.12`未満を指定すること。
 
 ## 3. zenoh-bridge-ros2ddsのインストール
 
