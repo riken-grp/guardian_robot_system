@@ -6,9 +6,8 @@ SLEEP_SEC=1
 filename=$(basename "$0" .sh)
 tmux_sessions=$(tmux ls 2>/dev/null | cut -d':' -f1)
 
-# ALSAの入力デバイスは環境変数 MIC_ARRAY_DEVICE から取得する(未設定の場合は plughw:RASPZX16ch.0)
-# ※ module_launch.sh は全スクリプトに $1=MONGO_URI, $2=MONGO_PORT を渡すため、引数からは取得しない
-MIC_ARRAY_DEVICE=${MIC_ARRAY_DEVICE:-plughw:RASPZX16ch.0}
+# ALSAの入力デバイスは環境変数 MIC_ARRAY_DEVICE から取得する(未設定の場合は plughw:CARD=RASPZX16ch,DEV=0)
+MIC_ARRAY_DEVICE=${MIC_ARRAY_DEVICE:-plughw:CARD=RASPZX16ch,DEV=0}
 
 if echo "$tmux_sessions" | grep -q "^$filename$"; then
     echo "$filename" already exists

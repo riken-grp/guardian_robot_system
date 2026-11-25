@@ -160,7 +160,7 @@ fi
 |02_indyXe_rover_base.sh|rover_base.launch.py|ローバの基本的な機能を起動する。<br>・amr_ros_driver.launch.py（ローバ制御の基本的な動作機能）<br>・rover_wrapper.launch.py（ローバ制御の補助的な動作機能）<br>・amr_description.launch.py（ロボットの形状情報(URDF)の生成機能）<br>・auto_charge.launch.py（自動充電機能）<br>・battery_log_launch.py（バッテリー状態の記録機能）<br>・laserscan_multi_merger_launch.py（二つのLiDARのLaserScanの統合機能）|
 |03_indyXe_slam_toolbox.sh|rover_slam.launch.py|ナビゲーション機能を起動する。<br>・localization_launch.py（自己位置推定機能）<br>・navigation_launch.py（ナビゲーション機能）|
 |04_indyXe_robot_base.sh|robot_base.launch.py|眼と腕、首の関節の制御機能を起動する。<br>・eye_control.launch.py（眼球モニタの制御機能）<br>・arm_bringup.launch.py（腕用モータの制御機能）<br>・motor_control.launch.py（首用モータの制御機能）|
-|05_indyXe_microphone_array.sh|microphone_array.launch.py|マイクの音声取得ノードを起動する。<br>ALSAの入力デバイスは環境変数（MIC_ARRAY_DEVICE）から取得する（未設定の場合は plughw:RASPZX16ch.0）。<br>※10_indyXe_mic2sock_16ch.shとは同時に起動できない（どちらか一方のみenableに入れる）。|
+|05_indyXe_microphone_array.sh|microphone_array.launch.py|マイクの音声取得ノードを起動する。<br>ALSAの入力デバイスは環境変数（MIC_ARRAY_DEVICE）から取得する（未設定の場合は plughw:CARD=RASPZX16ch,DEV=0）。<br>※10_indyXe_mic2sock_16ch.shとは同時に起動できない（どちらか一方のみenableに入れる）。|
 |10_indyXe_mic2sock_16ch.sh|-|マイクとスピーカーを用いて音声を送受信するRust製のリアルタイム音声通信プロジェクトを実行する。<br>※05_indyXe_microphone_array.shとは同時に起動できない（どちらか一方のみenableに入れる）。|
 |10_indyXe_robot_sense.sh|robot_sense.launch.py|頭部、胸付近の機器を起動する。<br>・lidar_ht_launch.py（胸元のLiDAR）<br>・rs_camera_recog_launch.py（頭部のRealSense）|
 |10_indyXe_send_audio_server.sh|pa_send_audio_server.sh|pa_send_audio_serverを起動し監視する。<br>終了した場合は、再起動する。|

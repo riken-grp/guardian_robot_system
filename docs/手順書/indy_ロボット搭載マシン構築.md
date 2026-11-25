@@ -451,7 +451,7 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
    ※00_hv_watch(レスキューモード監視)は登録不要。`ON_ROBOT=1`の場合、module_launch.sh実行時に自動で起動される。  
    ※10_indyXe_mic2sock_16ch、10_indyXe_send_audio_serverは標準では登録しない。必要な場合のみ、上記と同様に登録する。  
    　ただし、10_indyXe_mic2sock_16chは05_indyXe_microphone_arrayと同時に起動できないため、10_indyXe_mic2sock_16chを登録する場合は05_indyXe_microphone_arrayの登録を外すこと。  
-   ※05_indyXe_microphone_arrayは、ALSAの入力デバイス`plughw:RASPZX16ch.0`を使用する。異なる場合は~/indy.envの`MIC_ARRAY_DEVICE`で指定する。
+   ※05_indyXe_microphone_arrayは、ALSAの入力デバイス`plughw:CARD=RASPZX16ch,DEV=0`を使用する。異なる場合は~/indy.envの`MIC_ARRAY_DEVICE`で指定する。
 
 4. ホームディレクトリで以下のコマンドを実行し、登録したスクリプトが一括起動されることを確認する。  
    起動・終了の詳細は、[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「2. 起動手順」「3. 終了手順」を参照。
