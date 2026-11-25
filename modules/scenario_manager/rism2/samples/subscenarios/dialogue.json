@@ -13,9 +13,16 @@
     "@顔検知⇒あいさつ",
     "@no people"
   ],
-  "exit_condition": {
-    "no people": null
-  },
+  "exit_condition": [
+    {
+      "no_people": null
+    },
+    {
+      "person_disappear": {
+        "instance_id": "{triggered[instance_id]}"
+      }
+    }
+  ],
   "exit_events": [
     {
       "actor": "robot1",

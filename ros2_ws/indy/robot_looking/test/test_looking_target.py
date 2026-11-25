@@ -40,16 +40,17 @@ class Clock:
         return self.t
 
 
-def person(i, w, count=100):
+def person(i, w, age=0.0):
     return {"instance_id": i, "class_id": 0, "name": "person",
-            "location": [0, 0, w, w], "location_sensor": [0, 0, 2], "count": count}
+            "location": [0, 0, w, w], "location_sensor": [0, 0, 2],
+            "last_seen": datetime.datetime.fromtimestamp(1000.0 - age)}
 
 
 def make(docs, **kw):
     clock = Clock()
     actions = Actions()
     rec = LookingTargetRecognizer(Tracking(docs), actions, max_duration=60,
-                                  unobserve_threshold=70, clock=clock, **kw)
+                                  unobserve_sec=2.0, clock=clock, **kw)
     return rec, actions, clock
 
 
@@ -79,7 +80,7 @@ def test_max_duration_and_unobserved_target():
     rec, actions, clock = make(docs)
     actions.say(2)
     rec()
-    docs[1]["count"] = 10  # no longer observed
+    docs[1]["last_seen"] = datetime.datetime.fromtimestamp(clock.t - 3.0)  # no longer observed
     assert rec()["instance_id"] == 1
 
 
@@ -97,12 +98,20 @@ def test_audio_keeps_speaker_by_human_id_and_picks_loudest():
     assert not vad and t is None
 
 
+def observed_now(docs, clock):
+    for d in docs:
+        d["last_seen"] = datetime.datetime.fromtimestamp(clock.t)
+
+
 def test_max_duration_switches_to_another_target():
-    rec, _, clock = make([person(1, 100), person(2, 10)])
+    docs = [person(1, 100), person(2, 10)]
+    rec, _, clock = make(docs)
     assert rec()["instance_id"] == 1
     clock.t += 61
+    observed_now(docs, clock)
     assert rec()["instance_id"] == 2  # looked at 1 for max_duration
     clock.t += 0.1
+    observed_now(docs, clock)
     assert rec()["instance_id"] == 2  # and stays
 
 

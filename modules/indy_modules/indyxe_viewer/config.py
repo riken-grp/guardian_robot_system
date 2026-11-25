@@ -36,6 +36,8 @@ def build_parser():
     # dest は設定ファイルのキーと同じにする (引数で指定したものだけが設定ファイルの値を上書きする)
     parser.add_argument("-c", "--config", help="JSON 設定ファイル (指定した引数はこれより優先される)")
     parser.add_argument("-r", "--robot", dest="robot_name", metavar="NAME", help="ロボット名 (ROS のトピック名に使う)")
+    parser.add_argument("--actor", dest="actor", metavar="NAME",
+                        help="黒板 (Actions) の actor. RISM の robot_list の robot_id (既定: --robot と同じ)")
     parser.add_argument("-p", "--web-port", dest="web_port", metavar="PORT", type=int, help="Web ページのポート番号 (例: 8003)")
     parser.add_argument("--web-host", dest="web_host", metavar="HOST", help=f"Web ページを公開するアドレス (既定: {DEFAULTS['web_host']})")
     parser.add_argument("--db-host", dest="server_name", metavar="HOST", help=f"MongoDB (RISM) のホスト (既定: {DEFAULTS['server_name']})")
@@ -53,6 +55,19 @@ def build_parser():
                         help="シナリオ定義の DB のポート番号 (既定: --db-port)")
     parser.add_argument("--destinations-collection", dest="destinations_collection", metavar="NAME",
                         help="「部屋を見に行く」の行き先のコレクション (シナリオ定義の DB (demo_configs) 内. 既定: room_checker_destinations)")
+    parser.add_argument("--voice-input-frame", dest="voice_input_frame", metavar="FRAME",
+                        help="ブラウザから話しかけた音声の位置 (前方 1 m) の座標系 (既定: <ロボット名>_base_link)")
+    parser.add_argument("--voice-input-topic", dest="voice_input_topic",
+                        choices=("identified_speech_segments", "speech_segments"),
+                        help="ブラウザから話しかけた音声の送り先 (recog/ssl/ 以下). 既定の identified_speech_segments は"
+                             " 話者 ID 付与後で ASR に直接届く. speech_segments は speaker_id_node を通るが,"
+                             " ロボット側の zenoh bridge がサーバからの購読を通している必要がある")
+    parser.add_argument("--robot-voice", dest="robot_voice", action=argparse.BooleanOptionalAction, default=None,
+                        help="ロボットの発話をこのサーバで音声合成し, ブラウザで再生できるようにする (既定: 有効)."
+                             " 声はロボットと同じ設定 (persona.Voice). gtts なら Google へ, hoya ならその合成サーバへ接続する")
+    parser.add_argument("--ssl-certfile", dest="ssl_certfile", metavar="FILE",
+                        help="HTTPS の証明書 (ブラウザのマイクを localhost 以外から使うのに必要)")
+    parser.add_argument("--ssl-keyfile", dest="ssl_keyfile", metavar="FILE", help="HTTPS の秘密鍵")
     parser.add_argument("--template", dest="template", metavar="FILE", help=f"templates/ 内の HTML テンプレート (既定: {DEFAULTS['template']})")
     parser.add_argument("--action-count", dest="action_count", metavar="N", type=int, help="種類ごとに表示するロボットの行動の数")
     parser.add_argument("--log-level", dest="log_level", choices=("debug", "info", "warning", "error"),
@@ -92,4 +107,6 @@ def load_config(argv=None) -> dict:
     if missing:
         options = {"robot_name": "--robot", "web_port": "--web-port", "server_port": "--db-port"}
         parser.error("次の設定が必要です: " + ", ".join(options.get(k, k) for k in missing))
+    if bool(config.get("ssl_certfile")) != bool(config.get("ssl_keyfile")):
+        parser.error("--ssl-certfile と --ssl-keyfile は両方指定してください")
     return config

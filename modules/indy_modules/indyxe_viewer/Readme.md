@@ -8,10 +8,12 @@ This project integrates FastAPI with ROS2 to provide a web interface for interac
 - **Battery Monitoring**: Displays the robot's current battery percentage (auto-updated).
 - **Scenario**: Shows the running scenario, interruption and processing state (`current_state`) and recent scenario history (`scenario_history`).
 - **Map**: Shows the map (`maps`: `map` + `keepout`), registered places (`locations`), the current navigation goal and the robot position (`/<robot_name>/rover/pose`).
-- **Heard Speech**: Shows texts recognized by the robot (`/<robot_name>/recog/ssl/asr/raw_text`, requires `common_msgs` from the Indy workspace).
+- **Heard Speech**: Shows texts recognized by the robot (`/<robot_name>/recog/ssl/asr/analyzed`, requires `common_msgs` from the Indy workspace), with their morphemes colored by part of speech and readings as ruby (from ssl_asr `morph_node`; hover a morpheme for its reading, base form and part of speech).
 - **Robot Actions**: Shows the latest robot actions in `<db_name>.Actions` (speak, navigation, gesture, eye, ros_command) per kind with their status, auto-updated.
 - **Speech Playback**: Plays speech segments heard by the robot (`/<robot_name>/recog/ssl/identified_speech_segments`) in the browser as they arrive.
-- **Heard Speech**: Shows recognized text (`/<robot_name>/recog/ssl/asr/raw_text`). Click an item to replay the audio it was recognized from (the latest 30 segments are kept in memory).
+- **Heard Speech**: Shows recognized text and its morphemes (`/<robot_name>/recog/ssl/asr/analyzed`). Click an item to replay the audio it was recognized from (the latest 30 segments are kept in memory).
+- **Robot Voice (ロボットの声)**: With the 「ロボットの発話を再生」 switch ON, the browser plays what the robot says. The robot's `rosTTS` only plays its synthesized voice from the robot's speaker and does not publish it, so this server synthesizes the same text again with the same voice settings (`persona.Voice`, key `voice_params`, on the blackboard host/port): `gtts` (with the same `params.rate` speed/pitch change), `hoya` (POST to `server`) or an MP3 `url`. The server watches `<db_name>.Actions` (`command: speak`), starts synthesizing while an utterance is `waiting`, and tells the browsers when it becomes `is_playing` (and when it is `stopped`). It synthesizes only while a browser has the switch ON. With `gtts`, the server needs internet access (Google). The switch state is remembered in the browser. Disable the feature with `--no-robot-voice`.
+- **Talk to the Robot (ロボットに話しかける)**: While the 「押しながら話す」 button (or Space/Enter on it) is held, the browser records the microphone and publishes the voice as a separated speech segment (`ssl_msgs/SpeechSegment`, 16 kHz) to `/<robot_name>/recog/ssl/identified_speech_segments`, the output of `speaker_id_node` of `ssl_bringup`, so ASR and the speaker-face node handle it like real speech. (`speaker_id_node` runs on the robot, and the zenoh bridge does not carry `recog/ssl/speech_segments` from the server to the robot; with `--voice-input-topic speech_segments` the voice goes there instead, through `speaker_id_node`, once the robot's bridge routes it.) The speaker is placed 1 m in front of the robot (`azimuth` 0, `distance` 1.0 in `<robot_name>_base_link`), facing it; `person_id` is 0 and the level is normalized like `separator_node`. With the 「ロボットのスピーカーで再生」 switch ON, the voice is instead published to `/<robot_name>/robot/play_audio` (same message type) and played as is from the robot's speaker by the `rosAudioPlay` node on the robot (the request fails if that node is not found). The switch state is remembered in the browser. Requires `ssl_msgs` and HTTPS (see Usage).
 - **Room Check (部屋を見に行く)**: Buttons that ask the robot to check a room. The destinations are read from MongoDB (`demo_configs.room_checker_destinations`, next to the scenario definitions; see below); the panel is hidden when there are none, and changes appear without reloading the page.
 - **Speaker Face**: Shows the speaker's face next to each heard utterance; click it to enlarge.
 - **MongoDB Integration**: Stores user inputs and commands in a MongoDB database.
@@ -47,6 +49,7 @@ This project integrates FastAPI with ROS2 to provide a web interface for interac
    | Option | Config key | Description |
    |---|---|---|
    | `-r`, `--robot` | `robot_name` | robot name, used for ROS topic names (**required**) |
+   | `--actor` | `actor` | actor of the robot's actions in `<db_name>.Actions` (`robot_id` in RISM's `robot_list`; default: `robot_name`) |
    | `-p`, `--web-port` | `web_port` | port of the web UI (**required**) |
    | `--web-host` | `web_host` | address the web UI listens on (default `0.0.0.0` = all interfaces) |
    | `--db-host` | `server_name` | MongoDB (RISM) host (default `localhost`) |
@@ -57,6 +60,10 @@ This project integrates FastAPI with ROS2 to provide a web interface for interac
    | `--map-region=X_MIN,X_MAX,Y_MIN,Y_MAX` | `map_region` | area of the robot-position map to show, in map coordinates (m). Defaults to the drivable area plus registered places; small areas are enlarged so markers keep their size. Use `=` because the value may start with `-` |
    | `--scenario-db-host`, `--scenario-db-port` | `scenario_db` (`host`, `port`, `db_name`) | where RISM reads scenario definitions (same as `scenario_db` of the demo in `rism_configs.demo_list`). Defaults to the blackboard host/port and `demo_configs` |
    | `--destinations-collection` | `destinations_collection` | collection of room-check destinations in the scenario DB (`scenario_db`, i.e. `demo_configs`; default `room_checker_destinations`) |
+   | `--voice-input-frame` | `voice_input_frame` | frame of the position of the voice sent from the browser (1 m ahead; default `<robot_name>_base_link`) |
+   | `--voice-input-topic` | `voice_input_topic` | where the voice sent from the browser is published under `/<robot_name>/recog/ssl/`: `identified_speech_segments` (default, straight to ASR) or `speech_segments` (through `speaker_id_node`; needs the robot's zenoh bridge to route it) |
+   | `--robot-voice` / `--no-robot-voice` | `robot_voice` | synthesize the robot's utterances on this server so the browser can play them (default on) |
+   | `--ssl-certfile`, `--ssl-keyfile` | `ssl_certfile`, `ssl_keyfile` | serve the web UI over HTTPS with this certificate and key (needed to use the microphone from other PCs) |
    | `--template` | `template` | HTML template in `templates/` (default `index.html`) |
    | `--action-count` | `action_count` | number of robot actions shown per kind (default `5`) |
    | `--log-level` | `log_level` | `debug` / `info` / `warning` (default) / `error`; with `info` or `debug`, uvicorn access logs are also printed |
@@ -99,8 +106,26 @@ This project integrates FastAPI with ROS2 to provide a web interface for interac
    uv run main.py --robot $ROBOT_NAME --web-port 8001 --db-host $MONGO_URI --db-port $MONGO_PORT
    ```
 
-2. Access the web interface at `http://<this PC's IP>:<web_port>` (e.g. `http://192.168.1.10:8003`).
-   To hear the robot's speech, turn on the 「音声再生」 switch. The ON/OFF state is remembered in the browser; when the page is reopened with ON, playback starts after the first click on the page (browsers block autoplay until the user interacts with the page).
+2. Access the web interface at `https://<this PC's IP>:<web_port>` (e.g. `https://192.168.1.10:8003`) when the server is started with a certificate, or at `http://...` without one.
+   The web UI is served over HTTPS so that 「ロボットに話しかける」 works: browsers allow the microphone only on HTTPS pages or on `localhost`.
+   Over plain HTTP, every other feature works, but the push-to-talk button is disabled.
+
+   Make a self-signed certificate once (`*.pem` is git-ignored):
+   ```bash
+   openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=indyxe_viewer" -keyout key.pem -out cert.pem
+   ```
+   Then give it on the command line or in the config file:
+   ```bash
+   uv run main.py --config config_<robot>.json --ssl-certfile cert.pem --ssl-keyfile key.pem
+   ```
+   ```json
+   "ssl_certfile": "cert.pem",
+   "ssl_keyfile": "key.pem"
+   ```
+   The certificate is self-signed, so each browser shows a warning on its first visit; accept it once (「詳細設定」→「<IP> にアクセスする（安全ではありません）」 in Chrome).
+   Without HTTPS, the microphone can still be used by opening the page as `localhost`, e.g. through an SSH port forward (`ssh -L 8003:localhost:8003 <user>@<server>`, then `http://localhost:8003`).
+   To hear what the robot says, turn on 「ロボットの発話を再生」 (same autoplay rule as below).
+   To hear the speech the robot heard, turn on the 「音声再生」 switch. The ON/OFF state is remembered in the browser; when the page is reopened with ON, playback starts after the first click on the page (browsers block autoplay until the user interacts with the page).
 
 ## Launch with module_launch
 
@@ -115,13 +140,14 @@ The ROS domain is taken from `ROS_DOMAIN_ID`.
 
 - `main.py`: Web app (FastAPI): pages, operations and JSON APIs. Entry point for every robot.
 - `robot.py`: ROS 2 side: subscriptions (camera, battery, pose, heard speech, speech audio), `cmd_vel`, and fan-out of camera frames / speech audio to clients.
+- `robot_voice.py`: Watches the robot's `speak` actions and synthesizes them with the robot's voice settings for playback in the browser.
 - `blackboard.py`: Reads actions, scenario, scenario history/timeline, places and map from MongoDB (tBlackBoard), with short-lived caching shared by all viewers.
 - `config.py`: Builds the settings from command-line options and an optional JSON file.
 - `config.example.json`: Template of a config file listing every key (copy it to make a config for a new robot).
 - `destinations.py`: Reads the 「部屋を見に行く」 destinations from MongoDB, and a CLI to manage them. `destinations.example.json` is a template of such a list.
 - `pyproject.toml` / `uv.lock`: Python dependencies (uv).
 - `templates/`: HTML templates (`base.html` layout, `_parts.html` panels, `index.html` page).
-- `static/`: `app.css` (DADS-based styles) and `app.js` (polling, map, timeline, speech playback). Polling pauses while the tab is hidden.
+- `static/`: `app.css` (DADS-based styles), `app.js` (polling, map, timeline, speech playback, robot voice, push-to-talk) and `voice-worklet.js` (microphone capture). Polling pauses while the tab is hidden.
 
 ## HTTP API
 
@@ -135,7 +161,10 @@ The ROS domain is taken from `ROS_DOMAIN_ID`.
 | `GET /camera` | MJPEG camera stream |
 | `GET /speech_face/{clip_id}` | Face image (JPEG) of the speaker of a heard-speech item |
 | `GET /speech_clip/{clip_id}` | Audio (WAV) of a heard-speech item; `clip_id` is `<person_id>-<speech_start_ns>` |
+| `WS /robot_voice` | Robot utterances as JSON: `{"type": "speak", "id", "text", "rate", "url"}` when the robot starts speaking, `{"type": "stop", "id"}` when stopped, `{"type": "error", ...}` when synthesis failed |
+| `GET /robot_voice/{action_id}` | Synthesized audio (MP3 or WAV) of a robot utterance; play it at `rate` (pitch changes with speed, like the robot) |
 | `WS /speech` | Speech segments (binary: uint32 sample rate, int32 person id, float32 samples) |
+| `POST /voice_input?sample_rate=16000&speaker=false` | Publish a voice (body: float32 little-endian mono samples, 0.3–30 s) as a speech segment 1 m in front of the robot (to `voice_input_topic`), or with `speaker=true` to `robot/play_audio` to play it from the robot's speaker |
 | `POST /control/{front,back,left,right,stop}` | Move the robot |
 | `GET /destinations` | Destinations of 「部屋を見に行く」 (from MongoDB) |
 | `POST /destinations/{id}/visit` | Ask the robot to check a room |
@@ -143,7 +172,10 @@ The ROS domain is taken from `ROS_DOMAIN_ID`.
 
 ## Notes
 
-- The ROS 2 topics used are `/<robot_name>/local_recog/color/image_raw/compressed`, `/<robot_name>/rover/battery`, `/<robot_name>/rover/pose`, `/<robot_name>/recog/ssl/asr/raw_text`, `/<robot_name>/recog/ssl/identified_speech_segments`, `/<robot_name>/recog/ssl/speaker_face_segments` (subscribed) and `/<robot_name>/rover/cmd_vel` (published). They must be reachable from the machine running the viewer (same ROS domain).
+- Ensure the ROS2 topics of the robot (`<robot>` is `robot_name`) are active:
+  `/<robot>/local_recog/color/image_raw/compressed`, `/<robot>/rover/battery` and `/<robot>/rover/pose`
+  (and `/<robot>/recog/ssl/...` for heard speech, speech audio and speaker faces).
+- MongoDB and ROS2 settings are given as command-line options or a config file (see Installation step 3), not by editing `main.py`.
 - The web UI has no authentication and can move the robot and make it speak. Use it only in a trusted network, or set `--web-host 127.0.0.1`.
 
 ## License

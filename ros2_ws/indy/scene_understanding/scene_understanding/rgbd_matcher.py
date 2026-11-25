@@ -139,6 +139,11 @@ class RgbdMatcher:
             return color.msg, depth.msg
         return None
 
+    def reset(self):
+        """Drop all buffered frames (e.g. after the stamps jumped back)."""
+        self.colors = []
+        self.depths = []
+
     def _prune(self):
         latest = max(
             (frames[-1].stamp for frames in (self.colors, self.depths) if frames),
@@ -151,3 +156,66 @@ class RgbdMatcher:
         self.colors = [c for c in self.colors if c.stamp >= oldest][-self.max_frames:]
         self.stats.cnt["expired"] += n - len(self.colors)
         self.depths = [d for d in self.depths if d.stamp >= oldest][-self.max_frames:]
+
+
+class FrameRateLimiter:
+    """Select frames at ``rate_hz`` on average, by stamp (sensor time).
+
+    Used by frame_gate_node so that all the recognition nodes process the very
+    same frames.  Stamps are used instead of the arrival time, so the selection
+    does not depend on the transport jitter and works with rosbag replay.
+
+    Token bucket on the stamps: every frame adds ``(stamp - previous stamp) /
+    period`` tokens (at most ``burst``), and a frame is accepted when at least
+    ``1 - tolerance`` token is available (one token is then spent).
+
+    * A camera faster than ``rate_hz`` is thinned to ``rate_hz`` on average
+      (30 fps -> 10 Hz: every 3rd frame; 15 fps -> 10 Hz: 2 of 3 frames).
+    * A stream slower than ``rate_hz`` with irregular intervals (frames thinned
+      by the transport: 33 / 66 / 133 ms apart) passes (almost) completely: the
+      tokens saved during a long interval are spent on the next short one.  A
+      plain minimum interval would drop about half of such a stream.
+    * Bursty input passes too: over zenoh the camera frames arrive in bursts
+      (e.g. 5 frames 33 ms apart, then nothing for 0.4 s).  At most ``burst``
+      frames come in a row; the small subscriber queues of the nodes (2 + the
+      one in process) absorb them.
+
+    ``rate_hz <= 0`` accepts every (newer) frame.  Frames whose stamp is not
+    newer than the previous one are rejected, except after the stamps jumped
+    back by more than ``jump_back_sec`` (rosbag loop), which resets the
+    limiter.
+    """
+
+    def __init__(self, rate_hz, burst=3.0, tolerance=0.25, jump_back_sec=1.0):
+        self.period_ns = int(1e9 / rate_hz) if rate_hz > 0 else 0
+        self.burst = max(float(burst), 1.0)
+        self.threshold = 1.0 - tolerance
+        self.jump_ns = int(jump_back_sec * 1e9)
+        self.last = None  # stamp of the previous frame [ns]
+        self.tokens = 0.0
+
+    def jumped_back(self, stamp_ns):
+        return self.last is not None and stamp_ns < self.last - self.jump_ns
+
+    def reset(self):
+        self.last = None
+        self.tokens = 0.0
+
+    def accept(self, stamp_ns):
+        if self.jumped_back(stamp_ns):
+            self.reset()
+        if self.last is None:
+            self.tokens = 1.0  # the first frame is always taken
+        elif stamp_ns <= self.last:
+            return False
+        elif self.period_ns > 0:
+            self.tokens = min(
+                self.burst, self.tokens + (stamp_ns - self.last) / self.period_ns
+            )
+        self.last = stamp_ns
+        if self.period_ns <= 0:
+            return True
+        if self.tokens < self.threshold:
+            return False
+        self.tokens -= 1.0
+        return True

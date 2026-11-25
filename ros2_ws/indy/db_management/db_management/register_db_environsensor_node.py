@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import message_filters
 import rclpy
-from dateutil import tz
 from rclpy import qos
 from recognition_msgs.msg import Labels, OmronEnvSensor
 

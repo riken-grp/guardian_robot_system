@@ -7,7 +7,8 @@ Priority:
    (audio path, recog from human_tracker/audio_info).
 2. The person who spoke most recently (new "asr" observation in the Actions
    collection, not older than ``asr_max_age``).
-3. The current target, while it is still tracked (count > unobserve_threshold)
+3. The current target, while it is still observed (``last_seen`` within
+   ``unobserve_sec``)
    and for at most ``max_duration`` seconds.
 4. The largest tracked person (or object if no person is tracked).  After
    ``max_duration`` another target is preferred when there is one.
@@ -44,7 +45,7 @@ TRACKING_PROJECTION = {
     "location": 1,
     "location_sensor": 1,
     "face_location_sensor": 1,
-    "count": 1,
+    "last_seen": 1,
 }
 
 
@@ -59,14 +60,14 @@ class LookingTargetRecognizer:
         tracking_db,
         action_db,
         max_duration,
-        unobserve_threshold,
+        unobserve_sec,
         asr_max_age=5.0,
         clock=time.time,
     ):
         self.tracking_db = tracking_db
         self.action_db = action_db
         self.max_duration = max_duration
-        self.unobserve_threshold = unobserve_threshold
+        self.unobserve_sec = unobserve_sec
         self.asr_max_age = asr_max_age
         self.clock = clock
 
@@ -121,6 +122,13 @@ class LookingTargetRecognizer:
         except (KeyError, TypeError):
             return None
 
+    def _observed(self, target, now):
+        # last_seen: datetime.now() of register_db_recog_node (naive, local time)
+        last_seen = target.get("last_seen")
+        if not isinstance(last_seen, datetime.datetime):
+            return False
+        return now - last_seen.timestamp() < self.unobserve_sec
+
     def __call__(self):
         now = self.clock()
         if self.start_time is not None and now - self.start_time > self.max_duration:
@@ -144,7 +152,7 @@ class LookingTargetRecognizer:
 
         # keep the current target while it is still observed
         current = tracking_targets.get(self.current_target_id)
-        if current is not None and current.get("count", 0) > self.unobserve_threshold:
+        if current is not None and self._observed(current, now):
             return self._select(current, now, keep_start_time=True)
 
         # otherwise the largest target, preferring another one than the target
@@ -200,7 +208,9 @@ class LookingTargetNode(Node):
         self.declare_parameter("mongo_port", 9010)
         self.declare_parameter("dbname", "tBlackBoard")
         self.declare_parameter("max_duration", 60)
-        self.declare_parameter("unobserve_threshold", 70)
+        # keep the current target while it was observed within this time [s]
+        # (was a frame count, which depended on the rate of the recognition)
+        self.declare_parameter("unobserve_sec", 2.0)
         self.declare_parameter("asr_max_age", 5.0)
         self.declare_parameter("period", 0.1)
         self.declare_parameter("vad_timeout", 1.0)
@@ -210,7 +220,7 @@ class LookingTargetNode(Node):
             mongo_port = 9010
         dbname = self.get_parameter("dbname").value or "tBlackBoard"
         max_duration = self.get_parameter("max_duration").value
-        unobserve_threshold = self.get_parameter("unobserve_threshold").value
+        unobserve_sec = float(self.get_parameter("unobserve_sec").value)
         asr_max_age = float(self.get_parameter("asr_max_age").value)
         period = float(self.get_parameter("period").value)
         self.vad_timeout = float(self.get_parameter("vad_timeout").value)
@@ -228,7 +238,7 @@ class LookingTargetNode(Node):
         self.last_vad_time = 0.0  # monotonic time of the last resolved speaker
         self.last_audio_publish = 0.0
         self.lt_recognizer = LookingTargetRecognizer(
-            tracking_db, action_db, max_duration, unobserve_threshold, asr_max_age
+            tracking_db, action_db, max_duration, unobserve_sec, asr_max_age
         )
         self.lt_recognizer_from_audio = LookingTargetRecognizerFromAudio(max_duration)
         self.pub = self.create_publisher(

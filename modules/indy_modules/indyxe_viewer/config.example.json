@@ -1,5 +1,6 @@
 {
     "robot_name": "my_robot",
+    "actor": null,
     "web_host": "0.0.0.0",
     "web_port": 8000,
     "server_name": "localhost",
@@ -14,6 +15,11 @@
         "db_name": "demo_configs"
     },
     "destinations_collection": "room_checker_destinations",
+    "voice_input_frame": null,
+    "voice_input_topic": "identified_speech_segments",
+    "robot_voice": true,
+    "ssl_certfile": null,
+    "ssl_keyfile": null,
     "template": "index.html",
     "action_count": 5,
     "log_level": "warning"

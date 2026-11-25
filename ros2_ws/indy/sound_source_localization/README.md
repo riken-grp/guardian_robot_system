@@ -40,7 +40,13 @@
               |                          recog/ssl/speaker_face_segments (SpeakerFaceSegment)
               |
               v
-        recog/ssl/asr/raw_text (StringStamped JSON)
+        recog/ssl/asr/result (StringStamped JSON)
+              |
+              v
+        [morph_node]  (Janome 形態素解析)
+              |
+              v
+        recog/ssl/asr/analyzed (StringStamped JSON, result + morph) --> [register_db_asr_node] (db_management) --> physical_topic "asr"
 ```
 
 ## パッケージ構成
@@ -51,7 +57,7 @@
 | `lidar_person_tracker` | ament_python | LiDAR人物検出・追跡（背景差分付き） |
 | `sound_source_localizer` | ament_python | SRP-PHATによる音源方向推定 |
 | `audio_source_separator` | ament_python | DAS分離 + VAD + 発話セグメント出力 + 話者ID統合 + モニタ |
-| `ssl_asr` | ament_python | Whisper音声認識（サーバ側GPU） |
+| `ssl_asr` | ament_python | Whisper音声認識（サーバ側GPU）+ 形態素解析 |
 | `ssl_bringup` | ament_cmake | Launch / Config / シミュレーション |
 
 ## トピック名規約
@@ -273,8 +279,11 @@ SpeechSegmentの方位角・距離を、`recog/persons`で受信したPersonの`
 Whisper（faster-whisper）による音声認識ノード。サーバ側GPUで実行する。
 
 - **Subscribe**: `in_speech_segments` → `recog/ssl/identified_speech_segments` (`ssl_msgs/SpeechSegment`)
-- **Publish**: `out_raw_text` → `recog/ssl/asr/raw_text` (`common_msgs/StringStamped`)
-- **出力形式**: StringStamped.data にJSON文字列を格納（person_id, text, language, language_probability, duration, azimuth, distance, speech_start_ns, speech_end_ns）
+- **Publish**: `out_result` → `recog/ssl/asr/result` (`common_msgs/StringStamped`)
+- **出力形式**: StringStamped.data にJSON文字列を格納（person_id, text, confidence, language, language_probability, duration, azimuth, distance, location, location_frame, speech_start_ns, speech_end_ns）
+  - 話者 (`person_id`) と位置が付いた認識結果（kad の `asr/meta_data` に相当）。`morph_node` が形態素解析を付けた `recog/ssl/asr/analyzed` を、`db_management` の `register_db_asr_node` が physical_topic の `asr` / `asr_from_outside` に登録する
+  - `confidence`: 残したセグメントの信頼度 (0–1)。`word_timestamps` が true なら単語確率の平均（kad/asr と同じ）、false なら `exp(avg_logprob)`
+  - `location`: 話者位置 [x 前方, y 左, z] (m)。tf2 で `base_frame` に変換できればその座標系、できなければマイクアレイ座標系。どちらかは `location_frame`（と header.frame_id）に入る
 - **リサンプリング**: SpeechSegmentのサンプルレートが16kHz以外の場合は `scipy.signal.resample_poly` で16kHzに変換する。変換できない場合（scipyが無い、不正なレート）はそのセグメントを破棄する。
 
 主要パラメータ:
@@ -282,9 +291,12 @@ Whisper（faster-whisper）による音声認識ノード。サーバ側GPUで�
 - `language` ('ja'): 認識言語
 - `device` ('cuda'): 推論デバイス
 - `compute_type` ('float16'): 推論精度
-- `beam_size` (1): ビームサーチ幅
+- `beam_size` (1): ビームサーチ幅。kad/asr は faster-whisper 既定の 5。精度を優先するなら 5（遅くなる）
 - `condition_on_previous_text` (false): 直前の認識結果を条件に使うか
 - `without_timestamps` (true): タイムスタンプなしでデコードするか
+- `word_timestamps` (false): true なら単語確率から confidence を計算する（少し遅くなる）
+- `num_workers` (3): 並列に認識するセグメント数（同時に話すのは 2〜3 人まで想定）。ワーカーごとに GPU 上にモデルを持つ（large-v3 fp16 で約 3 GB/ワーカー）
+- `base_frame` (`<ROBOT_NAME>_base_link`) / `speech_frame` ('microphone_array_base'): `location` の座標系と、SpeechSegment の header に frame_id が無いときのマイクアレイ座標系
 
 Whisper の幻聴（無音や雑音で「ご視聴ありがとうございました」などを出す）の抑制:
 - `vad_filter` (true) / `vad_min_silence_ms` (500): faster-whisper の Silero VAD で無音部分を除く（onnxruntime が必要。
@@ -296,6 +308,17 @@ Whisper の幻聴（無音や雑音で「ご視聴ありがとうございまし
 - `hallucination_phrases`: 認識結果がこれらのフレーズ（とその繰り返し）だけなら捨てる。空白・句読点は無視して比較。
   ほかの内容を含む結果は捨てない。省略するとコードの既定リスト。実際に出た幻聴はここに追加する
 - 捨てた結果は `dropped hallucination: ...` / `dropped low-confidence: ...` として INFO ログに出る
+
+### ssl_asr / morph_node
+
+asr_node の認識結果に Janome による形態素解析 (`morph`) を付けて流し直すノード。
+
+- **Subscribe**: `in_result` → `recog/ssl/asr/result` (`common_msgs/StringStamped`)
+- **Publish**: `out_analyzed` → `recog/ssl/asr/analyzed` (`common_msgs/StringStamped`)
+- **出力形式**: 入力の JSON に `morph` を足したもの。`morph` は形態素ごとのリスト:
+  - `surface`（表層形）、`base_form`（原形、例: 行き → 行く）、`reading`（読み、ひらがな。辞書に無い語は表層形）、
+    `pos`（品詞、IPADIC 体系、例: `名詞,一般`）、`span`（品詞の大分類が同じ形態素が続く所をつなげた区切り。これだけ長さが違う）
+- Janome（`pip install janome`、辞書同梱）が無い場合は `morph` を付けずにそのまま流す
 
 ### audio_source_separator / monitor_node
 
@@ -418,6 +441,7 @@ launchを使わず `ros2 run` で単体起動した場合はコード既定値�
 - `tf2_ros` - 座標変換 (separator_node, speaker_id_node)
 - `PyYAML` - 設定ファイル読み込み
 - `faster-whisper` - Whisper音声認識 (ssl_asr)
+- `janome` - 形態素解析 (ssl_asr morph_node、無くても動く)
 - `pyaudio` - スピーカー再生 (monitor_node, オプション)
 - `gTTS` + `pydub` - 日本語TTS (sim_speaker_node, オプション)
 

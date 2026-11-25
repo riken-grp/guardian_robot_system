@@ -8,6 +8,16 @@ asr_node:
     beam_size: 1
     condition_on_previous_text: false
     without_timestamps: true
+    # confidence: mean word probability if true (as kad/asr, slightly slower),
+    # otherwise exp(avg_logprob)
+    word_timestamps: false
+    # Parallel transcriptions: at most 2-3 people speak at the same time.
+    # Each worker holds its own model copy on the GPU (large-v3 fp16: ~3 GB).
+    num_workers: 3
+    # Speaker location in the robot base frame (default: <ROBOT_NAME>_base_link).
+    # speech_frame is used only when the SpeechSegment header has no frame_id.
+    # base_frame: 'base_link'
+    speech_frame: 'microphone_array_base'
     # Hallucination suppression
     vad_filter: true                 # faster-whisper Silero VAD (false if onnxruntime fails)
     vad_min_silence_ms: 500
@@ -26,3 +36,11 @@ asr_node:
       - 'チャンネル登録'
       - '高評価'
       - '字幕視聴ありがとうございました'
+      - 'ご清聴ありがとうございました'
+      - 'ご利用いただきありがとうございます'
+      - '最後まで視聴してくださって本当にありがとうございます'
+      - 'また見てね'
+      - '次回へ続く'
+      - '次の動画でお会いしましょう'
+      - '字幕作成'
+      - 'by H.'

@@ -356,7 +356,9 @@ class InterruptDetector:
         """
         一番内側のシナリオの exit_condition に合う観測が、そのシナリオの開始後に来たら打ち切る
 
-        例: 音声対話中に no people が来たら、対話をやめる。
+        例: 音声対話中に no_people が来たら、対話をやめる。
+        {"person_disappear": {"instance_id": "{triggered[instance_id]}"}} のように、割り込みの
+        きっかけの観測の値で絞れる（話し相手が立ち去ったら、など）。
         使った観測は mentioned にして、同じ観測で割り込みが発動しないようにする。
         """
         # 一番内側のフレーム（割り込み中ならそのサブシナリオ、そうでなければメインシナリオ）
@@ -365,6 +367,7 @@ class InterruptDetector:
         conditions = scenario.exit_conditions if scenario is not None else []
         if not conditions or frame.exit_requested:
             return
+        conditions = self._resolved_exit_conditions(frame, conditions)
 
         def is_new(obs):
             oid = obs.get("_id")
@@ -392,6 +395,19 @@ class InterruptDetector:
         frame.exit_trigger_events = [o.get("event") for o in claimed]
         frame.exit_condition_met = True
         frame.exit_requested = True
+
+    def _resolved_exit_conditions(self, frame, conditions):
+        """exit_condition の {triggered[...]} を、そのフレームのきっかけの観測で置き換える.
+
+        きっかけの観測が決まったら一度だけ置き換えて覚える（割り込みのフレームは、きっかけを
+        覚える前に積まれるので、きっかけが変わったら置き換え直す）。
+        """
+        trigger = frame.triggered_observation
+        cached = frame.resolved_exit_conditions
+        if cached is None or cached[0] is not trigger:
+            resolved = [self.interpreter.event_processor.resolve_condition(c) for c in conditions]
+            frame.resolved_exit_conditions = cached = (trigger, resolved)
+        return cached[1]
 
     def _reserved_events(self) -> set:
         """wait_for などが待っている、またはこのあと待つイベント名（その観測は割り込みに使わない）"""

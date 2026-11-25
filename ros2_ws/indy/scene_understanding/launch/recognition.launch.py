@@ -40,28 +40,26 @@ def generate_launch_description():
     commands = []
     commands.extend(
         [
-            # カラー画像: compressed → compressed (topic_tools relay)
+            # フレームゲート: カメラの color / depth を stamp で対応付け、rate [Hz] で
+            # 間引いて同じフレームを全認識ノードに配る (depth の stamp は color に揃える)。
+            # 以前の topic_tools relay の置き換え。zenoh-bridge 経由ではホストあたり
+            # 1 本しかネットワークを流れないので、relay で購読を束ねる必要はない。
+            # 出力トピック名は relay 時代と同じなので下流の remap は変更不要。
             Node(
-                package="topic_tools",
-                executable="relay",
-                name="color_republish",
+                package="scene_understanding",
+                executable="frame_gate_node",
+                name="frame_gate_node",
                 namespace=ROBOT_NAME,
-                arguments=[
-                    ROBOT_NAME + "_camera/color/image_raw/compressed",
-                    "local_recog/color/image_raw/compressed",
-                ],
-                on_exit=Shutdown(),
-            ),
-            # 深度画像: compressedDepth → compressedDepth (topic_tools relay)
-            Node(
-                package="topic_tools",
-                executable="relay",
-                name="depth_republish",
-                namespace=ROBOT_NAME,
-                arguments=[
-                    ROBOT_NAME
-                    + "_camera/aligned_depth_to_color/image_raw/compressedDepth",
-                    "local_recog/depth/image_raw/compressedDepth",
+                parameters=[config],
+                remappings=[
+                    ("in_color_topic", ROBOT_NAME + "_camera/color/image_raw/compressed"),
+                    (
+                        "in_depth_topic",
+                        ROBOT_NAME
+                        + "_camera/aligned_depth_to_color/image_raw/compressedDepth",
+                    ),
+                    ("out_color_topic", "local_recog/color/image_raw/compressed"),
+                    ("out_depth_topic", "local_recog/depth/image_raw/compressedDepth"),
                 ],
                 on_exit=Shutdown(),
             ),
@@ -175,7 +173,7 @@ def generate_launch_description():
                 namespace=ROBOT_NAME,
                 parameters=[config, {"mongo_uri": mongo_uri, "mongo_port": mongo_port}],
                 remappings=[
-                    ("in_color_topic", "local_recog/color/image_raw/compressed"),
+                    ("in_color_topic", ROBOT_NAME + "_camera/color/image_raw/compressed"),
                     ("cinfo_topic", ROBOT_NAME + "_camera/color/camera_info"),
                     ("vis_topic", "local_recog/aruco/visualized/compressed"),
                 ],
@@ -187,7 +185,7 @@ def generate_launch_description():
                 namespace=ROBOT_NAME,
                 parameters=[config, {"mongo_uri": mongo_uri, "mongo_port": mongo_port}],
                 remappings=[
-                    ("in_color_topic", "local_recog/color/image_raw/compressed"),
+                    ("in_color_topic", ROBOT_NAME + "_camera/color/image_raw/compressed"),
                     ("out_topic", "recog/qr_code"),
                     ("vis_topic", "local_recog/qr_code/visualized/compressed"),
                 ],

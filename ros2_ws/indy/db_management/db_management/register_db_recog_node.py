@@ -5,13 +5,20 @@ import rclpy
 from common_msgs.msg import StringStamped
 from rcl_interfaces.msg import ParameterDescriptor
 from rclpy import qos
+from rclpy.executors import ExternalShutdownException
 from .mongo_node_base import MongoDBNode
-from recognition_msgs.msg import Objects, Persons, Pointings, Relations
+from recognition_msgs.msg import Objects, Persons, Pointings
 
-from .dbmanager import TopicDBManager
+from .dbmanager import DEFAULT_OPTIONS, TopicDBManager
 
 
 class RegisterDBNode(MongoDBNode):
+    """認識結果を tracking に書き，人物イベントを physical_topic に登録する.
+
+    登録の規則は dbmanager.py の先頭を参照．人数・注視のイベント (旧 check_* ノード)
+    も 0.5 s ごとにここで判定する．
+    """
+
     def __init__(self, name="RegisterDBNode"):
         super().__init__(name)
 
@@ -27,7 +34,14 @@ class RegisterDBNode(MongoDBNode):
         self.declare_parameter("lost_timeout", 3.0)
         self.lost_timeout = self.get_parameter("lost_timeout").value
 
-        self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname)
+        # 人物イベントのパラメータ (既定値は dbmanager.DEFAULT_OPTIONS)
+        options = {}
+        for key, default in DEFAULT_OPTIONS.items():
+            self.declare_parameter(key, default, ParameterDescriptor(dynamic_typing=True))
+            options[key] = type(default)(self.get_parameter(key).value)
+        self.get_logger().info(f"person event options: {options}")
+
+        self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname, options)
         self.prune_timer = self.create_timer(0.5, self.callback_prune)
 
         self.sub_track = self.create_subscription(
@@ -52,12 +66,6 @@ class RegisterDBNode(MongoDBNode):
             Persons,
             "in_attributes_topic",
             self.callback_attr,
-            qos_profile=qos.qos_profile_system_default,
-        )
-        self.sub_sg = self.create_subscription(
-            Relations,
-            "in_associated_scenegraph_topic",
-            self.callback_sg,
             qos_profile=qos.qos_profile_system_default,
         )
         self.sub_hand = self.create_subscription(
@@ -99,6 +107,7 @@ class RegisterDBNode(MongoDBNode):
 
     def callback_prune(self):
         self.dbmanager.prune_lost_objects(self.lost_timeout)
+        self.dbmanager.check_events()
 
     def callback_pose(self, poses):
         self.dbmanager.update_poses(poses)
@@ -108,9 +117,6 @@ class RegisterDBNode(MongoDBNode):
 
     def callback_attr(self, attributes):
         self.dbmanager.update_attributes(attributes)
-
-    def callback_sg(self, relations):
-        self.dbmanager.update_scenegraph(relations)
 
     def callback_hand(self, pointings):
         self.dbmanager.update_hand_state(pointings)
@@ -131,5 +137,10 @@ class RegisterDBNode(MongoDBNode):
 def main():
     rclpy.init()
     node = RegisterDBNode()
-    rclpy.spin(node)
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()

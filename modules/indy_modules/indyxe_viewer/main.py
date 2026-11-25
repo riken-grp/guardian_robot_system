@@ -24,7 +24,8 @@ from pymongo.errors import PyMongoError
 from blackboard import Blackboard, ScenarioCatalog
 from config import load_config
 from destinations import DEFAULT_COLLECTION, Destinations
-from robot import QOS_PROFILES, SpeechSegment, StringStamped, RobotState, run_ros
+from robot import QOS_PROFILES, VOICE_INPUT_TOPICS, Broadcaster, SpeechSegment, StringStamped, RobotState, run_ros
+from robot_voice import RobotVoice
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,11 @@ LOW_BATTERY = 50  # これ未満で「残量わずか」を表示 (%)
 ACTION_COUNT = 5  # 種類ごとに表示するロボットの行動の数 (設定 action_count で変更可)
 SCENARIO_HISTORY_COUNT = 6  # 表示するシナリオ履歴の数
 MJPEG_BOUNDARY = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+# ブラウザから話しかけた音声 (float32 モノラルのバイト列) の受け付け条件
+VOICE_INPUT_RATES = (8000, 16000, 22050, 24000, 32000, 44100, 48000)
+VOICE_INPUT_MIN_SEC = 0.3  # ssl_asr の min_duration より短いと聞き取られない
+VOICE_INPUT_MAX_SEC = 30
+ROBOT_VOICE_QUEUE_SIZE = 10  # クライアントごとに溜めるロボットの発話の知らせの最大数
 
 
 def to_wav(sample_rate, samples):
@@ -64,6 +70,8 @@ def error(message, status_code):
 
 def create_app(config):
     robot_name = config["robot_name"]
+    # 黒板の Actions の actor. 実機は ROS の名前空間と同じだが, 別にできる (シミュレーションは indyV1 と indyv1)
+    actor = config.get("actor") or robot_name
     server_name = config["server_name"]
     server_port = config["server_port"]
     db_name = config["db_name"]
@@ -74,9 +82,9 @@ def create_app(config):
 
     # MongoDB: 書き込み (pyindy) と, 画面表示用の読み出し (行動・シナリオ・地図)
     physical_db = DBManager(server_name, server_port, db_name, "physical_topic")
-    utterance_manager = UtteranceManager(server_name, server_port, robot_name, db_name)
-    command_manager = ROSCommandManager(server_name, server_port, robot_name, db_name)
-    blackboard = Blackboard(server_name, server_port, db_name, robot_name, action_count, config.get("map_region"))
+    utterance_manager = UtteranceManager(server_name, server_port, actor, db_name)
+    command_manager = ROSCommandManager(server_name, server_port, actor, db_name)
+    blackboard = Blackboard(server_name, server_port, db_name, actor, action_count, config.get("map_region"))
     # RISM のシナリオ定義 (タイムラインの詳細表示用). RISM の rism_configs.demo_list の scenario_db と同じ場所
     scenario_db = config.get("scenario_db", {})
     demo_configs = (
@@ -93,17 +101,26 @@ def create_app(config):
     asset_version = int(max(p.stat().st_mtime for p in STATIC_DIR.iterdir()))
     state = RobotState()
     ros = {}
+    # ロボットの発話をこのサーバで合成してブラウザで鳴らす (ロボットと同じ声の設定 persona.Voice を使う)
+    robot_voice_enabled = config.get("robot_voice", True)
+    robot_voice_events = Broadcaster(queue_size=ROBOT_VOICE_QUEUE_SIZE)
+    robot_voice = RobotVoice(server_name, server_port, db_name, actor, robot_voice_events)
 
     @asynccontextmanager
     async def lifespan(app):
         """起動時にROS2ノードを別スレッドで開始し, 終了時に停止する"""
         state.start(asyncio.get_running_loop())
-        with run_ros(robot_name, state, battery_qos, ros_domain_id) as node:
+        robot_voice_events.start(asyncio.get_running_loop())
+        if robot_voice_enabled:
+            robot_voice.start()
+        with run_ros(robot_name, state, battery_qos, ros_domain_id, config.get("voice_input_frame"),
+                     config.get("voice_input_topic", VOICE_INPUT_TOPICS[0])) as node:
             ros["node"] = node
             try:
                 yield
             finally:
                 ros.clear()
+                robot_voice.stop()
 
     app = FastAPI(lifespan=lifespan)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -120,6 +137,8 @@ def create_app(config):
                 "low_battery": LOW_BATTERY,
                 "speech_enabled": SpeechSegment is not None,
                 "asr_enabled": StringStamped is not None,
+                "voice_input_enabled": SpeechSegment is not None,
+                "robot_voice_enabled": robot_voice_enabled,
                 "asset_version": asset_version,
             },
         )
@@ -158,6 +177,35 @@ def create_app(config):
             physical_db.insert, "asr", {"instance_id": -1, "words": text, "text": text}, priority=100
         )
         return {"message": f"{destination['label']}を見に行ってきます"}
+
+    @app.post("/voice_input")
+    async def post_voice_input(request: Request, sample_rate: int = 16000, speaker: bool = False):
+        """ブラウザで録音した発話 (float32 リトルエンディアン, モノラル) を publish する.
+        speaker が偽なら音源分離後の発話セグメントとして, 真ならロボットのスピーカーで再生する音声として送る"""
+        if SpeechSegment is None:
+            return error("ssl_msgs が読み込めないため使えません", 503)
+        node = ros.get("node")
+        if node is None:
+            return error("ROS2 ノードが起動していません", 503)
+        if sample_rate not in VOICE_INPUT_RATES:
+            return error("サンプリング周波数が正しくありません", 400)
+        body = await request.body()
+        if len(body) % 4:
+            return error("音声データが正しくありません", 400)
+        samples = np.frombuffer(body, dtype="<f4")
+        duration = len(samples) / sample_rate
+        if duration < VOICE_INPUT_MIN_SEC:
+            return error("発話が短すぎます（ボタンを押したまま話してください）", 400)
+        if duration > VOICE_INPUT_MAX_SEC:
+            return error(f"発話が長すぎます（{VOICE_INPUT_MAX_SEC}秒まで）", 413)
+        if not np.all(np.isfinite(samples)):
+            return error("音声データが正しくありません", 400)
+        if speaker and not node.speaker_available():
+            return error("ロボットのスピーカー再生ノード（rosAudioPlay）が見つかりません", 503)
+        node.publish_speech(sample_rate, samples, to_speaker=speaker)
+        if speaker:
+            return {"message": f"ロボットのスピーカーで再生しました（{duration:.1f}秒）"}
+        return {"message": f"話しかけました（{duration:.1f}秒）"}
 
     @app.post("/control/{command}")
     async def handle_control_button(command: str):
@@ -220,6 +268,36 @@ def create_app(config):
             send_task = asyncio.create_task(sender())
             try:
                 # クライアントからは何も送られてこないので, 切断の検出だけを行う
+                while (await websocket.receive())["type"] != "websocket.disconnect":
+                    pass
+            except WebSocketDisconnect:
+                pass
+            finally:
+                send_task.cancel()
+
+    @app.get("/robot_voice/{action_id}")
+    def get_robot_voice(action_id: str):
+        """ロボットの発話をこのサーバで合成した音声 (合成中なら終わるまで待つ)"""
+        audio = robot_voice.audio(action_id)
+        if audio is None:
+            return error("音声がありません", 404)
+        data, mime = audio
+        return Response(data, media_type=mime, headers={"Cache-Control": "max-age=3600"})
+
+    @app.websocket("/robot_voice")
+    async def robot_voice_stream(websocket: WebSocket):
+        """ロボットが話し始めたら (と止められたら) JSON で知らせる. 音声は GET /robot_voice/{id}"""
+        await websocket.accept()
+        if not robot_voice_enabled:
+            await websocket.close(code=1008)
+            return
+        with robot_voice_events.subscribe() as queue:
+            async def sender():
+                while True:
+                    await websocket.send_json(await queue.get())
+
+            send_task = asyncio.create_task(sender())
+            try:
                 while (await websocket.receive())["type"] != "websocket.disconnect":
                     pass
             except WebSocketDisconnect:
@@ -298,6 +376,9 @@ def run(argv=None):
         port=config["web_port"],
         log_level=log_level,
         access_log=log_level in ("debug", "info"),
+        # ブラウザのマイクは HTTPS (か localhost) でしか使えないので, 証明書を渡せば HTTPS で公開する
+        ssl_certfile=config.get("ssl_certfile"),
+        ssl_keyfile=config.get("ssl_keyfile"),
     )
 
 

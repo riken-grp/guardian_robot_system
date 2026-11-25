@@ -15,6 +15,9 @@ class RegisterDBBumperNode(MongoDBNode):
         mongo_uri, mongo_port, dbname = self._init_mongo_params("")
 
         self.physical_db = DBManager(mongo_uri, mongo_port, dbname, "physical_topic")
+        # 同じバンパー接触を何度も登録しないための間隔 [s]
+        self.declare_parameter("min_interval_sec", 60.0)
+        self.min_interval_ns = float(self.get_parameter("min_interval_sec").value) * 1e9
         self.last_bumper_time = None
 
         self.sub_dbg = self.create_subscription(
@@ -28,7 +31,7 @@ class RegisterDBBumperNode(MongoDBNode):
         val = bumper.data
         if val == 1:
             now = self.get_clock().now()
-            if self.last_bumper_time is None or (now - self.last_bumper_time).nanoseconds >= 6e10:
+            if self.last_bumper_time is None or (now - self.last_bumper_time).nanoseconds >= self.min_interval_ns:
                 self.physical_db.insert("bumper", {"value": val}, priority=100)
                 self.last_bumper_time = now
 

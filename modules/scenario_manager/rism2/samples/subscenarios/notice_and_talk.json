@@ -27,6 +27,11 @@
       "no_people": null
     },
     {
+      "person_disappear": {
+        "instance_id": "{triggered[instance_id]}"
+      }
+    },
+    {
       "conversation_finished": null
     }
   ],
@@ -70,6 +75,24 @@
         "eye": {
           "type": "normal",
           "image": "smile.jpg",
+          "duration": 2
+        }
+      }
+    ],
+    "person_disappear": [
+      {
+        "actor": "robot1",
+        "type": "action",
+        "interruptable": false,
+        "speak": {
+          "type": "normal",
+          "option": {
+            "text": "あれ、行っちゃいましたね。"
+          }
+        },
+        "eye": {
+          "type": "normal",
+          "image": "sad.jpg",
           "duration": 2
         }
       }

@@ -7,7 +7,6 @@ from pyowm.commons.exceptions import InvalidSSLCertificateError
 from pyowm.owm import OWM
 from pyowm.utils import formatting
 from pyowm.utils.config import get_default_config
-from rclpy import qos
 from .dbmanager import TopicDBManager
 from .mongo_node_base import MongoDBNode
 from .mongo_utils import load_config

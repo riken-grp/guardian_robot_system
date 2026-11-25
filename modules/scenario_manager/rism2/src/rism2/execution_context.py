@@ -9,7 +9,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .event_model import Event, WaitingEvent
 from .scenario_model import Scenario
@@ -58,6 +58,8 @@ class Frame:
     exit_requested: bool = False           # 残りのイベントを打ち切る（scenario_exit か exit_condition）
     exit_condition_met: bool = False       # exit_condition で打ち切った（exit_events を実行する）
     exit_trigger_events: List[str] = field(default_factory=list)  # exit_condition に合った観測のイベント名
+    # exit_condition のプレースホルダーを置き換えたもの (置き換えに使った triggered_observation, 条件の配列)
+    resolved_exit_conditions: Optional[Tuple[Dict[str, Any], List[Dict[str, Any]]]] = None
     # 割り込み検知に取らせないもの（割り込み検知は、すべてのフレームの分を見る）
     event_ignores: List[List[str]] = field(default_factory=list)  # 実行中のイベントの ignore_interruptions（入れ子の順）
     reserved_events: Set[str] = field(default_factory=set)        # wait_for などが今待っているイベント名

@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8 -*-
-import datetime
 
-import message_filters
-import numpy as np
 import rclpy
 from .mongo_node_base import MongoDBNode
 
 from .dbmanager import TopicDBManager
 
 
-class RegisterDBNode(MongoDBNode):
-    def __init__(self, name="RegisterDBNode"):
+class ModifyPriorityNode(MongoDBNode):
+    """physical_topic / cyber_topic の全イベントの priority を毎秒 1 減らし，0 未満を消す."""
+
+    def __init__(self, name="ModifyPriorityNode"):
         super().__init__(name)
 
         mongo_uri, mongo_port, dbname = self._init_mongo_params("")
@@ -27,6 +26,6 @@ class RegisterDBNode(MongoDBNode):
 
 def main():
     rclpy.init()
-    node = RegisterDBNode()
+    node = ModifyPriorityNode()
     rclpy.spin(node)
     rclpy.shutdown()

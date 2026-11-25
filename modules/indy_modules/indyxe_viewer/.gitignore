@@ -1,2 +1,5 @@
 __pycache__/
 .venv/
+
+# HTTPS certificate for the web UI
+*.pem

@@ -314,6 +314,24 @@ h2 { font-size: var(--font-size-20); color: var(--color-neutral-black); margin-b
 }
 .heard__face-button:hover .heard__face { outline: 2px solid var(--color-key-900); }
 
+/* 聞き取った言葉の形態素 (品詞の大分類で色分け) */
+.heard__body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.morph { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px; font-size: var(--font-size-14); }
+.morph__token {
+    padding: 0 4px;
+    border-bottom: 2px solid var(--color-neutral-solid-gray-420);
+    border-radius: 4px 4px 0 0;
+    background: var(--color-neutral-solid-gray-50);
+    color: var(--color-neutral-solid-gray-800);
+    cursor: help;
+}
+.morph__token rt { font-size: 0.7em; color: var(--color-neutral-solid-gray-600); }
+.morph__token--noun { border-bottom-color: var(--color-key-900); background: var(--color-key-50); }
+.morph__token--verb { border-bottom-color: var(--color-semantic-success-2); background: var(--color-primitive-green-50); }
+.morph__token--adj { border-bottom-color: var(--color-semantic-warning-orange-2); background: var(--color-primitive-orange-50); }
+.morph-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; font-size: var(--font-size-14); }
+.morph-legend .morph__token { cursor: default; }
+
 /* 顔画像の拡大表示 */
 .face-dialog {
     padding: 0;
@@ -599,3 +617,39 @@ h2 { font-size: var(--font-size-20); color: var(--color-neutral-black); margin-b
 .tl-tip__def p { margin: 0 0 8px; }
 .tl-tip__events { margin: 8px 0 0; padding-left: 1.5em; }
 .tl-tip__events li { margin: 2px 0; overflow-wrap: anywhere; }
+
+/* ロボットに話しかける (押しながら話す) */
+.voice-input {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+}
+.voice-input__button {
+    min-width: 200px;
+    touch-action: none;  /* 長押しでスクロール・メニューが出ないように */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+.voice-input__button[aria-pressed="true"] {
+    background: var(--color-key-1200);
+    outline: 4px solid var(--color-key-200);
+}
+.voice-input__button:disabled { cursor: not-allowed; background: var(--color-neutral-solid-gray-420); text-decoration: none; }
+.voice-input__meter {
+    flex: none;
+    width: 120px;
+    height: 8px;
+    overflow: hidden;
+    background: var(--color-neutral-solid-gray-50);
+    border: 1px solid var(--color-neutral-solid-gray-420);
+    border-radius: var(--border-radius-full);
+}
+.voice-input__meter > span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--color-key-900);
+}
+.voice-input__status { flex: 1 1 280px; margin: 0; }

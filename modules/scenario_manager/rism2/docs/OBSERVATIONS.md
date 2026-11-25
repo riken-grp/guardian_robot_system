@@ -54,12 +54,12 @@ pyindy の `PhysicalDBWriter(uri, port, "tBlackBoard", <イベント名>).insert
 
 ## no_people / many_people（人数）
 
-送るもの：`db_management` の `check_num_of_person_node`。0.5 秒ごとに tracking の人（`class_id: 0`）の数を数え、変わったときに送る。priority 50。
+送るもの：`db_management` の `register_db_recog_node`（`dbmanager.check_events`）。0.5 秒ごとに tracking の人（`class_id: 0`）の数を数え、変わったときに送る。priority 50。
 
 | イベント | 送るとき | contents |
 |---|---|---|
 | `no_people` | 人数が 0 になったとき | `{"num_people": 0}` |
-| `many_people` | 人数が 3 以下から 4 以上になったとき | `{"num_people": 5}` |
+| `many_people` | 人数が 3 以下から 4 以上になったとき（`many_people_threshold`） | `{"num_people": 5}` |
 
 シナリオでの使い方：対話の打ち切り `"exit_condition": [{"no_people": null}, ...]`。
 
@@ -81,6 +81,7 @@ pyindy の `PhysicalDBWriter(uri, port, "tBlackBoard", <イベント名>).insert
 ## person_found / person_in_range / person_appear / person_noticed（人と、その人の反応）
 
 送るもの：ロボット側の db_management（`dbmanager.py`）。どれも1人（`instance_id`）につき1回だけ出し、見失ったら消す。
+見失って 15 秒（`lost_grace_sec`）以内に同じ `instance_id` が戻ってきたら同じ人として扱い、person_found などは出し直さない（挨拶し直さない）。
 
 ```json
 // person_found: 初めて見つけた人（距離に関係なく）。奥行きが取れないと distance は null
@@ -97,9 +98,38 @@ pyindy の `PhysicalDBWriter(uri, port, "tBlackBoard", <イベント名>).insert
              "raising_hand": false, "approaching": false, "distance": 4.1, ...}}
 ```
 
+```json
+// person_too_near: 0.5 m（too_near_distance）より近づいた人。0.7 m より離れたら消え、また近づいたら出る
+"contents": {"instance_id": 7, "distance": 0.4, "location_sensor": [0.0, 0.1, 0.4]}
+
+// person_disappear: 立ち去った人。priority 50。見失ったときの様子で出す時を変える
+//   画像の左右の端で消えた（out_of_view_left / right）・0.3 m/s 以上で離れていく途中だった（walked_away）・
+//   6 m より遠かった（too_far）: 見失って約 1 秒で出す
+//   画面の中で見失った（隠れた・検出漏れかもしれない）: 15 秒たっても戻らなければ出す（lost）
+//   出したあとで 15 秒以内に戻ってきたら消える
+"contents": {"instance_id": 7, "reason": "out_of_view_left", "lost_sec": 1.2, "stay_sec": 42.0, "min_distance": 1.2,
+             "events": ["face_detected", "person_found", "person_noticed"],  // 追跡中に出たイベント
+             "attributes": {"skirt": 0.8}, "first_seen": ..., "last_seen": ...}
+```
+
+person_appear の contents には、その時点で分かっている服装などの属性（`attributes`: 属性名 → 確からしさ。まだ無ければ空）も入る。
+
 `instance_id` はどれも同じ人には同じ値。シナリオ「遠くの人に手を挙げる」（`samples/subscenarios/notice_and_talk.json`）は
 person_in_range（3 m 以上）で発動し、`{"person_noticed": {"instance_id": "{triggered[instance_id]}"}}` で手を挙げた相手の反応だけを待つ。
 person_found は最初に見つけたときに1回しか出ないので、距離の条件を付けると、遠くで見つけた人が近づいてきても発動しない。
+
+## raising_hand / waving_hand / wheelchair / looking / long_looking / many_looking（人の動作）
+
+送るもの：db_management の `register_db_recog_node`（action_recognition の結果を tracking に書くときに判定する）。
+contents は tracking のその人の記録（位置 `location_sensor`・`location_global`、`hand_state` など。姿勢は除く）。
+
+| イベント | 送るとき | priority |
+|---|---|---|
+| `raising_hand` | 手を挙げている間だけ1件（下ろしたら消える）。認識可能領域（`recognition_available_regions`）の中の人だけ | 30 |
+| `waving_hand` | 手を振っている間だけ1件（やめたら消える）。認識可能領域の中の人だけ | 100 |
+| `wheelchair` | 車椅子に座っている人。追跡中1回 | 100 |
+| `looking` / `long_looking` | target（1 / 2）を 0.2 秒 / 1 秒以上見続けている人がいる間。target ごとに1件（`{"target": 1, "duration": 秒}`） | 50 |
+| `many_looking` | target を 1 秒以上見ている人が 5 人以上（`{"target": 1, "num_person": 5}`） | 50 |
 
 ## keyword_wake（話しかけの意図）
 

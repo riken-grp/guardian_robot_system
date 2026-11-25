@@ -143,6 +143,56 @@
         }
       }
     },
+    "person_too_near": {
+      "type": "object",
+      "required": [
+        "instance_id",
+        "distance"
+      ],
+      "properties": {
+        "instance_id": {
+          "$ref": "#/$defs/id"
+        },
+        "distance": {
+          "type": "number",
+          "minimum": 0,
+          "description": "近づきすぎた人までの距離 [m]（db_management の too_near_distance 未満）"
+        }
+      }
+    },
+    "person_disappear": {
+      "type": "object",
+      "required": [
+        "instance_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "$ref": "#/$defs/id"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["out_of_view_left", "out_of_view_right", "walked_away", "too_far", "lost"],
+          "description": "out_of_view_*（画像の端から出た）/ walked_away（離れていった）/ too_far（遠い）は見失って約1秒で出る。lost は画面の中で見失って 15 秒戻らなかった"
+        },
+        "lost_sec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "最後に見えてから出すまでの時間 [s]"
+        },
+        "stay_sec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "見つけてから見失うまでの時間 [s]"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "追跡中に出たイベント（person_found, face_detected など）"
+        }
+      }
+    },
     "person_noticed": {
       "type": "object",
       "required": [
@@ -217,6 +267,7 @@
     "person_in_range",
     "person_appear",
     "person_noticed",
+    "person_disappear",
     "conversation_finished",
     "keyword_wake",
     "qr_code",

@@ -11,9 +11,11 @@
   <depend>std_msgs</depend>
   <depend>ssl_msgs</depend>
   <depend>common_msgs</depend>
+  <depend>tf2_ros</depend>
 
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-scipy</exec_depend>
+  <!-- morph_node uses janome (pip install janome; no rosdep key). Optional. -->
 
   <test_depend>python3-pytest</test_depend>
 

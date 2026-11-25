@@ -24,11 +24,25 @@ def generate_launch_description():
         additional_env={'CUDA_VISIBLE_DEVICES': CUDA_VISIBLE_DEVICES},
         remappings=[
             ('in_speech_segments', 'recog/ssl/identified_speech_segments'),
-            ('out_raw_text', 'recog/ssl/asr/raw_text'),
+            ('out_result', 'recog/ssl/asr/result'),
+        ],
+        output='screen',
+    )
+
+    # Adds Janome morphological analysis (morph) to the ASR results
+    morph_node = Node(
+        package='ssl_asr',
+        executable='morph_node',
+        name='morph_node',
+        namespace=ROBOT_NAME,
+        remappings=[
+            ('in_result', 'recog/ssl/asr/result'),
+            ('out_analyzed', 'recog/ssl/asr/analyzed'),
         ],
         output='screen',
     )
 
     return LaunchDescription([
         asr_node,
+        morph_node,
     ])

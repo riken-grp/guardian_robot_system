@@ -160,7 +160,7 @@ fi
 |02_indyXe_rover_base.sh|rover_base.launch.py|ローバの基本的な機能を起動する。<br>・amr_ros_driver.launch.py（ローバ制御の基本的な動作機能）<br>・rover_wrapper.launch.py（ローバ制御の補助的な動作機能）<br>・amr_description.launch.py（ロボットの形状情報(URDF)の生成機能）<br>・auto_charge.launch.py（自動充電機能）<br>・battery_log_launch.py（バッテリー状態の記録機能）<br>・laserscan_multi_merger_launch.py（二つのLiDARのLaserScanの統合機能）|
 |03_indyXe_slam_toolbox.sh|rover_slam.launch.py|ナビゲーション機能を起動する。<br>・localization_launch.py（自己位置推定機能）<br>・navigation_launch.py（ナビゲーション機能）|
 |04_indyXe_robot_base.sh|robot_base.launch.py|眼と腕、首の関節の制御機能を起動する。<br>・eye_control.launch.py（眼球モニタの制御機能）<br>・arm_bringup.launch.py（腕用モータの制御機能）<br>・motor_control.launch.py（首用モータの制御機能）|
-|05_indyXe_microphone_array.sh|microphone_array.launch.py|マイクの音声取得ノードを起動する。<br>※10_indyXe_mic2sock_16ch.shとは同時に起動できない（どちらか一方のみenableに入れる）。|
+|05_indyXe_microphone_array.sh|microphone_array.launch.py|マイクの音声取得ノードを起動する。<br>ALSAの入力デバイスは引数、無ければ環境変数（MIC_ARRAY_DEVICE）から取得する（未設定の場合は plughw:RASPZX16ch.0）。<br>※10_indyXe_mic2sock_16ch.shとは同時に起動できない（どちらか一方のみenableに入れる）。|
 |10_indyXe_mic2sock_16ch.sh|-|マイクとスピーカーを用いて音声を送受信するRust製のリアルタイム音声通信プロジェクトを実行する。<br>※05_indyXe_microphone_array.shとは同時に起動できない（どちらか一方のみenableに入れる）。|
 |10_indyXe_robot_sense.sh|robot_sense.launch.py|頭部、胸付近の機器を起動する。<br>・lidar_ht_launch.py（胸元のLiDAR）<br>・rs_camera_recog_launch.py（頭部のRealSense）|
 |10_indyXe_send_audio_server.sh|pa_send_audio_server.sh|pa_send_audio_serverを起動し監視する。<br>終了した場合は、再起動する。|
@@ -168,7 +168,9 @@ fi
 |20_grs_action_gesture.sh|gestures_modes_ac_launch.py|Indyのジェスチャーを管理・実行するためのROS2 Actionベースのシステムを起動する。|
 |20_grs_action_nav.sh|nav_smr_launch.py|MongoDBに登録された移動命令を読み取り、ローバへ実行指示を出す。<br>その進行状況・エラー・バッテリー・位置情報を定期的にMongoDBとROSトピックに送信する機能を起動する。|
 |20_grs_action_ros_command.sh|ros_command_launch.py|MongoDBに登録されたROSコマンドを監視し、指定されたトピックへメッセージを送信する機能を起動する。|
+|20_grs_action_audio_play.sh|audio_play_launch.py|robot/play_audio で受け取った音声を、そのままロボットのスピーカーで再生する機能を起動する。|
 |20_grs_action_tts.sh|tts_launch.py|MongoDBに登録された発話指示を取得し、音声合成して再生する機能を起動する。|
+|20_grs_action_volume.sh|volume_launch.py|robot/set_volume で受け取った値(%)にスピーカーの音量を変更する機能を起動する。|
 |20_grs_action_watchdog.sh|ros_watchdog_launch.py|ROS上の発話・音声認識・バッテリー情報を監視し、その内容のMongoDBへの記録や、バッテリー状態に応じたイベント発行を行う機能を実行する。|
 |30_chat_monitor.sh|getData.js|MongoDBに保存された発話データをWebブラウザへ配信するためのWebサーバを起動する。<br>MongoDBの接続先は引数、無ければ環境変数（MONGO_URI、MONGO_PORT）から取得する。|
 |30_indyxe_viewer.sh|main.py（indyxe_viewer）|ロボットの状態表示・操作画面(Webページ)を起動する。標準では登録しない。<br>ロボット名は環境変数ROBOT_NAME、MongoDBの接続先は引数、無ければ環境変数（MONGO_URI、MONGO_PORT）から取得する。ポートは環境変数INDYXE_VIEWER_PORT（未設定時は8000）。uvが必要。|
@@ -178,7 +180,7 @@ fi
 |50_grsrv_llm_responder.sh|llm_responder_launch.py|人の発話に対してLLMで返答を考える機能を起動する。|
 |50_grsrv_memory.sh|all_memory_launch.py|履歴(記憶)機能を起動する。<br>・memory_node_launch.py（履歴(記憶)の書き込み機能）|
 |50_grsrv_recognition.sh|recognition.launch.py|カメラ画像を使った認識AI機能をまとめて起動する。|
-|50_grsrv_ros_asr.sh|ssl_bringup ssl_server.launch.py|asr_nodeを起動する。<br>recog/ssl/identified_speech_segmentsで受け取った音声区間を音声認識し、認識結果を recog/ssl/asr/raw_text に出力する。|
+|50_grsrv_ros_asr.sh|ssl_bringup ssl_server.launch.py|asr_node、morph_nodeを起動する。<br>recog/ssl/identified_speech_segmentsで受け取った音声区間を音声認識し、認識結果を recog/ssl/asr/result に、形態素解析を付けた結果を recog/ssl/asr/analyzed に出力する。|
 |50_grsrv_vad_for_camera.sh|at_for_outside_camera.launch.py|話し手の情報、位置、音量、発話状態などをトピックとして配信する機能を起動する。|
 |60_robodj_chat_monitor.sh|getData.js|robodj用。MongoDBに保存された発話データをWebブラウザへ配信するためのWebサーバを起動する。|
 |60_robodj_sensors.sh|sensors.launch.py|robodj用。RealSenseカメラを起動する(ROBOT_NAME=robodj)。|

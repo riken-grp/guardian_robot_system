@@ -1,5 +1,8 @@
 /**/arm_state_node:
   ros__parameters:
+    # COCO-17 keypoints (0 nose, 1/2 eyes, 3/4 ears, 5/6 shoulders, 7/8 elbows, 9/10 wrists).
+    # l_ear / r_ear は「手首がこの高さより上なら挙手」の基準点で、実際は目 (1/2) を使っている。
+    # 目と耳の高さはほぼ同じで、正面向きでは目のほうが検出されやすい。
     keypoint_indices:
       l_ear: 1
       l_shoulder: 5
@@ -17,7 +20,8 @@
     model_path: "models/hand_waving_model.joblib"
     model_repo_id: "yasutomo57jp/models-for-IndyXe"
     model_revision: "main"
-    seq_len: 5
+    seq_len: 5               # frames (the model is trained on consecutive frames)
+    max_gap_sec: 1.0         # drop the sequences after a gap of frames longer than this [s]
 
 /**/looking_at_simple_node:
   ros__parameters:

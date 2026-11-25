@@ -2,27 +2,28 @@
 # coding: utf-8 -*-
 """tracked object / body pose / face の対応付けノード.
 
-各トピックを stamp 付きでバッファに貯め、出力はそれぞれ自分のメッセージ起点で 1 回だけ行う。
-- pose/associated : pose 1 件ごと。同時刻の tracked から instance_id を付ける
-- face/associated : face 1 件ごと。同時刻の (instance_id 付き) pose を参照して instance_id を付ける
-相手メッセージは参照するだけで pop しないので、複数から参照されても重複出力は起きない。
+frame_gate_node が全認識ノードに同じフレーム (同じ stamp) を配るので、同じフレームの
+結果は stamp が完全一致する。stamp をキーに対応付ける:
 
-確定タイミング:
-- stamp が完全一致する相手があれば即確定 (同じ画像フレームを処理した結果)
-- なければ相手トピックの最新 stamp が t + slop を超える (= 候補が出揃う) か、
-  match_timeout 経過で slop 以内の最近傍に確定
+- pose/associated : pose 1 件ごと。同じ stamp の tracked から instance_id を付ける
+- face/associated : face 1 件ごと。同じ stamp の (instance_id 付き) pose を参照して付ける
+
+各ノードは stamp 順に処理するので、相手トピックの最新 stamp が t を過ぎても t が
+来ていなければ、相手はそのフレームを飛ばした (処理が追いつかず古いフレームを捨てた)。
+そのときだけ ``*_slop`` 以内の最も近いフレームで代用し、無ければ出力しない
+(旧 ApproximateTimeSynchronizer と同じ)。相手が止まっている場合は ``match_timeout``
+で同じ扱いにする。相手メッセージは参照するだけで pop しないので重複出力は起きない。
 """
-import datetime
 import time
-from collections import defaultdict, deque
+from collections import OrderedDict, deque
 from dataclasses import dataclass
 
 import numpy as np
 import rclpy
-from pymongo import MongoClient
 from rclpy import qos
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from recognition_msgs.msg import Objects, Persons, Relations
+from recognition_msgs.msg import Objects, Persons
 
 from . import configs as cfg
 
@@ -34,135 +35,222 @@ class _Pending:
     arrival: float  # time.monotonic()
 
 
-class _MatchStats:
-    """照合結果を集計し、一定間隔でログに出す."""
+class _StampBuffer:
+    """stamp [ns] -> msg (参照専用。古いものは prune で捨てる)."""
 
-    KEYS = (
-        "track_in",
-        "pose_in",
-        "pose_exact",
-        "pose_approx",
-        "pose_no_track",
-        "face_in",
-        "face_exact",
-        "face_approx",
-        "face_no_pose",
-    )
+    def __init__(self):
+        self.items = OrderedDict()
+        self.latest = None  # 受信した最新 stamp
+
+    def add(self, stamp, msg):
+        self.items[stamp] = msg
+        self.seen(stamp)
+
+    def seen(self, stamp):
+        self.latest = stamp if self.latest is None else max(self.latest, stamp)
+
+    def passed(self, stamp):
+        """stamp 以降のフレームが既に来ている (= stamp はもう来ない)."""
+        return self.latest is not None and self.latest >= stamp
+
+    def nearest(self, stamp, slop_ns):
+        """slop 以内の最も近い msg (無ければ None) と stamp 差 [ns]."""
+        best = min(self.items, key=lambda s: abs(s - stamp), default=None)
+        if best is None:
+            return None, None
+        diff = abs(best - stamp)
+        return (self.items[best] if diff <= slop_ns else None), diff
+
+    def prune(self, horizon):
+        while self.items and next(iter(self.items)) < horizon:
+            self.items.popitem(last=False)
+
+
+class _MatchStats:
+    """照合結果を集計し、一定間隔でログに出す.
+
+    exact: 同じ stamp / near: 相手がフレームを飛ばしたので近傍で代用 / drop: 出力せず
+    """
 
     def __init__(self):
         self.reset(time.monotonic())
 
     def reset(self, now):
         self.t_start = now
-        self.cnt = dict.fromkeys(self.KEYS, 0)
+        self.cnt = {k: 0 for k in ("track", "pose", "face")}
+        self.out = {k: {"exact": 0, "near": 0, "drop": 0} for k in ("pose", "face")}
         self.delay = {"pose": [], "face": []}
-        self.miss_diff = {"pose": [], "face": []}
 
     @staticmethod
-    def _summary(values, scale=1e3):
+    def _summary(values):
         if not values:
             return "-"
-        return f"avg={np.mean(values) * scale:.0f}ms max={np.max(values) * scale:.0f}ms"
+        return f"avg={np.mean(values) * 1e3:.0f}ms max={np.max(values) * 1e3:.0f}ms"
 
     def format(self, now, n_pending_pose, n_pending_face):
-        c = self.cnt
-        elapsed = now - self.t_start
-        pose_out = c["pose_exact"] + c["pose_approx"]
-        face_out = c["face_exact"] + c["face_approx"]
-        return (
-            f"[assoc {elapsed:.0f}s] "
-            f"track in={c['track_in']} | "
-            f"pose in={c['pose_in']} out={pose_out} "
-            f"(exact={c['pose_exact']} approx={c['pose_approx']} no_track={c['pose_no_track']}) "
-            f"delay {self._summary(self.delay['pose'])} "
-            f"miss_diff {self._summary(self.miss_diff['pose'])} | "
-            f"face in={c['face_in']} out={face_out} "
-            f"(exact={c['face_exact']} approx={c['face_approx']} no_pose={c['face_no_pose']}) "
-            f"delay {self._summary(self.delay['face'])} "
-            f"miss_diff {self._summary(self.miss_diff['face'])} | "
-            f"pending pose={n_pending_pose} face={n_pending_face}"
-        )
-
-
-_WAIT = object()
+        parts = [f"[assoc {now - self.t_start:.0f}s] track in={self.cnt['track']}"]
+        for k in ("pose", "face"):
+            o = self.out[k]
+            parts.append(
+                f"{k} in={self.cnt[k]} (exact={o['exact']} near={o['near']} "
+                f"drop={o['drop']}) wait {self._summary(self.delay[k])}"
+            )
+        parts.append(f"pending pose={n_pending_pose} face={n_pending_face}")
+        return " | ".join(parts)
 
 
 class AssociationNode(Node):
-    def __init__(self, name="RegisterDBNode"):
+    def __init__(self, name="association_node"):
         super().__init__(name)
-        self._declare_parameters()
-        self._initialize_components()
-        self._initialize_publishers_and_subscribers()
-
-    def _declare_parameters(self):
         # IoU threshold for matching boxes of two different models (tracker vs
         # pose); 0.9 was too strict after tracker smoothing
         self.declare_parameter("iou_threshold", 0.5)
-        # tracked <-> pose の許容 stamp 差 [s] (旧 ApproximateTimeSynchronizer の slop)
-        self.declare_parameter("track_slop", 0.2)
-        # pose <-> face の許容 stamp 差 [s]
-        self.declare_parameter("face_slop", 0.2)
-        # 相手が出揃わなくても確定させるまでの待ち時間 [s]
-        self.declare_parameter("match_timeout", 3.0)
+        # 相手がフレームを飛ばしたときに代用する近傍フレームの許容 stamp 差 [s]
+        self.declare_parameter("track_slop", 0.2)  # tracked <-> pose
+        self.declare_parameter("face_slop", 0.2)  # pose <-> face
+        # 相手トピックが来ないときに諦めるまでの待ち時間 [s]
+        self.declare_parameter("match_timeout", 1.0)
         # 参照用に保持する期間 [s] (最新 stamp からこれより古いものは捨てる)
-        self.declare_parameter("buffer_duration", 10.0)
+        self.declare_parameter("buffer_duration", 5.0)
         self.declare_parameter("stats_period", 10.0)
 
-    def _initialize_components(self):
         self.iou_threshold = self.get_parameter("iou_threshold").value
         self.track_slop_ns = int(self.get_parameter("track_slop").value * 1e9)
         self.face_slop_ns = int(self.get_parameter("face_slop").value * 1e9)
         self.match_timeout = float(self.get_parameter("match_timeout").value)
         self.buffer_ns = int(self.get_parameter("buffer_duration").value * 1e9)
-        self.stats_period = float(self.get_parameter("stats_period").value)
-
-        self.tracking = {}
 
         self._reset_buffers()
         self.stats = _MatchStats()
 
-    def _reset_buffers(self):
-        # 参照専用 (pop しない。古いものは _prune で捨てる)
-        self.tracks = deque()  # (stamp_ns, Objects)
-        self.resolved_poses = deque()  # (stamp_ns, Persons with instance_id)
-        # 確定待ち
-        self.pending_poses = []  # [_Pending(Persons)]
-        self.pending_faces = []  # [_Pending(Persons)]
-        # 各トピックで受信した最新 stamp
-        self.latest_track_ns = None
-        self.latest_pose_ns = None
-        self.latest_face_ns = None
-
-    def _initialize_publishers_and_subscribers(self):
         self.pub_poses = self.create_publisher(
-            Persons, "out_person_topic", qos_profile=qos.qos_profile_system_default
+            Persons, "out_person_topic", qos.qos_profile_system_default
         )
         self.pub_faces = self.create_publisher(
-            Persons, "out_face_topic", qos_profile=qos.qos_profile_system_default
+            Persons, "out_face_topic", qos.qos_profile_system_default
         )
+        self.create_subscription(
+            Objects, "in_track_topic", self.callback_track, qos.qos_profile_system_default
+        )
+        self.create_subscription(
+            Persons, "in_person_topic", self.callback_pose, qos.qos_profile_system_default
+        )
+        self.create_subscription(
+            Persons, "in_face_topic", self.callback_face, qos.qos_profile_system_default
+        )
+        # match_timeout 用 (コールバックと同じスレッドで動くのでロック不要)
+        self.create_timer(0.1, self._process)
+        self.create_timer(float(self.get_parameter("stats_period").value), self._log_stats)
 
-        self.sub_track = self.create_subscription(
-            Objects,
-            "in_track_topic",
-            self.callback_track,
-            qos_profile=qos.qos_profile_system_default,
-        )
-        self.sub_pose = self.create_subscription(
-            Persons,
-            "in_person_topic",
-            self.callback_pose,
-            qos_profile=qos.qos_profile_system_default,
-        )
-        self.sub_face = self.create_subscription(
-            Persons,
-            "in_face_topic",
-            self.callback_face,
-            qos_profile=qos.qos_profile_system_default,
-        )
+    def _reset_buffers(self):
+        self.tracks = _StampBuffer()  # Objects
+        self.poses = _StampBuffer()  # instance_id を付けた Persons
+        self.pending_poses = deque()  # [_Pending(Persons)]
+        self.pending_faces = deque()
+        self.latest_face = None
 
-        # タイムアウト処理・古いバッファの削除用 (コールバックと同じスレッドで動くのでロック不要)
-        self.create_timer(0.05, self._process)
-        self.create_timer(self.stats_period, self._log_stats)
+    # ------------------------------------------------------------------
+    # 受信: バッファに積んで処理を試みるだけ
+    # ------------------------------------------------------------------
+    def callback_track(self, tracklets):
+        t = self._stamp_ns(tracklets.header.stamp)
+        self._check_time_jump(self.tracks.latest, t)
+        self.stats.cnt["track"] += 1
+        self.tracks.add(t, tracklets)
+        self._process()
+
+    def callback_pose(self, poses):
+        t = self._stamp_ns(poses.header.stamp)
+        self._check_time_jump(self.poses.latest, t)
+        self.stats.cnt["pose"] += 1
+        self.pending_poses.append(_Pending(t, poses, time.monotonic()))
+        self._process()
+
+    def callback_face(self, faces):
+        t = self._stamp_ns(faces.header.stamp)
+        self._check_time_jump(self.latest_face, t)
+        self.stats.cnt["face"] += 1
+        self.latest_face = t if self.latest_face is None else max(self.latest_face, t)
+        self.pending_faces.append(_Pending(t, faces, time.monotonic()))
+        self._process()
+
+    # ------------------------------------------------------------------
+    # 確定処理
+    # ------------------------------------------------------------------
+    def _process(self):
+        now = time.monotonic()
+        # pose を先に確定させる (face は instance_id 付きの pose を参照するため)
+        self.pending_poses = deque(p for p in self.pending_poses if not self._try_pose(p, now))
+        self.pending_faces = deque(f for f in self.pending_faces if not self._try_face(f, now))
+        self._prune()
+
+    def _resolve(self, item, buf, slop_ns, now, wait):
+        """item と同じ stamp の相手を buf から探す.
+
+        Returns:
+            (kind, msg): kind は "exact" / "near" / "drop"。まだ待つなら None。
+        """
+        msg = buf.items.get(item.stamp)
+        if msg is not None:
+            return "exact", msg
+        if wait and now - item.arrival <= self.match_timeout:
+            return None
+        msg, _ = buf.nearest(item.stamp, slop_ns)
+        return ("near" if msg is not None else "drop"), msg
+
+    def _try_pose(self, p, now):
+        """pose を確定できたら True (publish 済み or 破棄)."""
+        res = self._resolve(
+            p, self.tracks, self.track_slop_ns, now, wait=not self.tracks.passed(p.stamp)
+        )
+        if res is None:
+            return False
+        kind, track = res
+        self._count("pose", kind, now - p.arrival)
+        if track is None:
+            self.poses.seen(p.stamp)  # この stamp の pose はもう来ない
+            return True  # tracked が無い pose は出力しない
+        self._annotate_pose(track, p.msg)
+        self.pub_poses.publish(p.msg)
+        self.poses.add(p.stamp, p.msg)
+        return True
+
+    def _try_face(self, f, now):
+        """face を確定できたら True (publish 済み or 破棄)."""
+        # 同じ stamp の pose が確定待ちなら、その確定を待つ
+        waiting = any(p.stamp == f.stamp for p in self.pending_poses) or not (
+            self.poses.passed(f.stamp)
+        )
+        res = self._resolve(f, self.poses, self.face_slop_ns, now, wait=waiting)
+        if res is None:
+            return False
+        kind, poses = res
+        self._count("face", kind, now - f.arrival)
+        if poses is None:
+            return True  # 対応する pose が無い face は出力しない
+        self.associate_faces(poses, f.msg)
+        self.pub_faces.publish(f.msg)
+        return True
+
+    def _count(self, topic, kind, wait):
+        self.stats.out[topic][kind] += 1
+        if kind != "drop":
+            self.stats.delay[topic].append(wait)
+
+    def _annotate_pose(self, tracklets, poses):
+        person_tracklets = [
+            o for o in tracklets.objects if o.class_id == cfg.PERSON_CLASS
+        ]
+        objbbs = [o.location for o in person_tracklets]
+        pbbs = [p.body_location for p in poses.persons]
+
+        op_ious, op_match, _ = self.bb_matching(objbbs, pbbs, self.iou_threshold)
+
+        for p in poses.persons:
+            p.instance_id = -1
+        if op_ious is not None:
+            for obj_idx, p_idx in op_match:
+                poses.persons[p_idx].instance_id = person_tracklets[obj_idx].instance_id
 
     def bb_matching(self, bbs1, bbs2, iou_threshold):
         if len(bbs1) == 0 or len(bbs2) == 0:
@@ -265,142 +353,30 @@ class AssociationNode(Node):
         y_check = body[1] <= face[1] and body[1] + body[3] >= face[1] + face[3]
         return x_check and y_check
 
-
-    # ------------------------------------------------------------------
-    # 受信: バッファに積んで処理を試みるだけ
-    # ------------------------------------------------------------------
-    def callback_track(self, tracklets):
-        t = self._stamp_ns(tracklets.header.stamp)
-        self._check_time_jump(self.latest_track_ns, t)
-        self.stats.cnt["track_in"] += 1
-        self.tracks.append((t, tracklets))
-        self.latest_track_ns = self._max(self.latest_track_ns, t)
-        self._process()
-
-    def callback_pose(self, poses):
-        t = self._stamp_ns(poses.header.stamp)
-        self._check_time_jump(self.latest_pose_ns, t)
-        self.stats.cnt["pose_in"] += 1
-        self.pending_poses.append(_Pending(t, poses, time.monotonic()))
-        self.latest_pose_ns = self._max(self.latest_pose_ns, t)
-        self._process()
-
-    def callback_face(self, faces):
-        t = self._stamp_ns(faces.header.stamp)
-        self._check_time_jump(self.latest_face_ns, t)
-        self.stats.cnt["face_in"] += 1
-        self.pending_faces.append(_Pending(t, faces, time.monotonic()))
-        self.latest_face_ns = self._max(self.latest_face_ns, t)
-        self._process()
-
-    # ------------------------------------------------------------------
-    # 確定処理
-    # ------------------------------------------------------------------
-    def _process(self):
-        now = time.monotonic()
-        # pose を先に確定させる (face は instance_id 付きの pose を参照するため)
-        self.pending_poses = [p for p in self.pending_poses if not self._try_pose(p, now)]
-        self.pending_faces = [f for f in self.pending_faces if not self._try_face(f, now)]
-        self._prune()
-
-    def _try_pose(self, p, now):
-        """pose を確定できたら True (publish 済み or 破棄)."""
-        track = self._find_exact(self.tracks, p.stamp)
-        kind = "exact"
-        if track is None:
-            timed_out = now - p.arrival > self.match_timeout
-            complete = (
-                self.latest_track_ns is not None
-                and self.latest_track_ns > p.stamp + self.track_slop_ns
-            )
-            if not (complete or timed_out):
-                return False
-            diff, track = self._nearest(self.tracks, p.stamp)
-            kind = "approx"
-            if track is None or diff > self.track_slop_ns:
-                # 旧実装 (ApproximateTimeSynchronizer) 同様、tracked が無い pose は出力しない
-                self.stats.cnt["pose_no_track"] += 1
-                if diff is not None:
-                    self.stats.miss_diff["pose"].append(diff / 1e9)
-                return True
-
-        self.stats.cnt[f"pose_{kind}"] += 1
-        self.stats.delay["pose"].append(now - p.arrival)
-        self._annotate_pose(track, p.msg)
-        self.pub_poses.publish(p.msg)
-        self.resolved_poses.append((p.stamp, p.msg))
-        return True
-
-    def _try_face(self, f, now):
-        """face を確定できたら True (publish 済み or 破棄)."""
-        poses = self._find_exact(self.resolved_poses, f.stamp)
-        kind = "exact"
-        if poses is None:
-            timed_out = now - f.arrival > self.match_timeout
-            if not timed_out:
-                # 完全一致の pose がまだ確定待ちなら待つ
-                if any(p.stamp == f.stamp for p in self.pending_poses):
-                    return False
-                # slop 内の pose が確定待ち、または pose 側の候補が出揃っていなければ待つ
-                if any(
-                    abs(p.stamp - f.stamp) <= self.face_slop_ns
-                    for p in self.pending_poses
-                ):
-                    return False
-                complete = (
-                    self.latest_pose_ns is not None
-                    and self.latest_pose_ns > f.stamp + self.face_slop_ns
-                )
-                if not complete:
-                    return False
-            diff, poses = self._nearest(self.resolved_poses, f.stamp)
-            kind = "approx"
-            if poses is None or diff > self.face_slop_ns:
-                # 旧実装同様、対応する pose が無い face は出力しない
-                self.stats.cnt["face_no_pose"] += 1
-                if diff is not None:
-                    self.stats.miss_diff["face"].append(diff / 1e9)
-                return True
-
-        self.stats.cnt[f"face_{kind}"] += 1
-        self.stats.delay["face"].append(now - f.arrival)
-        self.associate_faces(poses, f.msg)
-        return True
-
-    def _annotate_pose(self, tracklets, poses):
-        person_tracklets = [
-            o for o in tracklets.objects if o.class_id == cfg.PERSON_CLASS
-        ]
-        objbbs = [o.location for o in person_tracklets]
+    def associate_faces(self, poses, faces):
         pbbs = [p.body_location for p in poses.persons]
+        fbbs = [p.face_location for p in faces.persons]
 
-        op_ious, op_match, unmatched_pose = self.bb_matching(
-            objbbs, pbbs, self.iou_threshold
-        )
+        face_body_matches = self.face_check(pbbs, fbbs)
 
-        for p in poses.persons:
-            p.instance_id = -1
+        for f in faces.persons:
+            f.instance_id = -1
 
-        if op_ious is not None:
-            for obj_idx, p_idx in op_match:
-                o = person_tracklets[obj_idx]
-                poses.persons[p_idx].instance_id = o.instance_id
+        for p_idx, p in enumerate(poses.persons):
+            if p_idx in face_body_matches:
+                f_idx = face_body_matches[p_idx]
+                faces.persons[f_idx].instance_id = p.instance_id
+
 
     # ------------------------------------------------------------------
     # バッファ管理
     # ------------------------------------------------------------------
     def _prune(self):
-        latest = [
-            t
-            for t in (self.latest_track_ns, self.latest_pose_ns, self.latest_face_ns)
-            if t is not None
-        ]
-        if not latest:
-            return
-        horizon = max(latest) - self.buffer_ns
-        for buf in (self.tracks, self.resolved_poses):
-            while buf and buf[0][0] < horizon:
-                buf.popleft()
+        latest = [t for t in (self.tracks.latest, self.poses.latest, self.latest_face) if t is not None]
+        if latest:
+            horizon = max(latest) - self.buffer_ns
+            self.tracks.prune(horizon)
+            self.poses.prune(horizon)
 
     def _check_time_jump(self, latest, t):
         # rosbag のループ再生などで stamp が大きく巻き戻ったらバッファを捨てる
@@ -421,47 +397,14 @@ class AssociationNode(Node):
     def _stamp_ns(stamp):
         return stamp.sec * 1_000_000_000 + stamp.nanosec
 
-    @staticmethod
-    def _max(a, b):
-        return b if a is None else max(a, b)
-
-    @staticmethod
-    def _find_exact(buf, t):
-        for s, msg in reversed(buf):
-            if s == t:
-                return msg
-        return None
-
-    @staticmethod
-    def _nearest(buf, t):
-        """(stamp 差 ns, msg) を返す。空なら (None, None)."""
-        best_diff, best = None, None
-        for s, msg in buf:
-            d = abs(s - t)
-            if best_diff is None or d < best_diff:
-                best_diff, best = d, msg
-        return best_diff, best
-
-    def associate_faces(self, poses, faces):
-        pbbs = [p.body_location for p in poses.persons]
-        fbbs = [p.face_location for p in faces.persons]
-
-        face_body_matches = self.face_check(pbbs, fbbs)
-
-        for f in faces.persons:
-            f.instance_id = -1
-
-        for p_idx, p in enumerate(poses.persons):
-            if p_idx in face_body_matches:
-                f_idx = face_body_matches[p_idx]
-                faces.persons[f_idx].instance_id = p.instance_id
-
-        self.pub_faces.publish(faces)
-
-
 
 def main():
     rclpy.init()
     node = AssociationNode()
-    rclpy.spin(node)
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()

@@ -86,3 +86,21 @@ def test_waving_ring_buffer_wraps():
         rec(_frame(SimpleNamespace(instance_id=1, pose_sensor=SimpleNamespace(keypoints=frames[-1].tolist()))))
     expected = np.concatenate([normalize_keypoints(f) for f in frames[-2:]])
     np.testing.assert_allclose(model.features[0], expected)
+
+
+def _stamped(sec, *ps):
+    f = _frame(*ps)
+    f.header = SimpleNamespace(
+        stamp=SimpleNamespace(sec=int(sec), nanosec=int(round((sec % 1) * 1e9)))
+    )
+    return f
+
+
+def test_waving_sequence_dropped_after_gap():
+    rec = WavingHandRecognizer(model=_FakeModel(), seq_len=3, max_gap_sec=1.0)
+    assert rec(_stamped(10.0, _person(1, 0))) == [0]
+    assert rec(_stamped(10.1, _person(1, 1))) == [0]
+    # network stall of 2 s: the next frame starts a new sequence
+    assert rec(_stamped(12.1, _person(1, 2))) == [0]
+    assert rec(_stamped(12.2, _person(1, 3))) == [0]
+    assert rec(_stamped(12.6, _person(1, 4))) == [1]  # 0.4 s gap is kept

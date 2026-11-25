@@ -2,21 +2,36 @@
 # coding: utf-8 -*-
 
 import json
+import time
 
 import rclpy
 from common_msgs.msg import StringStamped
 from rclpy import qos
 from .mongo_node_base import MongoDBNode
-from std_msgs.msg import String
 
 from .dbmanager import TopicDBManager
 
-# ASR source port classification
+# ASR source port classification (kad/asr)
 WHISPER_HT_PORTS = list(range(5562, 5568))   # Whisper + Human Tracker (5562-5567)
 WHISPER_NAIVE_PORT = 5568                      # Whisper + standard microphone
 
+# このソースが黙っているとみなすまでの時間 [s]
+WHISPER_HT_TIMEOUT = 60.0
+WHISPER_NAIVE_TIMEOUT = 30.0
+
 
 class RegisterDBASRNode(MongoDBNode):
+    """ASR の結果を physical_topic に登録する．
+
+    ソースは互いに独立に扱う:
+      - ssl_asr (in_ssl_asr_topic): 話者 (person_id = instance_id) 付き．常に登録する
+      - kad/asr (in_asr_topic): sep_port で Human Tracker / 通常マイク / その他を区別し，
+        通常マイクとその他は Human Tracker が応答していない間だけ登録する
+
+    ignore_non_looking のときは，話者が分かる結果 (ssl と Human Tracker) は
+    ロボットを見ている人の発話だけ登録する．
+    """
+
     def __init__(self, name="RegisterDBASRNode"):
         super().__init__(name)
 
@@ -25,16 +40,16 @@ class RegisterDBASRNode(MongoDBNode):
         self.dbmanager = TopicDBManager(mongo_uri, mongo_port, dbname)
 
         self.vap_status = False
-        self.sub_dbg = self.create_subscription(
-            String,
-            "in_asr_dbg_topic",
-            self.callback_asr_dbg,
-            qos_profile=qos.qos_profile_system_default,
-        )
         self.sub = self.create_subscription(
             StringStamped,
             "in_asr_topic",
             self.callback_asr,
+            qos_profile=qos.qos_profile_system_default,
+        )
+        self.sub_ssl = self.create_subscription(
+            StringStamped,
+            "in_ssl_asr_topic",
+            self.callback_ssl_asr,
             qos_profile=qos.qos_profile_system_default,
         )
         self.sub_vap = self.create_subscription(
@@ -43,59 +58,56 @@ class RegisterDBASRNode(MongoDBNode):
             self.callback_vap,
             qos_profile=qos.qos_profile_system_default,
         )
-        # Timer
-        self.timer = self.create_timer(0.1, self.timer_callback)
-        self.whisper_ht_interval = 600
-        self.whisper_naive_interval = 300
+        # 各ソースが最後に結果を出した時刻 (起動直後は応答しているとみなす)
+        now = time.monotonic()
+        self.last_ht = now
+        self.last_naive = now
 
-    def timer_callback(self):
-        if self.whisper_ht_interval >= 0:
-            self.whisper_ht_interval = self.whisper_ht_interval - 1
-        if self.whisper_ht_interval < 0:
-            self.get_logger().debug(
-                "ros asr: whisper and human tracker does not respond for 60 sec"
-            )
-        if self.whisper_naive_interval >= 0:
-            self.whisper_naive_interval = self.whisper_naive_interval - 1
-        if self.whisper_naive_interval < 0:
-            self.get_logger().debug(
-                "ros asr: whisper using an usual microphone does not respond for 30 sec"
-            )
+    @staticmethod
+    def _silent(last, timeout):
+        return time.monotonic() - last > timeout
 
-    def callback_asr_dbg(self, asr):
-        self.dbmanager.update_asr_dbg(asr)
+    def is_accepted_speaker(self, instance_id):
+        """ignore_non_looking のとき，ロボットを見ている人の発話だけ受け付ける."""
+        # 設定 (起動時に dbmanager が読んだもの) が未登録，
+        # または ignore_non_looking が無い場合は無視しない
+        if not bool(self.dbmanager.config.get("ignore_non_looking", False)):
+            return True
+        ret = self.dbmanager.tracking_db.find_one(
+            {"instance_id": instance_id, "looking_at.target": 1}
+        )
+        return ret is not None
+
+    def callback_ssl_asr(self, asr):
+        self.get_logger().debug(f"ssl asr: {asr.data}")
+        d = json.loads(asr.data)
+        if self.is_accepted_speaker(int(d.get("person_id", -1))):
+            self.dbmanager.update_ssl_asr(asr, vap_status=self.vap_status)
 
     def callback_asr(self, asr):
-        self.get_logger().warn(f"asr: {asr}")
+        self.get_logger().debug(f"asr: {asr.data}")
         d = json.loads(asr.data)
-        if int(d["sep_port"]) in WHISPER_HT_PORTS:
-            self.whisper_ht_interval = 600
-            # ここで，looking_at情報を取得
-            ret = self.dbmanager.tracking_db.find_one(
-                {"instance_id": d["instance_id"], "looking_at.target": 1}
-            )
-            # 設定 (起動時に dbmanager が読んだもの) が未登録，
-            # または ignore_non_looking が無い場合は無視しない
-            ignore_non_looking = bool(self.dbmanager.config.get("ignore_non_looking", False))
-            # looking_atがFalseの場合は，asrの情報をDBに登録しない
-            if ret is not None or not ignore_non_looking:
+        port = int(d["sep_port"])
+        ht_silent = self._silent(self.last_ht, WHISPER_HT_TIMEOUT)
+        naive_silent = self._silent(self.last_naive, WHISPER_NAIVE_TIMEOUT)
+        if port in WHISPER_HT_PORTS:
+            self.last_ht = time.monotonic()
+            if self.is_accepted_speaker(d["instance_id"]):
                 self.dbmanager.update_asr(asr, vap_status=self.vap_status)
-            return True
-        if int(d["sep_port"]) == WHISPER_NAIVE_PORT:
-            self.whisper_naive_interval = 300
-            if self.whisper_ht_interval < 0:
+        elif port == WHISPER_NAIVE_PORT:
+            # 通常マイク: Human Tracker が応答していない間だけ
+            self.last_naive = time.monotonic()
+            if ht_silent:
                 self.dbmanager.update_asr(asr, vap_status=self.vap_status)
-            return True
-        elif int(d["sep_port"]) < 0:
-            if self.whisper_ht_interval < 0:
-                if self.whisper_naive_interval < 0:
-                    self.dbmanager.update_asr(asr, vap_status=self.vap_status)
+        elif port < 0:
+            # その他: Human Tracker も通常マイクも応答していない間だけ
+            if ht_silent and naive_silent:
+                self.dbmanager.update_asr(asr, vap_status=self.vap_status)
         else:
-            self.get_logger().debug(f"Unknown sep_port: {d['sep_port']}")
-            return
+            self.get_logger().debug(f"Unknown sep_port: {port}")
 
     def callback_vap(self, vap):
-        self.get_logger().warn(f"vap: {vap}")
+        self.get_logger().debug(f"vap: {vap.data}")
         self.vap_status = json.loads(vap.data)["status"]
 
 

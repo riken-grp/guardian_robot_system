@@ -33,6 +33,8 @@ setup(
             f"body_pose_estimation_node = {package_name}.body_pose_estimation_node:main",
             f"scene_text_node = {package_name}.scene_text_node:main",
             f"compressed_image_flip_node = {package_name}.compressed_image_flip_node:main",
+            f"frame_gate_node = {package_name}.frame_gate_node:main",
+            f"pipeline_monitor_node = {package_name}.pipeline_monitor_node:main",
         ],
     },
 )

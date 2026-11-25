@@ -14,7 +14,10 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from db_management.dbmanager import TopicDBManager  # noqa: E402
+from db_management.dbmanager import DEFAULT_OPTIONS, TopicDBManager  # noqa: E402
+from db_management.recognition_available_region_checker import (  # noqa: E402
+    RecognitionAvailableRegionChecker,
+)
 
 _ids = itertools.count(1)
 
@@ -39,7 +42,13 @@ def _match(doc, query):
             for op, arg in v.items():
                 if op == "$ne" and cur == arg:
                     return False
+                if op == "$in" and cur not in arg:
+                    return False
                 if op == "$lt" and (cur is None or not cur < arg):
+                    return False
+                if op == "$lte" and (cur is None or not cur <= arg):
+                    return False
+                if op == "$gte" and (cur is None or not cur >= arg):
                     return False
                 if op == "$gt" and (cur is None or not cur > arg):
                     return False
@@ -65,10 +74,11 @@ class FakeCollection:
     def create_index(self, keys, **kwargs):
         self.indexes.append((list(keys), kwargs))
 
-    def find_one(self, q=None):
+    def find_one(self, q=None, projection=None):
         return next((d for d in self.docs if _match(d, q or {})), None)
 
-    def find(self, q=None):
+    def find(self, q=None, projection=None):
+        self.n_find = getattr(self, "n_find", 0) + 1
         return [d for d in self.docs if _match(d, q or {})]
 
     def count_documents(self, q):
@@ -86,10 +96,20 @@ class FakeCollection:
             _set(d, k, (_get(d, k) or 0) + v)
         return before != json.dumps(d, default=str, sort_keys=True)
 
-    def update_one(self, q, u):
+    def update_one(self, q, u, upsert=False):
         d = self.find_one(q)
+        if d is None and upsert:
+            self.insert_one({k: v for k, v in q.items() if not k.startswith("$")})
+            d = self.docs[-1]
+            self._apply(d, u)
+            return NS(matched_count=0, modified_count=0)
         modified = self._apply(d, u) if d is not None else False
         return NS(matched_count=int(d is not None), modified_count=int(modified))
+
+    def bulk_write(self, ops, ordered=True):
+        self.n_bulk = getattr(self, "n_bulk", 0) + 1
+        for op in ops:  # pymongo.UpdateOne
+            FakeCollection.update_one(self, op._filter, op._doc, upsert=bool(op._upsert))
 
     def update_many(self, q, u):
         n = sum(self._apply(d, u) for d in self.find(q))
@@ -126,6 +146,9 @@ def m():
     mgr.physical_db = FakePhysical()
     mgr.cyber_db = FakePhysical()
     mgr.config = {}
+    mgr.options = dict(DEFAULT_OPTIONS)
+    mgr.prev_num_person = None
+    mgr.region_checker = RecognitionAvailableRegionChecker({})
     return mgr
 
 
@@ -133,13 +156,13 @@ def arr(*v):
     return np.array(v, float)
 
 
-def obj(i, z, class_id=0):
+def obj(i, z, class_id=0, x=600.0):
     return NS(
         instance_id=i,
         name="person",
         class_id=class_id,
         confidence=0.9,
-        location=arr(0, 0, 1, 1),
+        location=arr(x, 300, 80, 200),  # bbox in the 1280 px wide image (center by default)
         location_sensor=arr(0, 0, z),
         location_global=arr(0, 0, 0),
     )
@@ -231,7 +254,10 @@ def test_lost_person_resets_flags(m):
     assert m.tracking_db.docs == []
     assert len(m.tracking_archive_db.docs) == 1
 
-    # 同じ instance_id が再出現したら新しいライフタイムとして再発行される
+    # lost_grace (15 s) を過ぎて同じ instance_id が再出現したら新しいライフタイムとして再発行される
+    import datetime
+
+    m.tracking_archive_db.docs[0]["last_seen"] -= datetime.timedelta(seconds=20)
     m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
     assert events(m) == [
         ("person_appear", 1),
@@ -315,8 +341,8 @@ def test_ensure_indexes(m):
     keys = [k for k, _ in tracking]
     assert [("class_id", 1)] in keys
     assert [("last_seen", 1)] in keys
-    assert [("looking_at.target", 1), ("looking_at.life", 1)] in keys
-    assert [("wheelchair.sitting", 1)] in keys
+    assert [("looking_at.target", 1), ("looking_at.since", 1)] in keys
+    assert [("instance_id", 1), ("last_seen", 1)] in [k for k, _ in m.tracking_archive_db.indexes]
     assert m.physical_db.db.indexes == [
         ([("event", 1), ("contents.instance_id", 1)], {})
     ]
@@ -432,3 +458,299 @@ def test_person_found_invalid_depth_keeps_location(m):
     m.update_objects(NS(objects=[obj(6, 0.0)]), 3.0, 6.0)
     (c,) = contents(m, "person_found")
     assert c["distance"] is None and c["location_sensor"] == [0.0, 0.0, 0.0]
+
+
+def test_one_find_and_one_bulk_write_per_message(m):
+    frame = NS(objects=[obj(i, 2.0) for i in range(5)])
+    m.update_objects(frame, 3.0)
+    m.tracking_db.n_find = m.tracking_db.n_bulk = 0
+    m.tracking_db.update_one = None  # emitted: no per-person update anymore
+    for _ in range(3):
+        m.update_objects(frame, 3.0)
+    assert (m.tracking_db.n_find, m.tracking_db.n_bulk) == (3, 3)
+    assert [d["life"] for d in m.tracking_db.docs] == [3] * 5
+    assert all("count" not in d for d in m.tracking_db.docs)
+
+
+def test_state_life_counts_same_state(m):
+    m.update_objects(NS(objects=[obj(1, 2.0), obj(2, 2.0)]), 3.0)
+    for v in [1, 1, 0]:
+        m.update_hand_waving(noticed({"1": v, "2": 1, "9": 1}))  # 9: not tracked
+    t1 = m.tracking_db.find_one({"instance_id": 1})
+    t2 = m.tracking_db.find_one({"instance_id": 2})
+    assert t1["hand_waving"] == {"hand_waving": False, "life": 1}
+    assert t2["hand_waving"] == {"hand_waving": True, "life": 3}
+    assert m.tracking_db.find_one({"instance_id": 9}) is None
+    m.update_lookingat(noticed({"1": 0}))
+    m.update_lookingat(noticed({"1": 0}))
+    m.update_wheelchair(noticed({"2": 1}))
+    looking = m.tracking_db.find_one({"instance_id": 1})["looking_at"]
+    first_since = looking.pop("since")
+    assert looking == {"target": 0, "life": 2}
+    m.update_lookingat(noticed({"1": 1}))  # another target: since is reset
+    looking = m.tracking_db.find_one({"instance_id": 1})["looking_at"]
+    assert looking["life"] == 1 and looking["since"] >= first_since
+    assert m.tracking_db.find_one({"instance_id": 2})["wheelchair"] == {"sitting": True, "life": 1}
+
+
+def test_lost_objects_pruned_by_time(m):
+    import datetime
+
+    m.update_objects(NS(objects=[obj(1, 2.0), obj(2, 2.0)]), 3.0)
+    m.tracking_db.docs[0]["last_seen"] -= datetime.timedelta(seconds=10)
+    m.prune_lost_objects(3.0)
+    assert [d["instance_id"] for d in m.tracking_db.docs] == [2]
+    assert [d["instance_id"] for d in m.tracking_archive_db.docs] == [1]
+
+
+def test_looking_duration_in_seconds(m):
+    import datetime
+
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    m.update_lookingat(noticed({"1": 1}))
+    now = datetime.datetime.now()
+    q = TopicDBManager.looking_query
+    assert m.tracking_db.find_one(q(now, 1, 0.2)) is None  # just started
+    later = now + datetime.timedelta(seconds=0.5)
+    assert m.tracking_db.find_one(q(later, 1, 0.2))["instance_id"] == 1
+    assert m.tracking_db.find_one(q(later, 1, 1.0)) is None
+    assert m.tracking_db.find_one(q(later, 2, 0.2)) is None  # other target
+
+
+# ---------------------------------------------------------------- person lifecycle
+
+
+def lose(m, i, seconds):
+    """instance_id i を seconds 秒前に見失ったことにして archive に移す."""
+    import datetime
+
+    for d in m.tracking_db.docs:
+        if d["instance_id"] == i:
+            d["last_seen"] -= datetime.timedelta(seconds=seconds)
+            d["first_seen"] -= datetime.timedelta(seconds=seconds)
+    m.prune_lost_objects(3.0)
+
+
+def test_returning_within_grace_is_not_greeted_again(m):
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    lose(m, 1, 5)  # hidden for 5 s
+    first_seen = m.tracking_archive_db.docs[0]["first_seen"]
+    assert m.tracking_db.docs == [] and events(m) == []
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    assert events(m) == []  # no person_found / appear again
+    doc = m.tracking_db.find_one({"instance_id": 1})
+    assert doc["first_seen"] == first_seen
+    assert doc["emitted"]["person_found"] is True
+    # returned: no person_disappear for the first lifetime
+    import datetime
+
+    m._register_person_disappear(datetime.datetime.now() + datetime.timedelta(seconds=20))
+    assert events(m, "person_disappear") == []
+
+
+def test_person_disappear_once_after_grace(m):
+    import datetime
+
+    m.update_objects(NS(objects=[obj(1, 2.0), obj(2, 1.0, class_id=5)]), 3.0)
+    m.update_faces(NS(persons=[face(1)]))
+    lose(m, 1, 5)
+    lose(m, 2, 5)
+    m._register_person_disappear(datetime.datetime.now())
+    assert events(m, "person_disappear") == []  # still within lost_grace
+    later = datetime.datetime.now() + datetime.timedelta(seconds=15)
+    m._register_person_disappear(later)
+    m._register_person_disappear(later)
+    assert events(m, "person_disappear") == [("person_disappear", 1)]  # persons only, once
+    c = m.physical_db.db.find_one({"event": "person_disappear"})["contents"]
+    assert "face_detected" in c["events"] and "person_found" in c["events"]
+    assert c["min_distance"] == 2.0 and c["stay_sec"] >= 0
+
+
+def test_person_too_near_with_hysteresis(m):
+    def near(z):
+        m.update_objects(NS(objects=[obj(1, z)]), 3.0)
+        return events(m, "person_too_near")
+
+    assert near(1.0) == []
+    assert near(0.4) == [("person_too_near", 1)]
+    assert near(0.6) == [("person_too_near", 1)]  # between 0.5 and 0.7: kept
+    assert near(0.8) == []  # backed off: withdrawn
+    assert near(0.45) == [("person_too_near", 1)]  # came near again
+    assert m.tracking_db.find_one({"instance_id": 1})["min_distance"] == 0.4
+
+
+def pointing(i, left=False, right=False):
+    return NS(instance_id=i, raising_left_hand=left, raising_right_hand=right)
+
+
+def test_raising_hand_while_raised(m):
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    m.update_hand_state(NS(pointings=[pointing(1, left=True)]))
+    m.update_hand_state(NS(pointings=[pointing(1, left=True, right=True)]))
+    assert events(m, "raising_hand") == [("raising_hand", 1)]
+    c = m.physical_db.db.find_one({"event": "raising_hand"})["contents"]
+    assert "_id" not in c and "emitted" not in c and c["hand_state"]["raising_left_hand"]
+    m.update_hand_state(NS(pointings=[pointing(1)]))
+    assert events(m, "raising_hand") == []
+    m.update_hand_state(NS(pointings=[pointing(1, right=True)]))
+    assert events(m, "raising_hand") == [("raising_hand", 1)]
+
+
+def test_raising_hand_outside_region_is_ignored(m):
+    m.region_checker = RecognitionAvailableRegionChecker(
+        {"recognition_available_regions": [
+            {"type": "rectangle", "region_id": 0, "locations": [[5, 5], [6, 6]]}
+        ]}
+    )
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)  # location_global (0, 0)
+    m.update_hand_state(NS(pointings=[pointing(1, left=True)]))
+    assert events(m, "raising_hand") == []
+
+
+def test_waving_hand_and_wheelchair_events(m):
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    m.update_hand_waving(noticed({"1": 1}))
+    m.update_hand_waving(noticed({"1": 1}))
+    assert events(m, "waving_hand") == [("waving_hand", 1)]
+    m.update_hand_waving(noticed({"1": 0}))
+    assert events(m, "waving_hand") == []
+    m.update_wheelchair(noticed({"1": 1}))
+    m.update_wheelchair(noticed({"1": 0}))
+    m.update_wheelchair(noticed({"1": 1}))
+    assert events(m, "wheelchair") == [("wheelchair", 1)]  # once while tracked
+    expire_all(m)
+    m.update_wheelchair(noticed({"1": 1}))
+    assert events(m, "wheelchair") == []
+
+
+def test_number_of_people_events(m):
+    def names():
+        return [e["event"] for e in m.physical_db.db.docs]
+
+    m.check_events()
+    assert names() == ["no_people"]  # at start without anybody (as before)
+    m.update_objects(NS(objects=[obj(i, 8.0) for i in range(4)]), 3.0)
+    m.physical_db.db.docs = []
+    m.check_events()
+    assert names() == ["many_people"]  # 4 > 3
+    m.check_events()
+    assert names() == ["many_people"]  # only on the change
+    m.tracking_db.docs = []
+    m.check_events()
+    assert names() == ["many_people", "no_people"]
+
+
+def test_looking_events_per_target(m):
+    import datetime
+
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    m.update_lookingat(noticed({"1": 1}))
+    now = datetime.datetime.now()
+    m.check_events(now)
+    assert not [e for e in m.physical_db.db.docs if "looking" in e["event"]]
+    m.check_events(now + datetime.timedelta(seconds=0.5))
+    m.check_events(now + datetime.timedelta(seconds=2))
+    looking = [e for e in m.physical_db.db.docs if e["event"].endswith("looking")]
+    assert sorted(e["event"] for e in looking) == ["long_looking", "looking"]  # one each
+    assert all(e["contents"]["target"] == 1 for e in looking)
+    assert max(e["contents"]["duration"] for e in looking) >= 2.0
+
+
+def test_attributes_smoothed_and_in_person_appear(m):
+    m.update_objects(NS(objects=[obj(1, 8.0)]), 3.0)  # far: no person_appear yet
+    for conf in (1.0, 0.0):
+        m.update_attributes(NS(persons=[NS(instance_id=1, attributes=["skirt"], attribute_confidences=[conf])]))
+    doc = m.tracking_db.find_one({"instance_id": 1})
+    assert doc["attribute_confidences"] == [0.0]
+    assert doc["attributes_smoothed"]["skirt"] == pytest.approx(0.7)
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    c = m.physical_db.db.find_one({"event": "person_appear"})["contents"]
+    assert c["attributes"]["skirt"] == pytest.approx(0.7)
+
+
+def test_face_is_kept_in_tracking(m):
+    m.update_objects(NS(objects=[obj(2, 2.0)]), 3.0)
+    m.update_faces(NS(persons=[face(2)]))
+    m.update_faces(NS(persons=[face(2)]))
+    assert m.tracking_db.find_one({"instance_id": 2})["face"]["face_orientation"] == [0, 0, 0]
+    assert events(m, "face_detected") == [("face_detected", 2)]
+
+
+def lost_for(m, i, seconds):
+    """instance_id i を seconds 秒前に最後に見たことにする (tracking に残したまま)."""
+    import datetime
+
+    for d in m.tracking_db.docs:
+        if d["instance_id"] == i:
+            d["last_seen"] -= datetime.timedelta(seconds=seconds)
+            d["first_seen"] -= datetime.timedelta(seconds=seconds)
+
+
+def disappear(m):
+    return {
+        e["contents"]["instance_id"]: e["contents"]["reason"]
+        for e in m.physical_db.db.docs
+        if e["event"] == "person_disappear"
+    }
+
+
+def test_exit_at_the_image_edge_is_reported_at_once(m):
+    m.update_objects(NS(objects=[obj(1, 2.0, x=5.0), obj(2, 2.0, x=1220.0), obj(3, 2.0)]), 3.0)
+    lost_for(m, 1, 0.5)
+    m.prune_lost_objects(3.0)
+    assert disappear(m) == {}  # before exit_check_sec
+    for i in (1, 2, 3):
+        lost_for(m, i, 1.0)
+    m.prune_lost_objects(3.0)
+    # 1, 2: left the image at the edges; 3: lost in the middle -> wait for lost_grace
+    assert disappear(m) == {1: "out_of_view_left", 2: "out_of_view_right"}
+    m.prune_lost_objects(3.0)
+    lost_for(m, 1, 2.0)  # archived at lost_timeout: the event stays
+    m.prune_lost_objects(3.0)
+    assert disappear(m) == {1: "out_of_view_left", 2: "out_of_view_right"}
+    c = m.physical_db.db.find_one({"event": "person_disappear"})["contents"]
+    assert c["lost_sec"] >= 1.0 and "person_found" in c["events"]
+
+
+def test_walking_away_and_far(m):
+    import datetime
+
+    z = 2.0
+    for k in range(5):  # moving away at ~1 m/s
+        m.update_objects(NS(objects=[obj(1, z), obj(2, 7.0)]), 3.0)
+        for d in m.tracking_db.docs:
+            d["last_seen"] -= datetime.timedelta(seconds=0.2)
+        z += 0.2
+    assert m.tracking_db.find_one({"instance_id": 1})["distance_rate"] > 0.3
+    for i in (1, 2):
+        lost_for(m, i, 1.0)
+    m.prune_lost_objects(3.0)
+    assert disappear(m) == {1: "walked_away", 2: "too_far"}
+
+
+def test_returning_after_a_quick_exit_withdraws_it(m):
+    m.update_objects(NS(objects=[obj(1, 2.0, x=5.0)]), 3.0)
+    lost_for(m, 1, 1.0)
+    m.prune_lost_objects(3.0)
+    assert disappear(m) == {1: "out_of_view_left"}
+    m.update_objects(NS(objects=[obj(1, 2.0, x=5.0)]), 3.0)  # back (still in tracking)
+    assert disappear(m) == {}
+    assert events(m, "person_found") == [("person_found", 1)]
+    # again, and this time back from the archive (lost 5 s)
+    lost_for(m, 1, 1.0)
+    m.prune_lost_objects(3.0)
+    lose(m, 1, 4)
+    assert disappear(m) == {1: "out_of_view_left"}
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    assert disappear(m) == {}
+    assert events(m, "person_found") == []  # deleted when lost, not greeted again
+
+
+def test_lost_in_the_middle_waits_for_grace(m):
+    import datetime
+
+    m.update_objects(NS(objects=[obj(1, 2.0)]), 3.0)
+    lose(m, 1, 5)
+    assert disappear(m) == {}
+    m._register_person_disappear(datetime.datetime.now() + datetime.timedelta(seconds=15))
+    assert disappear(m) == {1: "lost"}

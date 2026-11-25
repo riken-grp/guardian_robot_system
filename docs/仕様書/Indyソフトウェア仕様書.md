@@ -20,7 +20,7 @@
 |02_indyXe_rover_base|ローバ基本動作制御|rover_tools|rover_base.launch.py|○|
 |03_indyXe_slam_toolbox|ナビゲーション機能起動|rover_tools|rover_slam.launch.py|○|
 |04_indyXe_robot_base|以下の機器を起動<br>・眼球モニタ<br>・腕用モータ<br>・首用モータ|rover_tools|robot_base.launch.py|○|
-|05_indyXe_microphone_array|マイク音声取得<br>※10_indyXe_mic2sock_16chとは同時に起動できない。どちらか一方のみ使用すること。|microphone_array|microphone_array.launch.py|任意|
+|05_indyXe_microphone_array|マイク音声取得<br>※10_indyXe_mic2sock_16chとは同時に起動できない。どちらか一方のみ使用すること。|microphone_array|microphone_array.launch.py|○|
 |10_indyXe_mic2sock_16ch|マイク・スピーカーによるリアルタイム音声通信(mic2sock)<br>※05_indyXe_microphone_arrayとは同時に起動できない。どちらか一方のみ使用すること。|-|-|任意|
 |10_indyXe_robot_sense|以下の機器を起動<br>・胸用LiDAR<br>・頭部用RealSense|rover_tools|robot_sense.launch.py|○|
 |10_indyXe_send_audio_server|スピーカー出力音声の配信(pa_send_audio_server)<br>終了した場合は自動で再起動する。|-|pa_send_audio_server.sh|任意|
@@ -28,7 +28,9 @@
 |20_grs_action_gesture|ジェスチャー制御|gestures_modes|gestures_modes_ac_launch.py|○|
 |20_grs_action_nav|ナビゲーション操作|robot|nav_smr_launch.py|○|
 |20_grs_action_ros_command|ROSコマンド操作|robot|ros_command_launch.py|○|
+|20_grs_action_audio_play|受け取った音声のスピーカー再生|audio_play|audio_play_launch.py|○|
 |20_grs_action_tts|tts操作|robot|tts_launch.py|○|
+|20_grs_action_volume|スピーカーの音量変更|robot|volume_launch.py|○|
 |20_grs_action_watchdog|Watchdog|robot|ros_watchdog_launch.py|○|
 |30_chat_monitor|会話ログ配信(HTTP API)|chat-bubble|getData.js|○|
 |30_indyxe_viewer|ロボットの状態表示・操作画面(Webページ)<br>カメラ、バッテリー、シナリオの状態、地図、聞き取った言葉、行動の表示と、移動・発話の操作|indyxe_viewer|main.py|任意|
@@ -46,7 +48,7 @@
 |50_grsrv_llm_responder|対話生成|llm_responder|llm_responder_launch.py|○|
 |50_grsrv_memory|履歴管理|memory|all_memory_launch.py|○|
 |50_grsrv_recognition|画像認識|scene_understanding|recognition.launch.py|○|
-|50_grsrv_ros_asr|音声認識(単体起動)|ssl_bringup|ssl_server.launch.py|任意|
+|50_grsrv_ros_asr|音声認識(話者付き)・形態素解析|ssl_bringup|ssl_server.launch.py|○|
 |50_grsrv_vad_for_camera|話者情報(位置、音量、発話状態など)の配信|human_tracker|at_for_outside_camera.launch.py|任意|
 
 ### ③ robodj

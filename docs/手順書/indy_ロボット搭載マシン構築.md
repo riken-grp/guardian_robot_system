@@ -434,20 +434,24 @@ Avahiにより、同じネットワーク内のマシンを`<ホスト名>.local
    ln -s ../available/02_indyXe_rover_base.sh .
    ln -s ../available/03_indyXe_slam_toolbox.sh .
    ln -s ../available/04_indyXe_robot_base.sh .
+   ln -s ../available/05_indyXe_microphone_array.sh .
    ln -s ../available/10_indyXe_robot_sense.sh .
+   ln -s ../available/20_grs_action_audio_play.sh .
    ln -s ../available/20_grs_action_eye.sh .
    ln -s ../available/20_grs_action_gesture.sh .
    ln -s ../available/20_grs_action_nav.sh .
    ln -s ../available/20_grs_action_ros_command.sh .
    ln -s ../available/20_grs_action_tts.sh .
+   ln -s ../available/20_grs_action_volume.sh .
    ln -s ../available/20_grs_action_watchdog.sh .
    ln -s ../available/30_chat_monitor.sh .
    ls -l
    ```
 
    ※00_hv_watch(レスキューモード監視)は登録不要。`ON_ROBOT=1`の場合、module_launch.sh実行時に自動で起動される。  
-   ※05_indyXe_microphone_array、10_indyXe_mic2sock_16ch、10_indyXe_send_audio_serverは標準では登録しない。必要な場合のみ、上記と同様に登録する。  
-   　ただし、05_indyXe_microphone_arrayと10_indyXe_mic2sock_16chは同時に起動できないため、どちらか一方のみ登録すること。
+   ※10_indyXe_mic2sock_16ch、10_indyXe_send_audio_serverは標準では登録しない。必要な場合のみ、上記と同様に登録する。  
+   　ただし、10_indyXe_mic2sock_16chは05_indyXe_microphone_arrayと同時に起動できないため、10_indyXe_mic2sock_16chを登録する場合は05_indyXe_microphone_arrayの登録を外すこと。  
+   ※05_indyXe_microphone_arrayは、ALSAの入力デバイス`plughw:RASPZX16ch.0`を使用する。異なる場合は~/indy.envの`MIC_ARRAY_DEVICE`で指定する。
 
 4. ホームディレクトリで以下のコマンドを実行し、登録したスクリプトが一括起動されることを確認する。  
    起動・終了の詳細は、[Indyマニュアル.md](../マニュアル/Indyマニュアル.md)の「2. 起動手順」「3. 終了手順」を参照。

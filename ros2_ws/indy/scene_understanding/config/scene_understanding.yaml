@@ -1,4 +1,22 @@
 # config/scene_understanding.yaml
+/**/frame_gate_node:
+  ros__parameters:
+    # stamp が合った color / depth のペアを全認識ノードに配る。
+    # rate [Hz]: 配るフレームの上限 (<= 0: 合ったペアをすべて配る)。
+    # ロボットからは 10 Hz 弱 (ネットワーク不調時は 5 Hz 程度) しか届かず、
+    # 不規則にまとまって届くので、上限を掛けると必要なフレームまで捨ててしまう。
+    # 30 Hz で届くようになったら、最も遅いノード (detection_and_tracking) 以下に設定する。
+    # 注意: 下流の挙動が周波数に依存する箇所がある
+    #   - db_management update_objects: tracked 1 メッセージごとに count -1 (100 で見失い)
+    #   - action_recognition hand_waving: seq_len フレームの系列で判定
+    rate: 0.0
+    # rate > 0 のとき、連続で通してよいフレーム数 (まとまって届いたフレームを
+    # ノードの受信キュー 2 + 処理中 1 の範囲で通す)
+    burst: 3.0
+    rgbd_slop: 0.1             # color / depth の許容 stamp 差 [s]
+    rgbd_buffer_duration: 2.0  # [s]
+    stats_period: 10.0         # [s]
+
 /**/aruco_reader_node:
   ros__parameters:
     size: 4
@@ -12,6 +30,9 @@
 
 /**/body_pose_estimation_node:
   ros__parameters:
+    # frame_gate_node が color / depth を同じ stamp で配るので完全一致のみ
+    # (欠けたフレームに隣のフレームの depth を対応付けない)
+    rgbd_slop: 0.005
     model: "balanced"
     thresh: 0.3
     keypoint_thresh: 0.5
@@ -19,6 +40,9 @@
 
 /**/detection_and_tracking_node:
   ros__parameters:
+    # frame_gate_node が color / depth を同じ stamp で配るので完全一致のみ
+    # (欠けたフレームに隣のフレームの depth を対応付けない)
+    rgbd_slop: 0.005
     world_frame_id: "map"
     thresh: 0.6
     # ByteTrack (trackers.ByteTrackTracker).  Equivalent to the previous
@@ -32,6 +56,9 @@
 
 /**/head_pose_estimation_node:
   ros__parameters:
+    # frame_gate_node が color / depth を同じ stamp で配るので完全一致のみ
+    # (欠けたフレームに隣のフレームの depth を対応付けない)
+    rgbd_slop: 0.005
     model: "hopenet_alpha1.pkl"
     device: "cuda"
     world_frame_id: "map"

@@ -49,9 +49,13 @@ class WavingHandRecognizer:
       their result is always 0
     - buffers of instance_ids not present in the current frame are dropped
       (the sequence must be continuous)
+    - all the buffers are dropped when no frame arrived for more than
+      ``max_gap_sec`` (stalled network / recognition): the sequence would
+      otherwise join frames far apart in time.  The model is trained on
+      ``seq_len`` consecutive frames, so the sequence itself stays frame based.
     """
 
-    def __init__(self, node_instance=None, model=None, seq_len=5):
+    def __init__(self, node_instance=None, model=None, seq_len=5, max_gap_sec=1.0):
         if node_instance is not None:
             # Get parameters from the node instance
             seq_len = (
@@ -60,18 +64,35 @@ class WavingHandRecognizer:
                 .integer_value
             )
 
-            node_instance.get_logger().info(f"Recognizer Sequence Length: {seq_len}")
+            max_gap_sec = node_instance.get_parameter("max_gap_sec").value
+            node_instance.get_logger().info(
+                f"Recognizer Sequence Length: {seq_len}, max gap: {max_gap_sec} s"
+            )
 
             model = load_model_from_node(node_instance)
 
         self.handwaving_recognizer = model
         self.seqlen = int(seq_len)
         self.buffer = {}  # instance_id -> _RingBuffer
+        self.max_gap_ns = int(float(max_gap_sec) * 1e9)
+        self.last_stamp = None  # [ns]
 
     def normalize(self, data):
         return normalize_keypoints(data)
 
+    def _check_gap(self, persons):
+        header = getattr(persons, "header", None)
+        if header is None:
+            return
+        stamp = header.stamp.sec * 1_000_000_000 + header.stamp.nanosec
+        last, self.last_stamp = self.last_stamp, stamp
+        if last is None or self.max_gap_ns <= 0:
+            return
+        if stamp - last > self.max_gap_ns or stamp < last:
+            self.buffer.clear()
+
     def __call__(self, persons):
+        self._check_gap(persons)
         seen = set()
         data = []
         available = []
@@ -130,6 +151,8 @@ class WavingHandNode(BaseRecognitionNode):
         # Declare specific parameters for this node here, after super().__init__ has run
         declare_model_parameters(self, "models/hand_waving_model.joblib")
         self.declare_parameter("seq_len", 5)
+        # drop the sequences when no frame arrived for this long [s] (<= 0: never)
+        self.declare_parameter("max_gap_sec", 1.0)
         # Note: Common topics parameters are declared in BaseRecognitionNode
 
         self.state_recognizer = WavingHandRecognizer(

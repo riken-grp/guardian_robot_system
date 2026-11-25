@@ -17,6 +17,7 @@
   <depend>robot_looking</depend>
   <!-- attribute_recognition_node が model_loader を import する -->
   <depend>action_recognition</depend>
+  <exec_depend>rosidl_runtime_py</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>

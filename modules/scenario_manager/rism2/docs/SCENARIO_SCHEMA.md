@@ -77,6 +77,10 @@ priority は順番と選ばれやすさだけを決める。移動中にナビ�
 
 `exit_condition` は条件の配列にもでき、どれか1つが合えば打ち切る。
 `exit_events` をイベント名ごとに書くと、打ち切ったきっかけによって終わり方を変えられる。
+`exit_condition` でも `{triggered[名前]}` が使え、割り込みのきっかけの観測の値で置き換える。
+話し相手が立ち去ったら打ち切るなら `{"person_disappear": {"instance_id": "{triggered[instance_id]}"}}`
+（ほかの人が立ち去っても打ち切らない。`no_people` は最後の人を見失って 3 秒で出るが、person_disappear は
+画像の端から出た・離れていったなら約 1 秒、画面の中で見失ったなら 15 秒戻らないときに出る）。
 
 ```json
 "exit_condition": [{"no_people": null}, {"conversation_finished": null}],
@@ -95,6 +99,8 @@ physical_topic / cyber_topic に入る観測の `event` は、小文字の snake
 |---|---|---|---|
 | `face_detected` | 顔認識 | `face_location` など | 挨拶・音声対話の開始 |
 | `no_people` | 人数の判定 | `num_people`（0） | 対話の打ち切り（exit_condition） |
+| `person_disappear` | 人の追跡（db_management） | `instance_id`、`reason`、`stay_sec` | 話し相手が立ち去ったときの対話の打ち切り（exit_condition） |
+| `person_too_near` | 人の追跡（db_management） | `instance_id`、`distance` | 近づきすぎた人への声かけ |
 | `many_people` | 人数の判定 | `num_people` | |
 | `asr` | 音声認識 | `text`、`words`、`confidence` | 返事待ち、別れの言葉の判定 |
 | `keyword_wake` | 話しかけの意図の判定（llm_mic_watchdog_node） | `activate` | 話しかけられたときの対話の開始 |

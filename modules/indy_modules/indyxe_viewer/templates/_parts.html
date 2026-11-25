@@ -19,6 +19,35 @@
 </section>
 {% endmacro %}
 
+{% macro voice_input(enabled) %}
+{# 押している間の声を録音し, 音源分離後の発話 (recog/ssl/speech_segments) として publish する #}
+<section class="panel" aria-labelledby="voice-input-heading">
+    <h2 id="voice-input-heading">ロボットに話しかける</h2>
+    <div class="voice-input">
+        <button type="button" id="voice-input-button" class="button button--primary voice-input__button"
+                aria-describedby="voice-input-status" {% if not enabled %}disabled{% endif %}>押しながら話す</button>
+        <span class="voice-input__meter" aria-hidden="true"><span id="voice-input-level"></span></span>
+        <button type="button" id="voice-input-speaker" class="switch" role="switch" aria-checked="false"
+                {% if not enabled %}disabled{% endif %}>
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span>ロボットのスピーカーで再生</span>
+            <span class="switch__state" aria-hidden="true">OFF</span>
+        </button>
+        {% if enabled %}
+        <p id="voice-input-status" class="voice-input__status" aria-live="polite">
+            ボタン（またはボタンにフォーカスしてスペースキー）を押している間の声を送ります。
+            スピーカー再生が OFF ならロボットの前方 1 m から話しかけた発話として、ON ならロボットのスピーカーからそのまま流します
+        </p>
+        {% else %}
+        <p id="voice-input-status" class="voice-input__status">
+            利用できません：ssl_msgs が読み込めませんでした。
+            <code>source $GUARDIAN_ROBOT_PATH/ros2_ws/install/setup.bash</code> をしてから起動してください。
+        </p>
+        {% endif %}
+    </div>
+</section>
+{% endmacro %}
+
 {% macro dpad() %}
 <section class="panel" aria-labelledby="dpad-heading">
     <h2 id="dpad-heading">ロボット操作</h2>
@@ -37,6 +66,27 @@
 <section id="rooms" class="panel" aria-labelledby="rooms-heading" hidden>
     <h2 id="rooms-heading">部屋を見に行く</h2>
     <div id="rooms-list" class="button-list"></div>
+</section>
+{% endmacro %}
+
+{% macro robot_voice(enabled) %}
+{# ロボットの発話 (Actions の speak) をこのサーバで合成し, ロボットが話し始めたら再生する #}
+<section class="panel" aria-labelledby="robot-voice-heading">
+    <h2 id="robot-voice-heading">ロボットの声</h2>
+    <div class="speech-player">
+        <button type="button" id="robot-voice-toggle" class="switch" role="switch" aria-checked="false"
+                {% if not enabled %}disabled aria-describedby="robot-voice-status"{% endif %}>
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span>ロボットの発話を再生</span>
+            <span class="switch__state" aria-hidden="true">OFF</span>
+        </button>
+        {% if enabled %}
+        <p id="robot-voice-status" class="speech-player__status" aria-live="polite">停止中</p>
+        {% else %}
+        <p id="robot-voice-status" class="speech-player__status">利用できません：サーバの設定で無効になっています（--robot-voice）。</p>
+        {% endif %}
+    </div>
+    <p class="muted">ロボットと同じ声の設定でこのサーバが合成した音声です（ロボットのマイクで拾った音ではありません）。</p>
 </section>
 {% endmacro %}
 
@@ -61,6 +111,13 @@
     </div>
     <h3 class="subheading">聞き取った言葉</h3>
     {% if asr_enabled %}
+    <p class="morph-legend" aria-hidden="true">
+        <span class="muted">品詞：</span>
+        <span class="morph__token morph__token--noun">名詞</span>
+        <span class="morph__token morph__token--verb">動詞</span>
+        <span class="morph__token morph__token--adj">形容詞・副詞</span>
+        <span class="morph__token morph__token--other">助詞など</span>
+    </p>
     <p id="heard-empty" class="muted">まだありません</p>
     <ol id="heard-list" class="actions__list"></ol>
     <dialog id="face-dialog" class="face-dialog" aria-label="発話者の顔">

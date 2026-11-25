@@ -526,11 +526,44 @@ if (faceDialog) {
     });
 }
 
+// 形態素解析の結果 (ssl_asr morph_node): 品詞の大分類で色分けし, 漢字などには読みをルビで振る.
+// マウスを乗せると読み・原形・品詞を出す
+const MORPH_KINDS = { '名詞': 'noun', '動詞': 'verb', '形容詞': 'adj', '副詞': 'adj', '連体詞': 'adj' };
+const toHiragana = text => text.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+
+function morphView(morph) {
+    const box = el('span', 'morph');
+    box.setAttribute('aria-hidden', 'true'); // 読み上げは元の文 (actions__text) だけにする
+    const { surface: surfaces, pos: posList = [], reading: readings = [], base_form: baseForms = [] } = morph;
+    surfaces.forEach((surface, i) => {
+        const pos = posList[i] || '';
+        const reading = readings[i] || '';
+        const token = el('span', 'morph__token morph__token--' + (MORPH_KINDS[pos.split(',')[0]] || 'other'));
+        token.title = `${surface}（${reading}）\n原形：${baseForms[i] || surface}\n品詞：${pos}`;
+        if (reading && reading !== toHiragana(surface)) {
+            const ruby = el('ruby', '', surface);
+            ruby.append(el('rt', '', reading));
+            token.append(ruby);
+        } else {
+            token.textContent = surface;
+        }
+        box.append(token);
+    });
+    return box;
+}
+
 function heardItem(item) {
     const playing = item.clip && item.clip === playingClip;
     const tag = !item.clip ? ['音声なし', 'tag--neutral'] : playing ? ['■ 停止', 'tag--warning'] : ['▶ 再生', 'tag--info'];
     const li = timedItem(item.time, tag, item.text);
     li.classList.add('heard__item');
+    if (item.morph && Array.isArray(item.morph.surface)) {
+        // 文の下に形態素を並べる (actions__text は顔の拡大表示の説明などで使うのでそのまま残す)
+        const text = li.querySelector('.actions__text');
+        const body = el('span', 'heard__body');
+        text.replaceWith(body);
+        body.append(text, morphView(item.morph));
+    }
     li.append(heardFace(item));
     if (!item.clip) return li;
     li.classList.add('actions__item--playable');
@@ -864,6 +897,141 @@ if (speechToggle && !speechToggle.disabled) {
     if (saved === 'on') startSpeech(false);
 }
 
+// ロボットの声 (ロボットが話し始めたら, このサーバで合成した音声を再生する)
+const robotVoiceToggle = document.getElementById('robot-voice-toggle');
+if (robotVoiceToggle && !robotVoiceToggle.disabled) {
+    const status = document.getElementById('robot-voice-status');
+    const switchState = robotVoiceToggle.querySelector('.switch__state');
+    const STORAGE_KEY = 'robotVoicePlayback';
+    const WAITING = '再生中（ロボットが話すのを待っています）';
+    let audioCtx = null;
+    let socket = null;
+    let enabled = false;
+    let nextStartTime = 0;
+    const sources = new Map();  // 発話の ID -> 再生中/再生待ちの AudioBufferSourceNode
+    const stopped = new Set();  // 音声を取得中に止められた発話の ID
+
+    function audioReady() {
+        return audioCtx !== null && audioCtx.state === 'running';
+    }
+
+    function connect() {
+        const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${scheme}://${location.host}/robot_voice`);
+        socket = ws;
+        ws.onopen = () => { if (audioReady()) status.textContent = WAITING; };
+        ws.onmessage = (event) => {
+            if (!audioReady()) return;  // 音を出せない間に届いた発話は捨てる
+            const message = JSON.parse(event.data);
+            if (message.type === 'speak') play(message);
+            else if (message.type === 'stop') stop(message.id);
+            else if (message.type === 'error') status.textContent = `「${message.text}」: ${message.message}`;
+        };
+        ws.onclose = () => {
+            if (socket !== ws) return;
+            socket = null;
+            if (enabled) {
+                status.textContent = '接続が切れました。再接続しています…';
+                setTimeout(() => { if (enabled && !socket) connect(); }, 2000);
+            }
+        };
+    }
+
+    async function play(message) {
+        const ctx = audioCtx;
+        let buffer;
+        try {
+            const res = await fetch(message.url);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            buffer = await ctx.decodeAudioData(await res.arrayBuffer());
+        } catch (e) {
+            if (ctx !== audioCtx) return;
+            status.textContent = `「${message.text}」の音声を取得できませんでした (${e.message})`;
+            return;
+        }
+        if (ctx !== audioCtx || stopped.delete(message.id)) return;  // OFF にされた / 止められた
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        // ロボットと同じく, 速さとともに音の高さも変える
+        source.playbackRate.value = message.rate || 1;
+        source.connect(ctx.destination);
+        const startTime = Math.max(ctx.currentTime, nextStartTime);
+        const duration = buffer.duration / source.playbackRate.value;
+        source.start(startTime);
+        nextStartTime = startTime + duration;
+        sources.set(message.id, source);
+        source.onended = () => {
+            sources.delete(message.id);
+            if (sources.size === 0 && ctx === audioCtx) status.textContent = WAITING;
+        };
+        status.textContent = `再生中：「${message.text}」（${duration.toFixed(1)}秒）`;
+    }
+
+    function stop(id) {
+        const source = sources.get(id);
+        if (!source) {
+            stopped.add(id);
+            return;
+        }
+        source.stop();
+        nextStartTime = 0;
+    }
+
+    function setSwitch(on) {
+        robotVoiceToggle.setAttribute('aria-checked', String(on));
+        switchState.textContent = on ? 'ON' : 'OFF';
+        try { localStorage.setItem(STORAGE_KEY, on ? 'on' : 'off'); } catch (e) {}
+    }
+
+    function resumeOnGesture() {
+        if (!audioCtx || audioCtx.state === 'running') return;
+        status.textContent = 'ページのどこかをクリックすると再生を始めます';
+        const resume = () => { if (audioCtx && audioCtx.state !== 'closed') audioCtx.resume(); };
+        document.addEventListener('pointerdown', resume, { once: true });
+        document.addEventListener('keydown', resume, { once: true });
+    }
+
+    async function start(byUser) {
+        enabled = true;
+        setSwitch(true);
+        audioCtx = new AudioContext();
+        audioCtx.onstatechange = () => {
+            if (audioReady() && socket && socket.readyState === WebSocket.OPEN && sources.size === 0) {
+                status.textContent = WAITING;
+            }
+        };
+        nextStartTime = 0;
+        status.textContent = '接続しています…';
+        connect();
+        if (byUser) {
+            await audioCtx.resume();
+        } else {
+            audioCtx.resume().catch(() => {});
+            resumeOnGesture();
+        }
+    }
+
+    async function stopAll() {
+        enabled = false;
+        setSwitch(false);
+        if (socket) socket.close();
+        sources.clear();
+        stopped.clear();
+        if (audioCtx) {
+            const ctx = audioCtx;
+            audioCtx = null;
+            await ctx.close();
+        }
+        status.textContent = '停止中';
+    }
+
+    robotVoiceToggle.addEventListener('click', () => (enabled ? stopAll() : start(true)));
+
+    let saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+    if (saved === 'on') start(false);
+}
+
 const notification = document.getElementById('notification');
 let notificationTimer;
 
@@ -927,4 +1095,206 @@ document.querySelectorAll('[data-command]').forEach(btn => {
         }
     });
     poll(update, DESTINATIONS_INTERVAL_MS);
+})();
+
+// ---- ロボットに話しかける (押している間の声を録音し, 音源分離後の発話として ROS に publish してもらう) ----
+(() => {
+    const button = document.getElementById('voice-input-button');
+    if (!button || button.disabled) return;
+    const status = document.getElementById('voice-input-status');
+    const level = document.getElementById('voice-input-level');
+    const SEND_RATE = 16000;  // 音源分離 (separator_node) の出力と同じサンプリング周波数
+    const PREROLL_SEC = 0.3;  // 押す直前の音も入れる (話し始めが欠けないように)
+    const TAIL_SEC = 0.3;  // 離した後も少し録る (語尾が切れないように)
+    const MAX_SEC = 25;  // これを超えたら自動で送る
+
+    // OFF: 音源分離後の発話として送る / ON: ロボットのスピーカーでそのまま再生する (選択はブラウザに覚えておく)
+    const speakerSwitch = document.getElementById('voice-input-speaker');
+    const SPEAKER_KEY = 'voiceInputSpeaker';
+    function setSpeaker(on) {
+        speakerSwitch.setAttribute('aria-checked', String(on));
+        speakerSwitch.querySelector('.switch__state').textContent = on ? 'ON' : 'OFF';
+        try { localStorage.setItem(SPEAKER_KEY, on ? 'on' : 'off'); } catch (e) {}
+    }
+    const speakerOn = () => speakerSwitch.getAttribute('aria-checked') === 'true';
+    speakerSwitch.addEventListener('click', () => setSpeaker(!speakerOn()));
+    try { if (localStorage.getItem(SPEAKER_KEY) === 'on') setSpeaker(true); } catch (e) {}
+
+    if (!window.isSecureContext || !navigator.mediaDevices || !window.AudioWorkletNode) {
+        button.disabled = true;
+        speakerSwitch.disabled = true;
+        status.textContent = '利用できません：ブラウザのマイクは HTTPS か localhost で開いたページでしか使えません'
+            + '（サーバを --ssl-certfile / --ssl-keyfile 付きで起動して https:// で開いてください）';
+        return;
+    }
+
+    let mic = null;  // { ctx, stream, node }
+    let opening = null;
+    let preroll = [];  // 押していない間の直近の音
+    let chunks = null;  // 録音中の音 (null なら録音していない)
+    let pressed = false;
+    let stopTimer = null;
+    let sending = false;
+
+    async function openMic() {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        });
+        const ctx = new AudioContext();
+        try {
+            await ctx.audioWorklet.addModule('/static/voice-worklet.js');
+            const source = ctx.createMediaStreamSource(stream);
+            const node = new AudioWorkletNode(ctx, 'voice-capture');
+            const mute = ctx.createGain();
+            mute.gain.value = 0;  // 処理を回すため出力につなぐが, 音は出さない
+            source.connect(node).connect(mute).connect(ctx.destination);
+            node.port.onmessage = event => onAudio(ctx, event.data);
+            await ctx.resume();
+            return { ctx, stream, node };
+        } catch (error) {
+            stream.getTracks().forEach(t => t.stop());
+            ctx.close();
+            throw error;
+        }
+    }
+
+    function closeMic() {
+        if (!mic) return;
+        mic.stream.getTracks().forEach(t => t.stop());
+        mic.ctx.close();
+        mic = null;
+        preroll = [];
+    }
+
+    function onAudio(ctx, samples) {
+        let sum = 0;
+        for (const v of samples) sum += v * v;
+        const db = 10 * Math.log10(sum / samples.length + 1e-12);
+        if (chunks) {
+            chunks.push(samples);
+            level.style.width = `${Math.min(100, Math.max(0, (db + 60) / 50 * 100))}%`;
+            if (chunks.length * samples.length / ctx.sampleRate > MAX_SEC) finish();
+        } else {
+            preroll.push(samples);
+            while ((preroll.length - 1) * samples.length / ctx.sampleRate > PREROLL_SEC) preroll.shift();
+        }
+    }
+
+    async function press() {
+        if (pressed || sending) return;
+        pressed = true;
+        button.setAttribute('aria-pressed', 'true');
+        if (stopTimer) finish();  // 前の発話の語尾を録っている途中なら先に送る
+        if (!mic) {
+            status.textContent = 'マイクを準備しています…';
+            try {
+                opening = opening || openMic();
+                mic = await opening;
+            } catch (error) {
+                console.error('Microphone error:', error);
+                status.textContent = 'マイクを使えません（ブラウザでマイクの使用を許可してください）';
+                showNotification(`マイクを使えません：${error.message}`, true);
+                release(true);
+                return;
+            } finally {
+                opening = null;
+            }
+            if (!pressed) {  // 許可の確認中に離された
+                status.textContent = 'マイクの準備ができました。押しながら話してください';
+                return;
+            }
+        }
+        chunks = preroll;
+        preroll = [];
+        status.textContent = '録音中…（離すと送ります）';
+    }
+
+    function release(cancel = false) {
+        if (!pressed) return;
+        pressed = false;
+        button.setAttribute('aria-pressed', 'false');
+        if (!chunks) return;
+        if (cancel) {
+            chunks = null;
+            level.style.width = '0';
+            return;
+        }
+        stopTimer = setTimeout(finish, TAIL_SEC * 1000);
+    }
+
+    async function finish() {
+        clearTimeout(stopTimer);
+        stopTimer = null;
+        if (!chunks || !mic) return;
+        const recorded = chunks;
+        const inputRate = mic.ctx.sampleRate;
+        chunks = null;
+        level.style.width = '0';
+        if (pressed) release();  // 長すぎて自動で送るとき
+        const length = recorded.reduce((n, c) => n + c.length, 0);
+        if (length === 0) return;
+        const samples = new Float32Array(length);
+        let offset = 0;
+        for (const c of recorded) { samples.set(c, offset); offset += c.length; }
+
+        sending = true;
+        status.textContent = '送っています…';
+        try {
+            const pcm = await resample(samples, inputRate, SEND_RATE);
+            const result = await fetchJson(`/voice_input?sample_rate=${SEND_RATE}&speaker=${speakerOn()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/octet-stream' },
+                body: pcm.buffer,
+            });
+            status.textContent = result.message;
+        } catch (error) {
+            console.error('Voice input error:', error);
+            status.textContent = `送れませんでした：${error.message}`;
+            showNotification(`話しかけられませんでした：${error.message}`, true);
+        } finally {
+            sending = false;
+        }
+    }
+
+    /** OfflineAudioContext でサンプリング周波数を変換する */
+    async function resample(samples, fromRate, toRate) {
+        if (fromRate === toRate) return samples;
+        const offline = new OfflineAudioContext(1, Math.ceil(samples.length * toRate / fromRate), toRate);
+        const buffer = offline.createBuffer(1, samples.length, fromRate);
+        buffer.copyToChannel(samples, 0);
+        const source = offline.createBufferSource();
+        source.buffer = buffer;
+        source.connect(offline.destination);
+        source.start();
+        return (await offline.startRendering()).getChannelData(0);
+    }
+
+    button.addEventListener('pointerdown', event => {
+        if (event.button !== 0) return;
+        button.setPointerCapture(event.pointerId);
+        press();
+    });
+    button.addEventListener('pointerup', () => release());
+    button.addEventListener('pointercancel', () => release(true));
+    button.addEventListener('lostpointercapture', () => release());
+    button.addEventListener('contextmenu', event => event.preventDefault());
+    button.addEventListener('keydown', event => {
+        if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
+            event.preventDefault();
+            press();
+        }
+    });
+    button.addEventListener('keyup', event => {
+        if (event.key === ' ' || event.key === 'Enter') release();
+    });
+    button.addEventListener('blur', () => release());
+    // タブが裏に回ったらマイクを閉じる (次に押したときに開き直す)
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) return;
+        release(true);
+        clearTimeout(stopTimer);
+        stopTimer = null;
+        chunks = null;
+        closeMic();
+    });
 })();

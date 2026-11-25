@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             f"asr_node = {package_name}.asr_node:main",
+            f"morph_node = {package_name}.morph_node:main",
         ],
     },
 )

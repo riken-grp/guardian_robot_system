@@ -4,7 +4,7 @@
   "version": "2.0",
   "priority": 100,
   "condition": {
-    "no people": null
+    "no_people": null
   },
   "resume_after": "resume",
   "ignore_after_activated": 100,
